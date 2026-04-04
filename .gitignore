@@ -1,11 +1,13 @@
 .DS_Store
 *.log
 
-# dependencies（どの階層も。既に追跡されている場合は git rm -r --cached を実行）
+# dependencies
 node_modules/
 **/node_modules/
+.pnpm-store/
+**/.pnpm-store/
 
-# STEP 4 — UI/API 経由で生成される取り込みファイル
+# UI/API 経由で生成される取り込みファイル
 data/uploads/
 data/imports/
 
@@ -39,7 +41,7 @@ frontend/.yarn/*
 !frontend/.yarn/releases
 !frontend/.yarn/versions
 
-# デバッログ
+# ログ
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

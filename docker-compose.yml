@@ -70,8 +70,12 @@ services:
     working_dir: /workspace
     environment:
       DATABASE_URL_STUDIO: postgresql://knowledge:knowledge@db:5432/knowledge
+      CI: "true"
     volumes:
       - .:/workspace
+      - drizzle_studio_node_modules:/workspace/node_modules
+      - drizzle_studio_frontend_node_modules:/workspace/frontend/node_modules
+      - drizzle_studio_backend_node_modules:/workspace/backend/node_modules
     ports:
       - "4983:4983"
     depends_on:
@@ -86,3 +90,6 @@ volumes:
   pgdata:
   frontend_node_modules:
   frontend_next:
+  drizzle_studio_node_modules:
+  drizzle_studio_frontend_node_modules:
+  drizzle_studio_backend_node_modules:

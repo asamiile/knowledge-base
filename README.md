@@ -33,7 +33,7 @@ docker compose up -d --build
 | API（FastAPI） | http://localhost:8000 | 8000 |
 | API ドキュメント（Swagger UI） | http://localhost:8000/docs | 8000 |
 | PostgreSQL（pgvector） | localhost:5432 | 5432 |
-| Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio)（ローカル :4983 経由） | 4983 |
+| Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio) | 4983 |
 
 ### Gemini APIの設定
 
