@@ -39,7 +39,7 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
         .select_from(Document)
         .where(Document.embedding.isnot(None))
     )
-    # 初回などインデックスが空で、data/ に .md/.txt があるなら自動取り込み（reindex フラグ不要）
+    # 初回などインデックスが空で、DATA_DIR に .md/.txt があるなら自動取り込み（reindex フラグ不要）
     if not n_docs and has_vector_source_files(data_dir):
         ingest_data_directory(db, embed_model, data_dir)
         n_docs = db.scalar(
@@ -51,10 +51,10 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
     if not n_docs:
         if has_any_source_files(data_dir) and not has_vector_source_files(data_dir):
             raise ValueError(
-                "NO_TEXT_SOURCES: ベクトル検索には data/ に .md または .txt が必要です（JSON のみでは documents は作りません）。"
+                "NO_TEXT_SOURCES: ベクトル検索には DATA_DIR に .md または .txt が必要です（JSON のみでは documents は作りません）。"
             )
         raise ValueError(
-            "NO_DOCUMENTS: リポジトリ直下の data/（Compose では /app/data）に .md/.txt を置くか、"
+            "NO_DOCUMENTS: DATA_DIR（Compose では /app/data）に .md/.txt を置くか、"
             f"明示的に reindex_sources: true を指定してください。参照ディレクトリ: {data_dir}"
         )
 

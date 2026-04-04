@@ -7,9 +7,9 @@ node_modules/
 .pnpm-store/
 **/.pnpm-store/
 
-# UI/API 経由で生成される取り込みファイル
-data/uploads/
-data/imports/
+# UI/API 経由で生成される取り込みファイル（DATA_DIR）
+backend/data/uploads/
+backend/data/imports/
 
 # Python（backend など）
 __pycache__/

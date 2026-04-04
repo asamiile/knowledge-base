@@ -63,7 +63,7 @@ def test_analyze_smoke_auto_ingest_with_mocked_gemini(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """data/ に .md があり、インデックス空なら自動取り込み → RAG 応答まで通る。"""
+    """DATA_DIR に .md があり、インデックス空なら自動取り込み → RAG 応答まで通る。"""
     live = _live_embedding_dimensions()
     model_dim = _model_embedding_dimensions()
     if live != model_dim:

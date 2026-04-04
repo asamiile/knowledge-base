@@ -1,4 +1,4 @@
-"""data/ ディレクトリから documents / raw_data へ取り込む。"""
+"""DATA_DIR から documents / raw_data へ取り込む。"""
 
 from __future__ import annotations
 

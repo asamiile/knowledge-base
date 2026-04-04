@@ -27,7 +27,7 @@ services:
       # GOOGLE_API_KEY は backend/.env に書く（ホストの ${GOOGLE_API_KEY:-} で上書きすると空になりキーが消えるためここでは渡さない）
     volumes:
       - ./backend:/app
-      - ./data:/app/data
+      - ./backend/data:/app/data
     depends_on:
       db:
         condition: service_healthy

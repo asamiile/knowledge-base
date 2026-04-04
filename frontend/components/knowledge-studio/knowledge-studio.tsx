@@ -483,7 +483,7 @@ export function KnowledgeStudio() {
                   <CardHeader>
                     <CardTitle>ファイルアップロード</CardTitle>
                     <CardDescription>
-                      <code className="text-xs">data/uploads/</code>{" "}
+                      <code className="text-xs">backend/data/uploads/</code>{" "}
                       へ保存（.md / .txt /
                       .json）。質問画面で再インデックスが必要です。
                     </CardDescription>
@@ -513,7 +513,7 @@ export function KnowledgeStudio() {
                   <CardHeader>
                     <CardTitle>arXiv 取り込み</CardTitle>
                     <CardDescription>
-                      <code className="text-xs">data/imports/arxiv/*.md</code>{" "}
+                      <code className="text-xs">backend/data/imports/arxiv/*.md</code>{" "}
                       に保存
                     </CardDescription>
                   </CardHeader>

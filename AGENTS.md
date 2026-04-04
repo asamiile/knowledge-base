@@ -119,8 +119,8 @@
 **STEP 3 完了定義**
 
 - 環境変数 `GOOGLE_API_KEY` で Gemini 埋め込み・生成を呼び出せる。
-- `DATA_DIR`（Compose ではリポジトリ直下 `data/` を `backend` の `/app/data` にマウント）の `.md` / `.txt` をチャンク化し、`documents` にベクトル付きで保存できる。`.json` は `raw_data` に格納できる。
-- `POST /api/analyze` が下記「HTTP API 契約」の JSON 形式で応答する。`reindex_sources: true` で `data/` の再取り込み（既存 `documents` / `raw_data` の置換）ができる。
+- `DATA_DIR`（既定は **`backend/data/`**。Compose では `./backend/data` を `/app/data` にマウント）の `.md` / `.txt` をチャンク化し、`documents` にベクトル付きで保存できる。`.json` は `raw_data` に格納できる。
+- `POST /api/analyze` が下記「HTTP API 契約」の JSON 形式で応答する。`reindex_sources: true` で `DATA_DIR` の再取り込み（既存 `documents` / `raw_data` の置換）ができる。
 - **STEP 4 着手条件:** 本表で STEP 3 を「完了」に更新したこと。
 
 ---
@@ -376,7 +376,7 @@ cd backend && pytest -q
 
 2. API を起動する（例: `docker compose up -d` で backend まで、または `backend` で `uvicorn`）。
 
-3. **`data/`** に `.md` または `.txt` がある（未配置なら `data/sample.md` をそのまま使える）。Compose の backend は通常 **`./data` → `/app/data`**。ホストだけで uvicorn する場合は `backend/.env` の **`DATA_DIR`** を、リポジトリ直下の `data/` の**絶対パス**などに合わせる。
+3. **`backend/data/`** に `.md` または `.txt` がある（未配置なら `backend/data/sample.md` をそのまま使える）。Compose の backend は **`./backend/data` → `/app/data`**。ホストだけで uvicorn する場合は `backend/.env` の **`DATA_DIR`** を **`backend/data`** の絶対パス、または `backend` で作業中なら `./data` に合わせる。
 
 4. ターミナルで:
 
@@ -387,7 +387,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 ```
 
 5. HTTP **200** で、返却 JSON に **`answer` / `key_points` / `citations`** があれば（2）は完了。  
-   **503** → キーが読めていない（`.env` の場所・API 再起動を確認）。**400** → `DATA_DIR` または `data/` 内のテキストを確認。
+   **503** → キーが読めていない（`.env` の場所・API 再起動を確認）。**400** → `DATA_DIR`（`backend/data/`）内のテキストを確認。
 
 ---
 
@@ -404,7 +404,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 **B（実 API・任意）**
 
 1. `backend/.env` に `GOOGLE_API_KEY=...`。
-2. `data/` に `.md` / `.txt` を配置。Compose 以外で動かす場合は `DATA_DIR` がその `data/` を指すこと。
+2. `backend/data/` に `.md` / `.txt` を配置。Compose 以外で動かす場合は `DATA_DIR` がそのディレクトリを指すこと（例: `DATA_DIR=./data`）。
 3. API 起動後、例（初回は取り込みを確実にするなら `reindex_sources: true`）:
 
 ```bash
@@ -415,7 +415,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 
 - **200** かつ上記 JSON フィールドがあれば **B 達成**。
 - **503** → `GOOGLE_API_KEY` 未読込（`.env`・再起動を確認）。
-- **400** → `data/` にテキストが無い、または `DATA_DIR` がズレている。
+- **400** → `backend/data/` にテキストが無い、または `DATA_DIR` がズレている。
 
 **4. 目安の要約** — 上記の **「結論：どこまでやれば良いか」** の表と **チェックリスト** を参照。
 

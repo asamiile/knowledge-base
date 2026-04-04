@@ -13,8 +13,8 @@ os.environ.setdefault(
 )
 
 _repo_root = Path(__file__).resolve().parents[2]
-# STEP 3: リポジトリ直下 data/（サンプル Markdown）
-os.environ.setdefault("DATA_DIR", str(_repo_root / "data"))
+# STEP 3: backend/data/（サンプル Markdown・DATA_DIR の既定に合わせる）
+os.environ.setdefault("DATA_DIR", str(_repo_root / "backend" / "data"))
 
 
 @pytest.fixture
