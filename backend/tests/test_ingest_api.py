@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -63,12 +63,32 @@ def test_import_arxiv_by_id_mocked(client: TestClient, tmp_path: Path, monkeypat
     assert md.is_file()
     text = md.read_text(encoding="utf-8")
     assert "Sample Paper" in text
+    assert "https://arxiv.org/abs/" in text
     assert "Test abstract." in text
 
 
 def test_import_arxiv_validation_requires_source(client: TestClient) -> None:
     r = client.post("/api/data/imports/arxiv", json={})
     assert r.status_code == 422
+
+
+def test_reindex_mocked(client: TestClient, clean_documents: None) -> None:
+    """embedding / ingest をモックし、応答形状だけ確認する。"""
+    with (
+        patch(
+            "app.api.routes_data.build_embedding_model",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "app.api.routes_data.ingest_data_directory",
+            return_value=(7, 2),
+        ),
+    ):
+        r = client.post("/api/data/reindex")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["document_chunks"] == 7
+    assert body["raw_data_rows"] == 2
 
 
 def test_knowledge_stats(client: TestClient, clean_documents: None) -> None:

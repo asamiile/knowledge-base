@@ -10,7 +10,8 @@ from urllib.parse import unquote
 
 import httpx
 
-ARXIV_API = "http://export.arxiv.org/api/query"
+# http は 301 → https となり、環境によってはリダイレクト追従で失敗するため https を既定にする
+ARXIV_API = "https://export.arxiv.org/api/query"
 USER_AGENT = "knowledge-base/0.1 (local-dev; https://arxiv.org/help/api)"
 _ATOM = "{http://www.w3.org/2005/Atom}"
 
@@ -40,7 +41,7 @@ def _normalize_arxiv_ids(raw: list[str]) -> list[str]:
 
 
 def _arxiv_get(params: dict[str, str | int]) -> str:
-    with httpx.Client(timeout=45.0) as client:
+    with httpx.Client(timeout=45.0, follow_redirects=True) as client:
         r = client.get(
             ARXIV_API,
             params=params,
@@ -83,13 +84,25 @@ def _entry_file_stem(entry: _ArxivEntry) -> str:
     return tail or "unknown"
 
 
+def _canonical_abs_url(id_url: str) -> str:
+    """Atom の entry id（通常は http://arxiv.org/abs/...vN）を https の abs URL に揃える。"""
+    u = id_url.strip()
+    if not u:
+        return u
+    u = u.replace("http://arxiv.org/", "https://arxiv.org/")
+    if u.startswith("https://arxiv.org/"):
+        return u
+    return f"https://arxiv.org/abs/{u.lstrip('/')}"
+
+
 def _entry_to_markdown(entry: _ArxivEntry) -> str:
     stem = _entry_file_stem(entry)
     authors = ", ".join(entry.authors) if entry.authors else "(unknown)"
+    url = _canonical_abs_url(entry.id_url)
     return (
         f"# {entry.title}\n\n"
         f"**arXiv:** `{stem}`  \n"
-        f"**URL:** {entry.id_url}  \n"
+        f"**URL:** {url}  \n"
         f"**Authors:** {authors}\n\n"
         f"## Abstract\n\n{entry.summary}\n"
     )

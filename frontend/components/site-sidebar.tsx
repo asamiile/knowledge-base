@@ -20,10 +20,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
+import type { KnowledgeSection } from "@/lib/knowledge-section";
 import type { KnowledgeStats } from "@/lib/api/knowledge";
-
-import type { KnowledgeSection } from "./types";
+import { cn } from "@/lib/utils";
 
 /**
  * 折りたたみ時: フッター「統計を更新」と同じ outline・高さ h-7・アイコンのみ（ラベルは sr-only）
@@ -32,7 +31,7 @@ const navBtnIconMode = cn(
   "group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:min-h-7 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:rounded-[min(var(--radius-md),12px)] group-data-[collapsible=icon]:border group-data-[collapsible=icon]:border-border group-data-[collapsible=icon]:bg-background group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:shadow-none hover:group-data-[collapsible=icon]:bg-muted hover:group-data-[collapsible=icon]:text-foreground group-data-[collapsible=icon]:[&_svg]:size-3.5 dark:group-data-[collapsible=icon]:border-input dark:group-data-[collapsible=icon]:bg-input/30 dark:hover:group-data-[collapsible=icon]:bg-input/50",
 );
 
-export function KnowledgeAppSidebar({
+export function SiteSidebar({
   activeSection,
   onSectionChange,
   stats,

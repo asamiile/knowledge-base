@@ -1,0 +1,48 @@
+# 本番向けスタック（例: VPS・単一ホスト）
+#
+# - DB: 永続ボリューム pgdata
+# - アップロード・DATA_DIR: 永続ボリューム knowledge_data → コンテナ内 /app/data（uploads/ 含む）
+# - バックエンド: ソースバインドなし（イメージ内の app のみ）。コード変更後は再ビルドが必要。
+#
+# 起動例:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# backend/.env に GOOGLE_API_KEY 等を用意する（無い場合は backend/.env.example を参考にコピー）。
+
+services:
+  db:
+    image: ankane/pgvector:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: knowledge
+      POSTGRES_PASSWORD: knowledge
+      POSTGRES_DB: knowledge
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowledge -d knowledge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://knowledge:knowledge@db:5432/knowledge
+      DATA_DIR: /app/data
+    volumes:
+      - knowledge_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  knowledge_data:

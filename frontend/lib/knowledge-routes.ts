@@ -1,4 +1,4 @@
-import type { KnowledgeSection } from "@/components/knowledge-studio/types";
+import type { KnowledgeSection } from "@/lib/knowledge-section";
 
 export const KNOWLEDGE_PATHS: Record<KnowledgeSection, string> = {
   ask: "/",

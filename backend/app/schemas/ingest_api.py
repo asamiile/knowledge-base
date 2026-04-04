@@ -13,6 +13,13 @@ class DataUploadResponse(BaseModel):
     size_bytes: int
 
 
+class DataReindexResponse(BaseModel):
+    """`POST /api/data/reindex` の応答（`GET /api/knowledge/stats` と同型のカウンタ）。"""
+
+    document_chunks: int = Field(description="ベクトル付きチャンク数")
+    raw_data_rows: int = Field(description="raw_data 行数")
+
+
 class ArxivImportRequest(BaseModel):
     """`POST /api/data/imports/arxiv` のリクエスト。
 

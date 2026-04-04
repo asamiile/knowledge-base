@@ -21,12 +21,21 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
     environment:
       DATABASE_URL: postgresql://knowledge:knowledge@db:5432/knowledge
       DATA_DIR: /app/data
       # GOOGLE_API_KEY は backend/.env に書く（ホストの ${GOOGLE_API_KEY:-} で上書きすると空になりキーが消えるためここでは渡さない）
     volumes:
       - ./backend:/app
+      # 開発: アップロードはホストの backend/data（.gitignore）。本番は docker-compose.prod.yml の命名ボリュームを参照。
       - ./backend/data:/app/data
     depends_on:
       db:

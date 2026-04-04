@@ -10,3 +10,7 @@ venv
 *.egg-info
 dist
 node_modules
+
+# ローカルのアップロード・取り込みをイメージに含めない（本番はボリュームの /app/data を使用）
+data/uploads
+data/imports

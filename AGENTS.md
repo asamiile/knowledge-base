@@ -54,7 +54,9 @@
 | `backend` | 8000 | `DATABASE_URL` は `.env` から読む。DB 起動待ちは `depends_on` に加え、簡易 wait スクリプトまたは **初回接続リトライ**で吸収する方針でよい |
 | `db` | 5432 | `image: ankane/pgvector` |
 
-各パッケージに `.dockerignore` を置く（フロントの Docker ビルドは **リポジトリルートを context** にし、ルートに `.dockerignore` も置く）。開発用 Dockerfile は **ボリュームマウント + ホットリロード**（フロント: `pnpm run dev`、バックエンド: `uvicorn --reload`）を前提とする。
+各パッケージに `.dockerignore` を置く（フロントの Docker ビルドは **リポジトリルートを context** にし、ルートに `.dockerignore` も置く）。開発用 Dockerfile は **ボリュームマウント + ホットリロード**（フロント: `pnpm run dev`、バックエンド: compose の `command` で `uvicorn --reload`）を前提とする。
+
+**推奨する本番永続化（ファイル）:** アップロード先はこれまでどおり **`DATA_DIR/uploads/`**（コンテナ内は `DATA_DIR=/app/data`）。DB へバイナリ直保存はせず、**Docker の命名ボリュームで `/app/data` を永続化**する。具体的にはルートの **`docker-compose.prod.yml`**（`knowledge_data` → `/app/data`）を参照。再インデックス後のベクトルチャンクは既存どおり **`documents` / `raw_data`** に載る。
 
 ---
 
@@ -164,11 +166,19 @@ multipart の `file` 1 件。拡張子 **`.md` / `.txt` / `.json`** のみ、最
 
 **ステータスコード:** `400`（不正な拡張子・ファイル名）, `413`（サイズ超過）
 
-取り込み（チャンク化・embedding）は **`POST /api/analyze` の `reindex_sources: true`** で実行（既存仕様どおり `data/` ツリー全体を対象）。
+取り込み（チャンク化・embedding）は **`POST /api/data/reindex`**（LLM なし）または **`POST /api/analyze` の `reindex_sources: true`** で実行（いずれも `DATA_DIR` ツリー全体を対象）。
+
+### `POST /api/data/reindex`
+
+本文なし。`DATA_DIR` を再取り込みし、既存の `documents` / `raw_data` を置き換える。
+
+**Response（JSON）:** `document_chunks`, `raw_data_rows`（`GET /api/knowledge/stats` と同名）
+
+**ステータスコード:** `503`（`GOOGLE_API_KEY` 未設定など embedding 初期化失敗）
 
 ### `POST /api/data/imports/arxiv`
 
-arXiv Atom API からメタデータ・要約を取得し、`DATA_DIR/imports/arxiv/*.md` に保存する。オープンデータ連携の第 1 弾；同型のエンドポイントを `app/api/routes_imports.py` / `app/services/source_import/` に追加していく想定。
+arXiv Atom API からメタデータ・要約を取得し（**API キー不要**）、`DATA_DIR/imports/arxiv/*.md` に保存する。オープンデータ連携の第 1 弾；同型のエンドポイントを `app/api/routes_imports.py` / `app/services/source_import/` に追加していく想定。
 
 **Request（JSON）**
 

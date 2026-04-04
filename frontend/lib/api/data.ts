@@ -34,3 +34,15 @@ export async function postArxivImport(body: {
     body: JSON.stringify(body),
   });
 }
+
+export type ReindexResponse = {
+  document_chunks: number;
+  raw_data_rows: number;
+};
+
+/** DATA_DIR の再取り込み（LLM なし）。 */
+export async function postReindex(): Promise<ReindexResponse> {
+  return fetchJson<ReindexResponse>(`${apiBase()}/api/data/reindex`, {
+    method: "POST",
+  });
+}

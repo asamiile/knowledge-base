@@ -1,4 +1,4 @@
-import { KnowledgeStudio } from "@/components/knowledge-studio/knowledge-studio";
+import { KnowledgeStudioProvider } from "./knowledge-studio-context";
 
 export default function KnowledgeLayout({
   children,
@@ -7,8 +7,7 @@ export default function KnowledgeLayout({
 }>) {
   return (
     <div className="bg-background flex h-full min-h-0 flex-1 flex-col">
-      <KnowledgeStudio />
-      {children}
+      <KnowledgeStudioProvider>{children}</KnowledgeStudioProvider>
     </div>
   );
 }
