@@ -1,6 +1,6 @@
 # knowledge-base
 
-映像制作向けの知識ベース基盤（詳細は [AGENTS.md](AGENTS.md)）。
+映像制作向けの知識ベース基盤。
 
 ## 開発環境構築
 
@@ -8,24 +8,23 @@
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-
 ### ローカル起動
 
 ```bash
 docker compose up
 ```
 
-- 初回起動時と `Dockerfile` 変更後
+- **初回**や `Dockerfile` を変えたあと
 
 ```bash
 docker compose up --build
 ```
 
-- バックグラウンドで起動する場合
+- **バックグラウンド**
 
 ```bash
 docker compose up -d --build
-ログは docker compose logs -f
+# ログ: docker compose logs -f
 ```
 
 | サービス | URL | ポート |
@@ -36,12 +35,7 @@ docker compose up -d --build
 | PostgreSQL（pgvector） | localhost:5432 | 5432 |
 | Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio)（ローカル :4983 経由） | 4983 |
 
-#### API の疎通確認
-
-- `GET http://localhost:8000/health`
-- **STEP 4 UI:** http://localhost:3000 — **shadcn/ui** による 3 タブ（質問 / 資料追加 / 定期・検索の保存・手動実行）。API: `GET /api/knowledge/stats`、`POST /api/data/upload`、`POST /api/imports/arxiv`、`POST /api/analyze`
-
-#### Gemini APIの設定
+### Gemini APIの設定
 
 1. [Google AI Studio](https://aistudio.google.com/apikey) でキーを発行する。
 2. `backend/.env` にキーを設定する
@@ -55,7 +49,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
   -d '{"question":"サンプル資料の要点は？","reindex_sources":true}'
 ```
 
-#### pytestの実行
+### pytestの実行
 
 ```bash
 docker compose up -d --build
@@ -80,7 +74,7 @@ docker compose --profile drizzle up -d drizzle-studio
 
 ```bash
 docker compose --profile drizzle run --rm drizzle-studio \
-  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm install --frozen-lockfile && pnpm run db:pull"
+  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && cd /workspace && pnpm install --frozen-lockfile && pnpm --filter knowledge-base-backend-drizzle run db:pull"
 ```
 
 ### Agent Skills

@@ -1,13 +1,19 @@
-# 開発用: compose で ./frontend → /app、node_modules / .next は named volume。
-# イメージ内の RUN npm ci は行わない（ボリュームで上書きされるため）。
-# 依存の npm ci は compose の command で実行。
+# 開発用: compose でリポジトリルート → /workspace、frontend の node_modules / .next は named volume。
+# イメージ内のインストールはシード用。実際の依存は compose の command でルートから pnpm install。
 FROM node:20-alpine
 
-WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
-COPY package.json package-lock.json ./
-COPY . .
+WORKDIR /workspace
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
+COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
+
+RUN pnpm install --frozen-lockfile
+
+WORKDIR /workspace/frontend
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]

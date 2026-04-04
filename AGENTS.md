@@ -18,16 +18,16 @@
 
 | 領域 | スタック |
 |------|----------|
-| フロント | Next.js + TypeScript（App Router 推奨）、パッケージマネージャは **npm**（`package-lock.json`） |
+| フロント | Next.js + TypeScript（App Router 推奨） |
+| Node（ワークスペース） | **pnpm workspace**（ルートの `pnpm-lock.yaml`）— `frontend/` と `backend/` の Drizzle 用 Node 依存をまとめる |
 | バックエンド | FastAPI + uvicorn |
-| バックエンド（Drizzle のみ） | **pnpm**（`pnpm-lock.yaml`）— Drizzle Studio / `drizzle-kit` 用の Node 依存 |
 | データベース | PostgreSQL + pgvector（ローカルは `ankane/pgvector` イメージ） |
 
 ### ディレクトリ境界
 
 - `frontend/` — Next.js のみ。バックエンド実装・DB スキーマは **触らない**（API 契約に沿ったクライアント呼び出しのみ）。
 - `backend/` — FastAPI・DB アクセス・RAG/LLM ロジック。**Next のページ構成やコンポーネントは触らない**。
-- リポジトリ直下 — `docker-compose.yml`、`AGENTS.md` など共有インフラ・資料。
+- リポジトリ直下 — `docker-compose.yml`、`pnpm-workspace.yaml`、`package.json`（ワークスペースルート）、`AGENTS.md` など共有インフラ・資料。
 
 共有するのは **環境変数名・API の入出力契約** に限定し、相手側の設定ファイルを勝手に書き換えない。
 
@@ -38,7 +38,7 @@
 - **フロント:** ローカル秘密は `frontend/.env.local`。公開してよい値は `NEXT_PUBLIC_*` のみ。
 - **バックエンド:** `backend/.env`（Compose では同ファイルを `.env` としてマウントする想定でよい）。
 - **テンプレート:** `frontend/.env.example` / `backend/.env.example` をリポジトリに含め、実値は含めない。
-- **Git:** `frontend/.gitignore` / `backend/.gitignore`（またはルート統合）で `.env`、`.env.local`、`.venv`、`node_modules` などを必ず除外する。
+- **Git:** ルートの `.gitignore` で `.env`、`.env.local`、`.venv`、`node_modules` などを必ず除外する。
 
 ---
 
@@ -50,13 +50,13 @@
 | `backend` | 8000 | `DATABASE_URL` は `.env` から読む。DB 起動待ちは `depends_on` に加え、簡易 wait スクリプトまたは **初回接続リトライ**で吸収する方針でよい |
 | `db` | 5432 | `image: ankane/pgvector` |
 
-各パッケージに `.dockerignore` を置き、開発用 Dockerfile は **ボリュームマウント + ホットリロード**（フロント: `npm run dev`、バックエンド: `uvicorn --reload`）を前提とする。
+各パッケージに `.dockerignore` を置く（フロントの Docker ビルドは **リポジトリルートを context** にし、ルートに `.dockerignore` も置く）。開発用 Dockerfile は **ボリュームマウント + ホットリロード**（フロント: `pnpm run dev`、バックエンド: `uvicorn --reload`）を前提とする。
 
 ---
 
-## 依存関係のセキュリティ（npm / Python）
+## 依存関係のセキュリティ（pnpm / Python）
 
-**方針:** `npm install` / `pip install` で **新規パッケージを追加する前**に、既知リスクの有無を確認する。追加後もロックファイルベースで監査する。
+**方針:** `pnpm add`（または `pnpm install`）/ `pip install` で **新規パッケージを追加する前**に、既知リスクの有無を確認する。追加後もロックファイルベースで監査する。
 
 **高危険度の脆弱性:** 放置せず、更新・代替・例外理由の記録のいずれかで扱う。例外を選ぶ場合は理由を本ファイルまたは PR 説明に残す。
 
@@ -65,15 +65,10 @@
 - **供給元の確認:** 正しいパッケージ名か（タイポスクワッティング回避）、メンテ状況・星・最近のコミット／リリースを目視。
 - **レジストリ情報:** npm ならパッケージページと公開者；PyPI ならプロジェクトリンク・Maintainer を確認。
 
-### npm（`frontend/`）
-
-- **導入前:** パッケージ単体で `npm view <pkg>`（説明・最新版・依存の概要）。必要なら https://github.com/advisories やパッケージの Security タブを確認。
-- **導入後:** `package-lock.json` をコミットし、`npm audit` を実行。
-
-### pnpm（`backend/` — Drizzle Studio / drizzle-kit のみ）
+### pnpm（ルート — `frontend/` と `backend/`）
 
 - **導入前:** 上記「新規パッケージを入れる前」と同様に npm レジストリ上の供給元を確認（`pnpm view <pkg>` でも可）。
-- **導入後:** `pnpm-lock.yaml` をコミットし、`pnpm audit` を実行。コマンドは `backend/` で `pnpm install` / `pnpm run db:studio` 等（`package.json` の `packageManager` を参照）。
+- **導入後:** **ルートの** `pnpm-lock.yaml` をコミットし、ルートで `pnpm audit` を実行。依存の追加はルートで `pnpm add <pkg> --filter frontend`（または `--filter knowledge-base-backend-drizzle`）など。**日常の起動・フロント開発は Docker Compose を前提**とし、コンテナ起動時に `pnpm install` が走る。ホストで直接触る場合のみ、ルートの `package.json`（`pnpm dev:frontend` / `pnpm run db:studio` 等）を参照する。
 
 ### Python（`backend/` FastAPI）
 
@@ -96,7 +91,7 @@
 
 | STEP | 状態 | メモ |
 |------|------|------|
-| STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。npm audit 0 件。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
+| STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。pnpm audit / pip-audit を適宜。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
 | STEP 4 | 進行中 | **shadcn/ui**（base-nova）。3 タブ（質問 / 資料追加 / 定期・検索）。`GET /api/knowledge/stats`。保存クエリは localStorage（真の定期は cron 等から `POST /api/imports/arxiv`） |
@@ -199,7 +194,7 @@ arXiv Atom API からメタデータ・要約を取得し、`DATA_DIR/imports/ar
 
 **定義**
 
-- `frontend/` — `create-next-app` 相当（TypeScript、App Router 推奨）。開発用 Dockerfile（ボリュームマウント + `npm run dev`）。
+- `frontend/` — `create-next-app` 相当（TypeScript、App Router 推奨）。開発用 Dockerfile（ルート context、ボリュームマウント + `pnpm run dev`）。
 - `backend/` — FastAPI + uvicorn。開発用 Dockerfile（`--reload`、ソースマウント）。
 - リポジトリ直下: `docker-compose.yml`（3 サービス）、各パッケージ用 `.dockerignore`。
 - `frontend/.env.example` — `NEXT_PUBLIC_API_URL=http://localhost:8000` 等。
@@ -210,12 +205,12 @@ arXiv Atom API からメタデータ・要約を取得し、`DATA_DIR/imports/ar
 ```
 AGENTS.md の STEP 1 に従い、knowledge-base リポジトリにモノレポと Docker 基盤を実装してください。
 
-- frontend/: Next.js + TypeScript（App Router）、開発用 Dockerfile（ソースボリューム + npm run dev）、.dockerignore、.env.example（NEXT_PUBLIC_API_URL 等）
+- frontend/: Next.js + TypeScript（App Router）、開発用 Dockerfile（ルート volume + pnpm run dev）、.dockerignore、.env.example（NEXT_PUBLIC_API_URL 等）
 - backend/: FastAPI + uvicorn、開発用 Dockerfile（--reload、ソースボリューム）、.dockerignore、.env.example（Compose 用 DATABASE_URL。Supabase はプレースホルダのみ）
 - ルート: docker-compose.yml で frontend:3000、backend:8000、db:5432（image: ankane/pgvector）。環境変数と depends_on を接続し、DB 待ちは wait またはバックエンドの接続リトライでよい
 - .gitignore で .env / .env.local / .venv / node_modules 等を除外
 - バックエンドに GET /health のような最小ヘルスエンドポイントを追加してよい
-- スキャフォールド直後、frontend で npm audit、backend で pip-audit（または同等）を 1 回実行し結果を把握すること（AGENTS.md の依存関係セキュリティに従う）
+- スキャフォールド直後、リポジトリルートで `pnpm audit`、backend で pip-audit（または同等）を 1 回実行し結果を把握すること（AGENTS.md の依存関係セキュリティに従う）
 
 計画ファイルは編集しないこと。完了したら AGENTS.md の「現在のステータス」で STEP 1 を完了に更新すること。
 ```
@@ -458,7 +453,7 @@ AGENTS.md に従い、STEP 5 を実装してください。
 - バックエンドを PORT 環境変数に対応させ、本番用の最適化 Dockerfile を用意
 - フロントは apiClient 等で API ベース URL を本番/開発で切り替え
 - .github/workflows/deploy.yml に Cloud Run デプロイの雛形を追加（秘密値は GitHub Secrets 想定でプレースホルダ）
-- 任意: npm audit / pip-audit を CI に組み込む
+- 任意: pnpm audit / pip-audit を CI に組み込む
 
 完了後、AGENTS.md のステータス表を更新する。
 ```
