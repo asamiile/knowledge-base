@@ -91,7 +91,7 @@
 | STEP | 状態 | メモ |
 |------|------|------|
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。npm audit 0 件。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
-| STEP 2 | 未着手 | STEP 1 完了後 |
+| STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 未着手 | STEP 2 の DB スキーマに依存 |
 | STEP 4 | 未着手 | `/api/analyze` 契約に依存 |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
@@ -102,6 +102,14 @@
 - ブラウザでフロントが表示される。
 - API でヘルスチェックが通る（例: `GET /health` を STEP 1 で最小実装してよい）。
 - **STEP 2 着手条件:** 上記を満たし、本表で STEP 1 を「完了」に更新したこと。
+
+**STEP 2 完了定義**
+
+- `DATABASE_URL` で PostgreSQL（pgvector）に接続できる。
+- `documents`（`text`, `embedding: vector(1536)`）と `raw_data`（`source`, `content: jsonb`）が定義され、起動時にテーブルが作成される。
+- アプリ起動時に `CREATE EXTENSION IF NOT EXISTS vector` が実行される。
+- `GET /health` が DB 疎通を含め成功する。
+- **STEP 3 着手条件:** 本表で STEP 2 を「完了」に更新したこと。
 
 ---
 

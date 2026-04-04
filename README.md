@@ -10,4 +10,5 @@ docker compose up --build
 
 - フロント: http://localhost:3000  
 - API: http://localhost:8000 （例: `GET /health`）  
+- API ドキュメント（Swagger UI）: http://localhost:8000/docs  
 - PostgreSQL: localhost:5432（`ankane/pgvector`）
