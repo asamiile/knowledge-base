@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 
 import { KnowledgeAppSidebar } from "@/components/knowledge-studio/knowledge-app-sidebar";
@@ -39,6 +40,7 @@ import { postAnalyze } from "@/lib/api/analyze";
 import { postArxivImport, postUpload } from "@/lib/api/data";
 import type { KnowledgeStats } from "@/lib/api/knowledge";
 import { getKnowledgeStats } from "@/lib/api/knowledge";
+import { pathToSection, sectionToPath } from "@/lib/knowledge-routes";
 import {
   loadSavedArxivQueries,
   storeSavedArxivQueries,
@@ -59,9 +61,19 @@ function downloadJson(filename: string, payload: unknown) {
 
 export function KnowledgeStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const activeSection = useMemo(
+    () => pathToSection(pathname),
+    [pathname],
+  );
 
-  const [activeSection, setActiveSection] =
-    useState<KnowledgeSection>("ask");
+  const navigateToSection = useCallback(
+    (section: KnowledgeSection) => {
+      router.push(sectionToPath(section));
+    },
+    [router],
+  );
 
   const [stats, setStats] = useState<KnowledgeStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -270,7 +282,7 @@ export function KnowledgeStudio() {
     <SidebarProvider className="bg-background h-full min-h-0 w-full flex-1 overflow-hidden [--header-height:theme(spacing.14)]">
       <KnowledgeAppSidebar
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={navigateToSection}
         stats={stats}
         statsLoading={statsLoading}
         busy={busy}
@@ -283,17 +295,6 @@ export function KnowledgeStudio() {
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <div className="mx-auto max-w-3xl space-y-4">
-                  {stats && stats.document_chunks === 0 && (
-                    <Alert>
-                      <AlertTitle>インデックスが空です</AlertTitle>
-                      <AlertDescription>
-                        左の「資料を追加」でファイルや arXiv を入れ、下のフォームで
-                        <strong> データを再インデックス </strong>
-                        にチェックしてから分析してください。
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
                   {error && (
                     <Alert variant="destructive">
                       <AlertTitle>エラー</AlertTitle>
