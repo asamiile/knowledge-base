@@ -39,6 +39,7 @@ docker compose up -d --build
 #### API の疎通確認
 
 - `GET http://localhost:8000/health`
+- **STEP 4 UI:** http://localhost:3000 — **shadcn/ui** による 3 タブ（質問 / 資料追加 / 定期・検索の保存・手動実行）。API: `GET /api/knowledge/stats`、`POST /api/data/upload`、`POST /api/imports/arxiv`、`POST /api/analyze`
 
 #### Gemini APIの設定
 

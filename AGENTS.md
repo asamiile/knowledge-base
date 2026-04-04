@@ -99,7 +99,7 @@
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。npm audit 0 件。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
-| STEP 4 | 未着手 | `/api/analyze` 契約に依存 |
+| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。3 タブ（質問 / 資料追加 / 定期・検索）。`GET /api/knowledge/stats`。保存クエリは localStorage（真の定期は cron 等から `POST /api/imports/arxiv`） |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
 
 **STEP 1 完了定義**
@@ -156,6 +156,38 @@
 - `GOOGLE_API_KEY` — 必須（分析API利用時）。
 - `GEMINI_LLM_MODEL` — 既定 `gemini-2.5-flash`（2.0 Flash は新規利用向けに終了）。
 - `GEMINI_EMBEDDING_MODEL` — 既定 `gemini-embedding-001`（768 次元は `EmbedContentConfig` で指定。`documents.embedding` と一致）。
+
+### `POST /api/data/upload`
+
+multipart の `file` 1 件。拡張子 **`.md` / `.txt` / `.json`** のみ、最大 **10 MiB**。保存先は `DATA_DIR/uploads/`（既存同名は上書き）。
+
+**Response（JSON）:** `path`（DATA_DIR からの相対パス）, `filename`, `size_bytes`
+
+**ステータスコード:** `400`（不正な拡張子・ファイル名）, `413`（サイズ超過）
+
+取り込み（チャンク化・embedding）は **`POST /api/analyze` の `reindex_sources: true`** で実行（既存仕様どおり `data/` ツリー全体を対象）。
+
+### `POST /api/imports/arxiv`
+
+arXiv Atom API からメタデータ・要約を取得し、`DATA_DIR/imports/arxiv/*.md` に保存する。オープンデータ連携の第 1 弾；同型のエンドポイントを `app/api/routes_imports.py` / `app/services/source_import/` に追加していく想定。
+
+**Request（JSON）**
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `arxiv_ids` | string[] | いいえ | ID または `https://arxiv.org/abs/...` 形式（複数可。`arxiv_ids` と `search_query` のどちらか一方以上） |
+| `search_query` | string | いいえ | 全文検索クエリ（内部では `all:...`） |
+| `max_results` | int | いいえ | 検索時の最大件数（1〜20、既定 5） |
+
+**Response（JSON）:** `written`（相対パスの配列）, `entry_count`
+
+**ステータスコード:** `422`（入力検証）, `502`（arXiv HTTP / Atom 解析エラー）
+
+### `GET /api/knowledge/stats`
+
+インデックス概要（フロントの質問タブ用）。
+
+**Response（JSON）:** `document_chunks`（embedding 付き `documents` 件数）, `raw_data_rows`
 
 ---
 
@@ -394,6 +426,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 
 - アップロード、質問、結果表示。
 - JSON ダウンロード、数値の簡易テーブル（shadcn/ui またはプレーン Tailwind）。
+- 外部取り込み（**arXiv** ほか）：バックエンドは `app/services/source_import/` と `POST /api/imports/*` で段階的に拡張。フロントは必要に応じてフォームを追加。
 
 **プロンプト（実装用・原文相当）**
 

@@ -1,2 +1,6 @@
 .DS_Store
 *.log
+
+# STEP 4 — UI/API 経由で生成される取り込みファイル
+data/uploads/
+data/imports/

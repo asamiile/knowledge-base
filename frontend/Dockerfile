@@ -1,16 +1,13 @@
+# 開発用: compose で ./frontend → /app、node_modules / .next は named volume。
+# イメージ内の RUN npm ci は行わない（ボリュームで上書きされるため）。
+# 依存の npm ci は compose の command で実行。
 FROM node:20-alpine
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
-
-COPY docker-entrypoint.dev.sh /docker-entrypoint.dev.sh
-RUN chmod +x /docker-entrypoint.dev.sh
-
 COPY . .
 
 EXPOSE 3000
 
-ENTRYPOINT ["/docker-entrypoint.dev.sh"]
 CMD ["npm", "run", "dev"]

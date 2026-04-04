@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# knowledge-base フロントエンド
 
-## Getting Started
+Next.js（App Router）+ Tailwind CSS v4 + [shadcn/ui](https://ui.shadcn.com/)（base-nova）。
 
-First, run the development server:
+## ディレクトリ構成（`create-next-app` 由来のルート配置）
+
+`src/` は使わず、[プロジェクトルートに `app/` を置く構成](https://nextjs.org/docs/app/getting-started/project-structure)です。
+
+| パス | 役割 |
+|------|------|
+| `app/` | `layout.tsx`・`page.tsx`・`globals.css`・ルート別ページ |
+| `components/` | 共有 UI・`knowledge-studio/`・shadcn `ui/` |
+| `lib/` | API クライアント・ユーティリティ |
+| `hooks/` | `use-mobile` など |
+| `public/` | 静的ファイル |
+
+インポートエイリアスは `tsconfig.json` の `@/*` → リポジトリ直下です。
+
+## 開発
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ブロック・その他
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 左サイドバー: [Sidebar 07](https://ui.shadcn.com/blocks/sidebar) 相当
+- 右メイン: [Dashboard 01](https://ui.shadcn.com/blocks) のシェル（`SidebarInset` + `SiteHeader`）
+- `/dashboard` → `/` にリダイレクト
+- API: `NEXT_PUBLIC_API_URL`（未設定時 `http://localhost:8000`）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Docker
 
-## Learn More
+`docker-compose.yml` の frontend は次のボリュームを使います。
 
-To learn more about Next.js, take a look at the following resources:
+| マウント | 用途 |
+|----------|------|
+| `./frontend` | ソース（ホストと同期） |
+| `frontend_node_modules` | 依存（`npm ci` の結果） |
+| `frontend_next` | Next のビルドキャッシュ（ホストの `.next` と干渉しない） |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Dockerfile では `RUN npm ci` はしない。** 起動は compose の `command` が `package-lock.json` の更新を見て `npm ci` し、その後 `npm run dev`。`dev` は **webpack** モード（`package.json`）。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### トラブル時
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. イメージの作り直し: `docker compose build --no-cache frontend` のあと `up`
+2. `.next` が怪しい: `docker volume rm <project>_frontend_next`（名前は `docker volume ls` で確認）後に `up`
+3. 依存が怪しい: 同様に `frontend_node_modules` ボリュームを削除して `up`
