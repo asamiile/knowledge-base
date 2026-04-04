@@ -6,7 +6,7 @@
 
 ## プロジェクト目的と設計思想
 
-- **目的:** データの知識化・分析パイプラインを、エージェントと人が同じ前提で進められるようにすること。
+- **目的:** 映像表現の根拠となる「論文（理論）」と「オープンデータ（事実）」を集約・解析し、制作工程（Next.js や After Effects 等）で再利用できる構造化データ（JSON 等）へ変換する制作支援インフラとして、エージェントと人が同じ前提で実装できるようにすること。
 - **設計思想:**
   - **装飾最小:** UI と説明は必要十分に留める。
   - **前処理の自動化:** 取り込み〜正規化を手作業に頼りすぎない構成を目指す。
@@ -18,8 +18,9 @@
 
 | 領域 | スタック |
 |------|----------|
-| フロント | Next.js + TypeScript（App Router 推奨） |
+| フロント | Next.js + TypeScript（App Router 推奨）、パッケージマネージャは **npm**（`package-lock.json`） |
 | バックエンド | FastAPI + uvicorn |
+| バックエンド（Drizzle のみ） | **pnpm**（`pnpm-lock.yaml`）— Drizzle Studio / `drizzle-kit` 用の Node 依存 |
 | データベース | PostgreSQL + pgvector（ローカルは `ankane/pgvector` イメージ） |
 
 ### ディレクトリ境界
@@ -69,7 +70,12 @@
 - **導入前:** パッケージ単体で `npm view <pkg>`（説明・最新版・依存の概要）。必要なら https://github.com/advisories やパッケージの Security タブを確認。
 - **導入後:** `package-lock.json` をコミットし、`npm audit` を実行。
 
-### Python（`backend/`）
+### pnpm（`backend/` — Drizzle Studio / drizzle-kit のみ）
+
+- **導入前:** 上記「新規パッケージを入れる前」と同様に npm レジストリ上の供給元を確認（`pnpm view <pkg>` でも可）。
+- **導入後:** `pnpm-lock.yaml` をコミットし、`pnpm audit` を実行。コマンドは `backend/` で `pnpm install` / `pnpm run db:studio` 等（`package.json` の `packageManager` を参照）。
+
+### Python（`backend/` FastAPI）
 
 - **導入前:** PyPI／GitHub で既知脆弱性・Issue をざっと確認。実行ファイル系・ネットワーク権限を要するパッケージは依存関係も含め注意。
 - **導入後:** 版本固定（`requirements.txt` または `uv.lock` 等）を維持し、可能なら **`pip-audit`**（またはチーム標準の同等ツール）で既知 CVE をスキャン。修正不可能な場合は理由と期限を残す。
@@ -90,8 +96,8 @@
 
 | STEP | 状態 | メモ |
 |------|------|------|
-| STEP 1 | 未完了 | モノレポ + Docker + 疎通 |
-| STEP 2 | 未着手 | STEP 1 完了後 |
+| STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。npm audit 0 件。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
+| STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 未着手 | STEP 2 の DB スキーマに依存 |
 | STEP 4 | 未着手 | `/api/analyze` 契約に依存 |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
@@ -102,6 +108,14 @@
 - ブラウザでフロントが表示される。
 - API でヘルスチェックが通る（例: `GET /health` を STEP 1 で最小実装してよい）。
 - **STEP 2 着手条件:** 上記を満たし、本表で STEP 1 を「完了」に更新したこと。
+
+**STEP 2 完了定義**
+
+- `DATABASE_URL` で PostgreSQL（pgvector）に接続できる。
+- `documents`（`text`, `embedding: vector(1536)`）と `raw_data`（`source`, `content: jsonb`）が定義され、起動時にテーブルが作成される。
+- アプリ起動時に `CREATE EXTENSION IF NOT EXISTS vector` が実行される。
+- `GET /health` が DB 疎通を含め成功する。
+- **STEP 3 着手条件:** 本表で STEP 2 を「完了」に更新したこと。
 
 ---
 
