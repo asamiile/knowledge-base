@@ -15,8 +15,9 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    # gemini-embedding-001 等、EmbedContentConfig(output_dimensionality=768) と一致
     embedding: Mapped[list[float] | None] = mapped_column(
-        Vector(1536),
+        Vector(768),
         nullable=True,
     )
 
