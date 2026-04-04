@@ -12,7 +12,7 @@ from app.services.source_import.arxiv import import_arxiv_to_data_dir
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/imports", tags=["imports"])
+router = APIRouter(prefix="/api/data/imports", tags=["data"])
 
 
 @router.post("/arxiv", response_model=ArxivImportResponse)

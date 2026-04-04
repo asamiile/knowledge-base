@@ -21,7 +21,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { TeamSwitcher } from "@/components/team-switcher";
-import type { KnowledgeStats } from "@/lib/api";
+import type { KnowledgeStats } from "@/lib/api/knowledge";
 
 import type { KnowledgeSection } from "./types";
 

@@ -9,6 +9,7 @@ load_dotenv(_backend_dir / ".env")
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -30,6 +31,28 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+def custom_openapi() -> dict:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+    )
+    for path_item in schema.get("paths", {}).values():
+        for op in path_item.values():
+            if not isinstance(op, dict):
+                continue
+            ok = op.get("responses", {}).get("200")
+            if isinstance(ok, dict) and ok.get("description") == "Successful Response":
+                ok["description"] = "Success"
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,

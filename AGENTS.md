@@ -94,7 +94,7 @@
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。pnpm audit / pip-audit を適宜。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
-| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。3 タブ（質問 / 資料追加 / 定期・検索）。`GET /api/knowledge/stats`。保存クエリは localStorage（真の定期は cron 等から `POST /api/imports/arxiv`） |
+| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。3 タブ（質問 / 資料追加 / 定期・検索）。`GET /api/knowledge/stats`。保存クエリは localStorage（真の定期は cron 等から `POST /api/data/imports/arxiv`） |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
 
 **STEP 1 完了定義**
@@ -162,7 +162,7 @@ multipart の `file` 1 件。拡張子 **`.md` / `.txt` / `.json`** のみ、最
 
 取り込み（チャンク化・embedding）は **`POST /api/analyze` の `reindex_sources: true`** で実行（既存仕様どおり `data/` ツリー全体を対象）。
 
-### `POST /api/imports/arxiv`
+### `POST /api/data/imports/arxiv`
 
 arXiv Atom API からメタデータ・要約を取得し、`DATA_DIR/imports/arxiv/*.md` に保存する。オープンデータ連携の第 1 弾；同型のエンドポイントを `app/api/routes_imports.py` / `app/services/source_import/` に追加していく想定。
 
@@ -421,7 +421,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 
 - アップロード、質問、結果表示。
 - JSON ダウンロード、数値の簡易テーブル（shadcn/ui またはプレーン Tailwind）。
-- 外部取り込み（**arXiv** ほか）：バックエンドは `app/services/source_import/` と `POST /api/imports/*` で段階的に拡張。フロントは必要に応じてフォームを追加。
+- 外部取り込み（**arXiv** ほか）：バックエンドは `app/services/source_import/` と `POST /api/data/imports/*` で段階的に拡張。フロントは必要に応じてフォームを追加。
 
 **プロンプト（実装用・原文相当）**
 

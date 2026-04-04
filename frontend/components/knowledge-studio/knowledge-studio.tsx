@@ -34,13 +34,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import type { AnalyzeResponse, KnowledgeStats } from "@/lib/api";
-import {
-  getKnowledgeStats,
-  postAnalyze,
-  postArxivImport,
-  postUpload,
-} from "@/lib/api";
+import type { AnalyzeResponse } from "@/lib/api/analyze";
+import { postAnalyze } from "@/lib/api/analyze";
+import { postArxivImport, postUpload } from "@/lib/api/data";
+import type { KnowledgeStats } from "@/lib/api/knowledge";
+import { getKnowledgeStats } from "@/lib/api/knowledge";
 import {
   loadSavedArxivQueries,
   storeSavedArxivQueries,
@@ -577,7 +575,7 @@ export function KnowledgeStudio() {
                   <AlertTitle>手動実行（MVP）</AlertTitle>
                   <AlertDescription>
                     保存したクエリは localStorage のみ。定期は cron 等から{" "}
-                    <code className="text-xs">POST /api/imports/arxiv</code>
+                    <code className="text-xs">POST /api/data/imports/arxiv</code>
                   </AlertDescription>
                 </Alert>
 

@@ -51,7 +51,7 @@ def test_import_arxiv_by_id_mocked(client: TestClient, tmp_path: Path, monkeypat
         side_effect=fake_get,
     ):
         r = client.post(
-            "/api/imports/arxiv",
+            "/api/data/imports/arxiv",
             json={"arxiv_ids": ["2301.00001"]},
         )
     assert r.status_code == 200, r.text
@@ -67,7 +67,7 @@ def test_import_arxiv_by_id_mocked(client: TestClient, tmp_path: Path, monkeypat
 
 
 def test_import_arxiv_validation_requires_source(client: TestClient) -> None:
-    r = client.post("/api/imports/arxiv", json={})
+    r = client.post("/api/data/imports/arxiv", json={})
     assert r.status_code == 422
 
 
@@ -88,7 +88,7 @@ def test_import_arxiv_http_error(client: TestClient, tmp_path: Path, monkeypatch
 
     with patch("app.services.source_import.arxiv._arxiv_get", side_effect=boom):
         r = client.post(
-            "/api/imports/arxiv",
+            "/api/data/imports/arxiv",
             json={"arxiv_ids": ["2301.00001"]},
         )
     assert r.status_code == 502

@@ -14,7 +14,7 @@ class DataUploadResponse(BaseModel):
 
 
 class ArxivImportRequest(BaseModel):
-    """`POST /api/imports/arxiv` のリクエスト。
+    """`POST /api/data/imports/arxiv` のリクエスト。
 
     後続のオープンデータ API も同様に専用エンドポイントを追加していく想定。
     """
