@@ -8,6 +8,7 @@
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
+
 ### ローカル起動
 
 ```bash
@@ -80,4 +81,12 @@ kill <PID>
 ```bash
 cd backend
 DATABASE_URL_STUDIO=postgresql://knowledge:knowledge@127.0.0.1:5432/knowledge pnpm exec drizzle-kit studio --port 4984
+```
+
+### Agent Skills
+
+- 追加のコマンド例
+
+```bash
+npx skills add vercel-labs/agent-skills -y --agent claude-code cursor
 ```
