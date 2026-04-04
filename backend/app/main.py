@@ -29,6 +29,11 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"service": "knowledge-base-api"}
+
+
 @app.get("/health")
 def health(db: Session = Depends(get_db)) -> dict[str, str]:
     db.execute(text("SELECT 1"))
