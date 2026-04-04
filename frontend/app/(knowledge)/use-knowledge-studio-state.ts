@@ -13,16 +13,32 @@ import { usePathname, useRouter } from "next/navigation";
 
 import type { AnalyzeResponse } from "@/lib/api/analyze";
 import { postAnalyze } from "@/lib/api/analyze";
-import { postArxivImport, postReindex, postUpload } from "@/lib/api/data";
-import type { KnowledgeStats } from "@/lib/api/knowledge";
-import { getKnowledgeStats } from "@/lib/api/knowledge";
+import {
+  type ArxivPreviewEntry,
+  postArxivImport,
+  postArxivPreview,
+  postReindex,
+  postUpload,
+} from "@/lib/api/data";
+import type { KnowledgeStats, MaterialSearchHit } from "@/lib/api/knowledge";
+import { getKnowledgeStats, postKnowledgeSearch } from "@/lib/api/knowledge";
+import {
+  createSavedSearch,
+  deleteSavedSearch,
+  listSavedSearches,
+  patchSavedSearch,
+} from "@/lib/api/saved-searches";
 import type { KnowledgeSection } from "@/lib/knowledge-section";
 import { pathToSection, sectionToPath } from "@/lib/knowledge-routes";
 import {
-  loadSavedArxivQueries,
-  storeSavedArxivQueries,
-  type SavedArxivQuery,
-} from "@/lib/saved-arxiv-queries";
+  loadSavedMaterialSearches,
+  SAVED_SEARCHES_MIGRATED_TO_DB_KEY,
+  savedSearchRowToClient,
+  storeSavedMaterialSearches,
+  type SavedMaterialSearch,
+} from "@/lib/saved-material-searches";
+
+const UPLOAD_PREVIEW_CHAR_LIMIT = 48_000;
 
 export function useKnowledgeStudioState() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,16 +75,49 @@ export function useKnowledgeStudioState() {
     bottom: number;
   } | null>(null);
 
-  const [arxivIds, setArxivIds] = useState("");
+  /** `/add` の arXiv 取り込みフォーム（ID・キーワード・max_results） */
+  const [searchArxivIds, setSearchArxivIds] = useState("");
+  const [arxivSearch, setArxivSearch] = useState("");
+  const [arxivMax, setArxivMax] = useState(5);
+  const [arxivPreviewEntries, setArxivPreviewEntries] = useState<
+    ArxivPreviewEntry[] | null
+  >(null);
+  /** 取り込み対象として選択中の arxiv_id */
+  const [arxivPreviewSelectedIds, setArxivPreviewSelectedIds] = useState<
+    string[]
+  >([]);
 
-  /** アップロード / arXiv 取り込み後、DB が DATA_DIR とずれている可能性があるとき true（再インデックスボタン用） */
+  const [pendingUpload, setPendingUpload] = useState<{
+    file: File;
+    preview: string;
+    truncated: boolean;
+  } | null>(null);
+
   const [pendingReindex, setPendingReindex] = useState(false);
 
-  const [savedQueries, setSavedQueries] = useState<SavedArxivQuery[]>([]);
-  const [newSavedName, setNewSavedName] = useState("");
-  const [newSavedIds, setNewSavedIds] = useState("");
-  const [newSavedSearch, setNewSavedSearch] = useState("");
-  const [newSavedMax, setNewSavedMax] = useState(5);
+  const [materialSearchQuery, setMaterialSearchQuery] = useState("");
+  const [materialSearchTopK, setMaterialSearchTopK] = useState(5);
+  const [materialSearchResults, setMaterialSearchResults] = useState<
+    MaterialSearchHit[] | null
+  >(null);
+  const [materialSearchMs, setMaterialSearchMs] = useState<number | null>(null);
+
+  const [savedMaterialSearches, setSavedMaterialSearches] = useState<
+    SavedMaterialSearch[]
+  >([]);
+  const [saveMaterialName, setSaveMaterialName] = useState("");
+  const [saveMaterialQuery, setSaveMaterialQuery] = useState("");
+  const [saveMaterialTopK, setSaveMaterialTopK] = useState(5);
+  const [saveMaterialIntervalMinutes, setSaveMaterialIntervalMinutes] =
+    useState(0);
+  const [saveMaterialScheduleEnabled, setSaveMaterialScheduleEnabled] =
+    useState(false);
+
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  const savedMaterialRef = useRef(savedMaterialSearches);
+  savedMaterialRef.current = savedMaterialSearches;
+  const silentScheduleLock = useRef(false);
 
   const refreshStats = useCallback(async () => {
     setStatsLoading(true);
@@ -87,10 +136,59 @@ export function useKnowledgeStudioState() {
   }, [refreshStats]);
 
   useEffect(() => {
-    setSavedQueries(loadSavedArxivQueries());
+    let cancelled = false;
+    (async () => {
+      try {
+        let rows = await listSavedSearches();
+        if (
+          !cancelled &&
+          rows.length === 0 &&
+          typeof window !== "undefined" &&
+          !localStorage.getItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY)
+        ) {
+          const legacy = loadSavedMaterialSearches();
+          if (legacy.length > 0) {
+            for (const item of legacy) {
+              if (cancelled) return;
+              const created = await createSavedSearch({
+                name: item.name,
+                query: item.query,
+                top_k: item.topK,
+                interval_minutes: item.intervalMinutes,
+                schedule_enabled:
+                  item.scheduleEnabled && item.intervalMinutes > 0,
+              });
+              if (item.lastRunAt) {
+                try {
+                  await patchSavedSearch(created.id, {
+                    last_run_at: item.lastRunAt,
+                  });
+                } catch {
+                  /* 移行時はベストエフォート */
+                }
+              }
+            }
+            if (!cancelled) {
+              storeSavedMaterialSearches([]);
+              localStorage.setItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY, "1");
+              rows = await listSavedSearches();
+            }
+          }
+        }
+        if (!cancelled) {
+          setSavedMaterialSearches(rows.map(savedSearchRowToClient));
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // アップロード等の「完了」やエラーを画面間で共有しない（/add のメッセージが /search に残らないようにする）
   useEffect(() => {
     setInfo(null);
     setError(null);
@@ -144,6 +242,57 @@ export function useKnowledgeStudioState() {
     };
   }, [askOptionsOpen]);
 
+  /** 保存条件の定期検索（ブラウザ起動中。手動 `busy` と競合時はスキップ） */
+  useEffect(() => {
+    const runDue = async () => {
+      if (busyRef.current !== null || silentScheduleLock.current) return;
+      const now = Date.now();
+      const list = savedMaterialRef.current;
+      const item = list.find(
+        (s) =>
+          s.scheduleEnabled &&
+          s.intervalMinutes > 0 &&
+          s.query.trim() &&
+          (!s.lastRunAt ||
+            now - new Date(s.lastRunAt).getTime() >=
+              s.intervalMinutes * 60_000),
+      );
+      if (!item) return;
+
+      silentScheduleLock.current = true;
+      try {
+        await postKnowledgeSearch({
+          query: item.query.trim(),
+          top_k: item.topK,
+        });
+        const ts = new Date().toISOString();
+        try {
+          const row = await patchSavedSearch(item.id, { last_run_at: ts });
+          const mapped = savedSearchRowToClient(row);
+          setSavedMaterialSearches((prev) =>
+            prev.map((x) => (x.id === item.id ? mapped : x)),
+          );
+        } catch {
+          setSavedMaterialSearches((prev) =>
+            prev.map((x) =>
+              x.id === item.id ? { ...x, lastRunAt: ts } : x,
+            ),
+          );
+        }
+      } catch {
+        /* サイレント失敗（コンソールに出さず UI は既存エラーと分離） */
+      } finally {
+        silentScheduleLock.current = false;
+      }
+    };
+
+    const id = window.setInterval(() => {
+      void runDue();
+    }, 30_000);
+    void runDue();
+    return () => clearInterval(id);
+  }, []);
+
   const statsRows = useMemo(() => {
     if (!result) return [];
     return [
@@ -156,36 +305,65 @@ export function useKnowledgeStudioState() {
     ];
   }, [result, topK, latencyMs]);
 
-  const runArxivImport = useCallback(
-    async (args: {
-      arxivIdsText: string;
-      searchText: string;
-      maxResults: number;
-    }) => {
+  const clearArxivPreview = useCallback(() => {
+    setArxivPreviewEntries(null);
+    setArxivPreviewSelectedIds([]);
+  }, []);
+
+  const toggleArxivPreviewSelected = useCallback((arxivId: string) => {
+    setArxivPreviewSelectedIds((prev) =>
+      prev.includes(arxivId)
+        ? prev.filter((x) => x !== arxivId)
+        : [...prev, arxivId],
+    );
+  }, []);
+
+  const setArxivPreviewAllSelected = useCallback(
+    (selected: boolean) => {
+      setArxivPreviewSelectedIds(() => {
+        if (!arxivPreviewEntries?.length) return [];
+        return selected
+          ? arxivPreviewEntries.map((e) => e.arxiv_id)
+          : [];
+      });
+    },
+    [arxivPreviewEntries],
+  );
+
+  /** `/add` — プレビュー取得（保存しない） */
+  const fetchArxivPreviewFromAddPage = useCallback(
+    async (mode: "id" | "keyword") => {
       setError(null);
       setInfo(null);
-      const ids = args.arxivIdsText
+      clearArxivPreview();
+      const ids = searchArxivIds
         .split(/[\s,]+/)
         .map((s) => s.trim())
         .filter(Boolean);
-      const q = args.searchText.trim();
-      if (ids.length === 0 && !q) {
-        setError("arXiv ID または検索クエリを指定してください。");
+      const q = arxivSearch.trim();
+      if (mode === "id") {
+        if (ids.length === 0) {
+          setError("論文IDを1件以上入力してください。");
+          return false;
+        }
+      } else if (!q) {
+        setError("キーワードを入力してください。");
         return false;
       }
-      setBusy("arxiv");
+      setBusy("arxiv-preview");
       try {
-        const res = await postArxivImport({
-          arxiv_ids: ids.length ? ids : undefined,
-          search_query: q || undefined,
-          max_results: args.maxResults,
+        const res = await postArxivPreview({
+          arxiv_ids: mode === "keyword" ? undefined : ids.length ? ids : undefined,
+          search_query: mode === "id" ? undefined : q || undefined,
+          max_results: arxivMax,
         });
-        setInfo(
-          `取得: ${res.entry_count} 件 → ${res.written.join(", ") || "(ファイルなし)"}`,
-        );
-        if (res.written.length > 0) {
-          setPendingReindex(true);
+        if (res.entries.length === 0) {
+          setInfo("該当する論文が見つかりませんでした。");
+          return true;
         }
+        setArxivPreviewEntries(res.entries);
+        setArxivPreviewSelectedIds(res.entries.map((e) => e.arxiv_id));
+        setInfo(`${res.entries.length} 件を表示しました。取り込む論文にチェックを付けて取り込んでください。`);
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -194,8 +372,43 @@ export function useKnowledgeStudioState() {
         setBusy(null);
       }
     },
-    [],
+    [
+      searchArxivIds,
+      arxivSearch,
+      arxivMax,
+      clearArxivPreview,
+    ],
   );
+
+  /** `/add` — プレビューで選んだ論文だけ保存 */
+  const confirmArxivImportFromPreview = useCallback(async () => {
+    setError(null);
+    setInfo(null);
+    if (arxivPreviewSelectedIds.length === 0) {
+      setError("取り込む論文を1件以上選択してください。");
+      return false;
+    }
+    setBusy("arxiv-import");
+    try {
+      const res = await postArxivImport({
+        arxiv_ids: arxivPreviewSelectedIds,
+        max_results: arxivMax,
+      });
+      setInfo(
+        `取得: ${res.entry_count} 件 → ${res.written.join(", ") || "(ファイルなし)"}`,
+      );
+      if (res.written.length > 0) {
+        setPendingReindex(true);
+      }
+      clearArxivPreview();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }, [arxivPreviewSelectedIds, arxivMax, clearArxivPreview]);
 
   const onAnalyze = useCallback(async () => {
     setError(null);
@@ -225,44 +438,51 @@ export function useKnowledgeStudioState() {
     void onAnalyze();
   }, [busy, question, onAnalyze]);
 
-  const onUpload = useCallback(
+  const onPickUploadFile = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const f = e.target.files?.[0];
       e.target.value = "";
       if (!f) return;
       setError(null);
       setInfo(null);
-      setBusy("upload");
       try {
-        const res = await postUpload(f);
-        setInfo(`保存: ${res.path}（${res.size_bytes} bytes）`);
-        setPendingReindex(true);
+        const text = await f.text();
+        const truncated = text.length > UPLOAD_PREVIEW_CHAR_LIMIT;
+        const preview = truncated
+          ? text.slice(0, UPLOAD_PREVIEW_CHAR_LIMIT)
+          : text;
+        setPendingUpload({ file: f, preview, truncated });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setBusy(null);
       }
     },
     [],
   );
 
-  /** `/add` — ID のみ（検索クエリは `/search`） */
-  const onArxivImportClick = useCallback(async () => {
-    await runArxivImport({
-      arxivIdsText: arxivIds,
-      searchText: "",
-      maxResults: 5,
-    });
-  }, [arxivIds, runArxivImport]);
+  const cancelPendingUpload = useCallback(() => {
+    setPendingUpload(null);
+  }, []);
 
-  /** `/search` フォームの ID・検索クエリ・max_results で取得（保存不要） */
-  const onArxivImportFromSearchForm = useCallback(async () => {
-    await runArxivImport({
-      arxivIdsText: newSavedIds,
-      searchText: newSavedSearch,
-      maxResults: newSavedMax,
-    });
-  }, [newSavedIds, newSavedSearch, newSavedMax, runArxivImport]);
+  const confirmPendingUpload = useCallback(async () => {
+    if (!pendingUpload) return false;
+    setError(null);
+    setInfo(null);
+    setBusy("upload");
+    try {
+      const res = await postUpload(pendingUpload.file);
+      setInfo(`保存: ${res.path}（${res.size_bytes} bytes）`);
+      setPendingUpload(null);
+      if (res.path) {
+        setPendingReindex(true);
+      }
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }, [pendingUpload]);
 
   const onReindexClick = useCallback(async () => {
     setError(null);
@@ -282,64 +502,146 @@ export function useKnowledgeStudioState() {
     }
   }, [refreshStats]);
 
-  const addSavedQuery = useCallback(() => {
-    const name = newSavedName.trim();
+  const runMaterialSearchImmediate = useCallback(
+    async (query: string, topKReq: number): Promise<boolean> => {
+      const q = query.trim();
+      if (!q) {
+        setError("検索クエリを入力してください。");
+        return false;
+      }
+      setError(null);
+      setInfo(null);
+      setBusy("materialSearch");
+      setMaterialSearchResults(null);
+      setMaterialSearchMs(null);
+      const t0 = performance.now();
+      try {
+        const data = await postKnowledgeSearch({ query: q, top_k: topKReq });
+        setMaterialSearchResults(data.hits);
+        setMaterialSearchMs(Math.round(performance.now() - t0));
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        return false;
+      } finally {
+        setBusy(null);
+      }
+    },
+    [],
+  );
+
+  const onMaterialSearchClick = useCallback(async () => {
+    void runMaterialSearchImmediate(materialSearchQuery, materialSearchTopK);
+  }, [materialSearchQuery, materialSearchTopK, runMaterialSearchImmediate]);
+
+  const addSavedMaterialSearch = useCallback(async () => {
+    const name = saveMaterialName.trim();
     if (!name) {
-      setError("定期用クエリの名前を入力してください。");
+      setError("表示名を入力してください。");
       return;
     }
-    const idsSnip = newSavedIds.trim();
-    const q = newSavedSearch.trim();
-    if (!idsSnip && !q) {
-      setError("ID または検索クエリのどちらかを入力してください。");
+    const q = saveMaterialQuery.trim();
+    if (!q) {
+      setError("保存する検索クエリを入力してください。");
       return;
     }
     setError(null);
-    const item: SavedArxivQuery = {
-      id: crypto.randomUUID(),
-      name,
-      arxivIds: newSavedIds,
-      searchQuery: newSavedSearch,
-      maxResults: newSavedMax,
-    };
-    setSavedQueries((prev) => {
-      const next = [...prev, item];
-      storeSavedArxivQueries(next);
-      return next;
-    });
-    setNewSavedName("");
-    setNewSavedIds("");
-    setNewSavedSearch("");
-    setNewSavedMax(5);
-    setInfo(`「${name}」を保存しました。`);
-  }, [newSavedName, newSavedIds, newSavedSearch, newSavedMax]);
-
-  const runSaved = useCallback(
-    async (item: SavedArxivQuery) => {
-      const ok = await runArxivImport({
-        arxivIdsText: item.arxivIds,
-        searchText: item.searchQuery,
-        maxResults: item.maxResults,
+    const interval = saveMaterialIntervalMinutes;
+    const scheduleOn =
+      saveMaterialScheduleEnabled && interval > 0;
+    setBusy("savedSearchWrite");
+    try {
+      const row = await createSavedSearch({
+        name,
+        query: saveMaterialQuery,
+        top_k: saveMaterialTopK,
+        interval_minutes: interval,
+        schedule_enabled: scheduleOn,
       });
+      setSavedMaterialSearches((prev) => [
+        ...prev,
+        savedSearchRowToClient(row),
+      ]);
+      setSaveMaterialName("");
+      setSaveMaterialQuery("");
+      setSaveMaterialTopK(5);
+      setSaveMaterialIntervalMinutes(0);
+      setSaveMaterialScheduleEnabled(false);
+      setInfo(`「${name}」を保存しました。`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }, [
+    saveMaterialName,
+    saveMaterialQuery,
+    saveMaterialTopK,
+    saveMaterialIntervalMinutes,
+    saveMaterialScheduleEnabled,
+  ]);
+
+  const runSavedMaterialSearch = useCallback(
+    async (item: SavedMaterialSearch) => {
+      const ok = await runMaterialSearchImmediate(item.query, item.topK);
       if (!ok) return;
       const ts = new Date().toISOString();
-      setSavedQueries((prev) => {
-        const next = prev.map((s) =>
-          s.id === item.id ? { ...s, lastRunAt: ts } : s,
+      try {
+        const row = await patchSavedSearch(item.id, { last_run_at: ts });
+        setSavedMaterialSearches((prev) =>
+          prev.map((s) =>
+            s.id === item.id ? savedSearchRowToClient(row) : s,
+          ),
         );
-        storeSavedArxivQueries(next);
-        return next;
-      });
+      } catch {
+        setSavedMaterialSearches((prev) =>
+          prev.map((s) =>
+            s.id === item.id ? { ...s, lastRunAt: ts } : s,
+          ),
+        );
+      }
     },
-    [runArxivImport],
+    [runMaterialSearchImmediate],
   );
 
-  const deleteSaved = useCallback((id: string) => {
-    setSavedQueries((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      storeSavedArxivQueries(next);
-      return next;
-    });
+  const patchSavedMaterialSearch = useCallback(
+    async (id: string, patch: Partial<SavedMaterialSearch>) => {
+      const body: Parameters<typeof patchSavedSearch>[1] = {};
+      if (patch.name !== undefined) body.name = patch.name;
+      if (patch.query !== undefined) body.query = patch.query;
+      if (patch.topK !== undefined) body.top_k = patch.topK;
+      if (patch.intervalMinutes !== undefined) {
+        body.interval_minutes = patch.intervalMinutes;
+      }
+      if (patch.scheduleEnabled !== undefined) {
+        body.schedule_enabled = patch.scheduleEnabled;
+      }
+      if (patch.lastRunAt !== undefined) {
+        body.last_run_at = patch.lastRunAt ?? null;
+      }
+      setError(null);
+      try {
+        const row = await patchSavedSearch(id, body);
+        setSavedMaterialSearches((prev) =>
+          prev.map((s) =>
+            s.id === id ? savedSearchRowToClient(row) : s,
+          ),
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [],
+  );
+
+  const deleteSavedMaterialSearch = useCallback(async (id: string) => {
+    setError(null);
+    try {
+      await deleteSavedSearch(id);
+      setSavedMaterialSearches((prev) => prev.filter((s) => s.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }, []);
 
   return {
@@ -352,25 +654,47 @@ export function useKnowledgeStudioState() {
     error,
     info,
     fileInputRef,
-    onUpload,
-    arxivIds,
-    setArxivIds,
-    onArxivImportClick,
-    onArxivImportFromSearchForm,
+    onPickUploadFile,
+    pendingUpload,
+    cancelPendingUpload,
+    confirmPendingUpload,
+    searchArxivIds,
+    setSearchArxivIds,
+    arxivSearch,
+    setArxivSearch,
+    arxivMax,
+    setArxivMax,
+    arxivPreviewEntries,
+    arxivPreviewSelectedIds,
+    fetchArxivPreviewFromAddPage,
+    toggleArxivPreviewSelected,
+    setArxivPreviewAllSelected,
+    confirmArxivImportFromPreview,
+    clearArxivPreview,
     pendingReindex,
     onReindexClick,
-    savedQueries,
-    newSavedName,
-    setNewSavedName,
-    newSavedIds,
-    setNewSavedIds,
-    newSavedSearch,
-    setNewSavedSearch,
-    newSavedMax,
-    setNewSavedMax,
-    addSavedQuery,
-    runSaved,
-    deleteSaved,
+    materialSearchQuery,
+    setMaterialSearchQuery,
+    materialSearchTopK,
+    setMaterialSearchTopK,
+    materialSearchResults,
+    materialSearchMs,
+    onMaterialSearchClick,
+    savedMaterialSearches,
+    saveMaterialName,
+    setSaveMaterialName,
+    saveMaterialQuery,
+    setSaveMaterialQuery,
+    saveMaterialTopK,
+    setSaveMaterialTopK,
+    saveMaterialIntervalMinutes,
+    setSaveMaterialIntervalMinutes,
+    saveMaterialScheduleEnabled,
+    setSaveMaterialScheduleEnabled,
+    addSavedMaterialSearch,
+    runSavedMaterialSearch,
+    patchSavedMaterialSearch,
+    deleteSavedMaterialSearch,
     imeComposingRef,
     question,
     setQuestion,

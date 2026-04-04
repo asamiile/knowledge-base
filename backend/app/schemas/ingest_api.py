@@ -49,7 +49,7 @@ class ArxivImportRequest(BaseModel):
         has_q = bool(self.search_query and self.search_query.strip())
         if not has_ids and not has_q:
             raise ValueError(
-                "arxiv_ids に1件以上、または search_query を指定してください。",
+                "arXiv ID またはキーワードを指定してください。",
             )
         return self
 
@@ -57,3 +57,17 @@ class ArxivImportRequest(BaseModel):
 class ArxivImportResponse(BaseModel):
     written: list[str] = Field(description="DATA_DIR からの相対パス（.md）")
     entry_count: int
+
+
+class ArxivPreviewEntry(BaseModel):
+    """プレビュー用（未保存）。"""
+
+    arxiv_id: str = Field(description="取り込み時に arxiv_ids に渡す値")
+    title: str
+    summary: str
+    authors: list[str]
+    abs_url: str
+
+
+class ArxivPreviewResponse(BaseModel):
+    entries: list[ArxivPreviewEntry]

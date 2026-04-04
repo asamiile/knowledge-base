@@ -1,10 +1,11 @@
 "use client";
 
 import {
-  CalendarClock,
+  Bookmark,
   FolderInput,
   MessageSquareText,
   RefreshCw,
+  Search,
   Sparkles,
 } from "lucide-react";
 
@@ -72,13 +73,15 @@ export function SiteSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={activeSection === "ask"}
-              tooltip="質問"
+              tooltip="質問する"
               disabled={navDisabled("ask")}
               className={navBtnIconMode}
               onClick={() => onSectionChange("ask")}
             >
               <MessageSquareText />
-              <span className="group-data-[collapsible=icon]:sr-only">質問</span>
+              <span className="group-data-[collapsible=icon]:sr-only">
+                質問する
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -97,15 +100,29 @@ export function SiteSidebar({
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
-              isActive={activeSection === "schedule"}
-              tooltip="定期・検索"
-              disabled={navDisabled("schedule")}
+              isActive={activeSection === "search"}
+              tooltip="資料の検索"
+              disabled={navDisabled("search")}
               className={navBtnIconMode}
-              onClick={() => onSectionChange("schedule")}
+              onClick={() => onSectionChange("search")}
             >
-              <CalendarClock />
+              <Search />
               <span className="group-data-[collapsible=icon]:sr-only">
-                定期・検索
+                資料の検索
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={activeSection === "saved"}
+              tooltip="検索条件の保存"
+              disabled={navDisabled("saved")}
+              className={navBtnIconMode}
+              onClick={() => onSectionChange("saved")}
+            >
+              <Bookmark />
+              <span className="group-data-[collapsible=icon]:sr-only">
+                検索条件の保存
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>

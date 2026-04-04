@@ -23,6 +23,31 @@ export async function postUpload(file: File): Promise<UploadResponse> {
 
 export type ArxivImportResponse = { written: string[]; entry_count: number };
 
+export type ArxivPreviewEntry = {
+  arxiv_id: string;
+  title: string;
+  summary: string;
+  authors: string[];
+  abs_url: string;
+};
+
+export type ArxivPreviewResponse = { entries: ArxivPreviewEntry[] };
+
+export async function postArxivPreview(body: {
+  arxiv_ids?: string[];
+  search_query?: string;
+  max_results?: number;
+}): Promise<ArxivPreviewResponse> {
+  return fetchJson<ArxivPreviewResponse>(
+    `${apiBase()}/api/data/imports/arxiv/preview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
 export async function postArxivImport(body: {
   arxiv_ids?: string[];
   search_query?: string;

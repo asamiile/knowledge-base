@@ -108,24 +108,18 @@ def _entry_to_markdown(entry: _ArxivEntry) -> str:
     )
 
 
-def import_arxiv_to_data_dir(
-    data_dir: Path,
+def fetch_arxiv_entries(
     *,
     arxiv_ids: list[str],
     search_query: str | None,
     max_results: int,
-) -> list[str]:
-    """arXiv から取得し `imports/arxiv/*.md` に保存。戻り値は DATA_DIR からの相対パス。"""
-    data_dir = data_dir.resolve()
-    out_dir = data_dir / "imports" / "arxiv"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+) -> list[_ArxivEntry]:
+    """arXiv API からエントリを取得する（保存しない）。"""
     ids = _normalize_arxiv_ids(arxiv_ids)
     seen_urls: set[str] = set()
     all_entries: list[_ArxivEntry] = []
 
     if ids:
-        # 公式 API は id_list にカンマ区切り（件数が多い場合は caller 側で分割も可）
         text = _arxiv_get({"id_list": ",".join(ids)})
         for e in _parse_atom_entries(text):
             if e.id_url not in seen_urls:
@@ -146,11 +140,50 @@ def import_arxiv_to_data_dir(
                 seen_urls.add(e.id_url)
                 all_entries.append(e)
 
+    return all_entries
+
+
+def entry_import_id(entry: _ArxivEntry) -> str:
+    """取り込み API の arxiv_ids に渡せる短い ID。"""
+    norm = _normalize_arxiv_ids([entry.id_url])
+    if norm:
+        return norm[0]
+    return _entry_file_stem(entry)
+
+
+def entry_abs_url(entry: _ArxivEntry) -> str:
+    """https の abs URL。"""
+    return _canonical_abs_url(entry.id_url)
+
+
+def write_arxiv_entries_to_data_dir(
+    data_dir: Path,
+    entries: list[_ArxivEntry],
+) -> list[str]:
+    """エントリを `imports/arxiv/*.md` に保存。戻り値は DATA_DIR からの相対パス。"""
+    data_dir = data_dir.resolve()
+    out_dir = data_dir / "imports" / "arxiv"
+    out_dir.mkdir(parents=True, exist_ok=True)
     rel_paths: list[str] = []
-    for entry in all_entries:
+    for entry in entries:
         stem = _entry_file_stem(entry)
         path = out_dir / f"{stem}.md"
         path.write_text(_entry_to_markdown(entry), encoding="utf-8")
         rel_paths.append(str(path.relative_to(data_dir)))
-
     return rel_paths
+
+
+def import_arxiv_to_data_dir(
+    data_dir: Path,
+    *,
+    arxiv_ids: list[str],
+    search_query: str | None,
+    max_results: int,
+) -> list[str]:
+    """arXiv から取得し `imports/arxiv/*.md` に保存。戻り値は DATA_DIR からの相対パス。"""
+    entries = fetch_arxiv_entries(
+        arxiv_ids=arxiv_ids,
+        search_query=search_query,
+        max_results=max_results,
+    )
+    return write_arxiv_entries_to_data_dir(data_dir, entries)

@@ -34,7 +34,7 @@ export default function AskPage() {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-3xl space-y-4 pb-10">
           {s.error && (
-            <Alert variant="destructive">
+            <Alert variant="error">
               <AlertTitle>エラー</AlertTitle>
               <AlertDescription className="font-mono text-xs break-all">
                 {s.error}

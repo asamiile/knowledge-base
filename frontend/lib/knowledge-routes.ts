@@ -3,13 +3,15 @@ import type { KnowledgeSection } from "@/lib/knowledge-section";
 export const KNOWLEDGE_PATHS: Record<KnowledgeSection, string> = {
   ask: "/",
   sources: "/add",
-  schedule: "/search",
+  search: "/search",
+  saved: "/saved",
 };
 
 const PATH_TO_SECTION: Record<string, KnowledgeSection> = {
   "/": "ask",
   "/add": "sources",
-  "/search": "schedule",
+  "/search": "search",
+  "/saved": "saved",
 };
 
 function normalizePathname(pathname: string): string {

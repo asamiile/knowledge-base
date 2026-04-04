@@ -15,6 +15,7 @@
   - **装飾最小:** UI と説明は必要十分に留める。
   - **前処理の自動化:** 取り込み〜正規化を手作業に頼りすぎない構成を目指す。
   - **再利用可能な JSON 出力:** API 契約とスキーマを明確にし、機械可読な結果を一級市民として扱う。
+  - **ユーザーストーリー起点:** ユーザーストーリーに基づいて、**必要な文言・デザイン・機能のみ**を実装する（ストーリーに紐づかない装飾・説明・API・画面は追加しない）。
 
 ---
 
@@ -100,7 +101,7 @@
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。pnpm audit / pip-audit を適宜。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
-| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。3 タブ（質問 / 資料追加 / 定期・検索）。`GET /api/knowledge/stats`。保存クエリは localStorage（真の定期は cron 等から `POST /api/data/imports/arxiv`） |
+| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。4 画面（質問する / 資料を追加 / 資料の検索 / 検索条件の保存）。`GET /api/knowledge/stats`・`POST /api/knowledge/search`・`saved_material_searches` の CRUD（`GET|POST|PATCH|DELETE /api/knowledge/saved-searches`）。保存条件は PostgreSQL。ブラウザ内の定期は MVP、本番の定期は cron 等から `POST /api/knowledge/search` 想定 |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
 
 **STEP 1 完了定義**
@@ -197,6 +198,34 @@ arXiv Atom API からメタデータ・要約を取得し（**API キー不要**
 インデックス概要（フロントの質問タブ用）。
 
 **Response（JSON）:** `document_chunks`（embedding 付き `documents` 件数）, `raw_data_rows`
+
+### `POST /api/knowledge/search`
+
+インデックス済み `documents` への **ベクトル検索のみ**（LLM なし）。`analyze` と同様に Gemini embedding でクエリを埋め込み、cosine distance 昇順で `top_k` 件返す。
+
+**Request（JSON）:** `query`（1〜4000 文字）, `top_k`（1〜20、既定 5）
+
+**Response（JSON）:** `hits`: `{ document_id, text, distance }[]`（`distance` は小さいほど類似。`text` は長文は切り詰めあり）
+
+**ステータスコード:** `400`（チャンク 0 件など）, `503`（`GOOGLE_API_KEY` 未設定）
+
+### `GET /api/knowledge/saved-searches`
+
+保存済みローカル検索条件の一覧（作成日昇順）。
+
+**Response（JSON）:** 要素 `{ id, name, query, top_k, interval_minutes, schedule_enabled, last_run_at, created_at, updated_at }[]`
+
+### `POST /api/knowledge/saved-searches`
+
+**Request（JSON）:** `name`, `query`（必須）, `top_k`（1〜20）, `interval_minutes`（≥0）, `schedule_enabled`。間隔 0 のとき `schedule_enabled` は false として保存。
+
+### `PATCH /api/knowledge/saved-searches/{id}`
+
+部分更新。`last_run_at`（ISO 8601 または null）で最終実行時刻を更新可能。
+
+### `DELETE /api/knowledge/saved-searches/{id}`
+
+**ステータスコード:** `204`（成功）, `404`（該当なし）
 
 ---
 

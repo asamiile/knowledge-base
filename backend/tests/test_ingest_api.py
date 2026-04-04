@@ -40,6 +40,30 @@ _ATOM_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+def test_preview_arxiv_mocked(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setenv("DATA_DIR", str(Path("/tmp/arxiv-preview-test")))
+
+    def fake_get(*_args: object, **_kwargs: object) -> str:
+        return _ATOM_SAMPLE
+
+    with patch(
+        "app.services.source_import.arxiv._arxiv_get",
+        side_effect=fake_get,
+    ):
+        r = client.post(
+            "/api/data/imports/arxiv/preview",
+            json={"arxiv_ids": ["2301.00001"]},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["entries"]) == 1
+    e = body["entries"][0]
+    assert e["title"] == "Sample Paper"
+    assert "2301.00001" in e["arxiv_id"]
+    assert e["abs_url"].startswith("https://arxiv.org/abs/")
+    assert e["summary"] == "Test abstract."
+
+
 def test_import_arxiv_by_id_mocked(client: TestClient, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
 

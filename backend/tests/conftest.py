@@ -42,3 +42,20 @@ def clean_documents() -> None:
     finally:
         session.close()
     yield
+
+
+@pytest.fixture
+def clean_saved_searches() -> None:
+    """saved_material_searches を空にする。"""
+    from sqlalchemy import delete
+
+    from app.db.session import SessionLocal
+    from app.models.tables import SavedSearch
+
+    session = SessionLocal()
+    try:
+        session.execute(delete(SavedSearch))
+        session.commit()
+    finally:
+        session.close()
+    yield

@@ -1,1 +1,1 @@
-export type KnowledgeSection = "ask" | "sources" | "schedule";
+export type KnowledgeSection = "ask" | "sources" | "search" | "saved";
