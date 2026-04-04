@@ -9,3 +9,4 @@ venv
 !.env.example
 *.egg-info
 dist
+node_modules

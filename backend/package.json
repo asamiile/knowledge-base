@@ -1,0 +1,15 @@
+{
+  "name": "knowledge-base-backend-drizzle",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "db:pull": "drizzle-kit pull",
+    "db:studio": "drizzle-kit studio"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.40.0",
+    "pg": "^8.14.1"
+  }
+}

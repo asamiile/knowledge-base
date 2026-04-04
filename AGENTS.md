@@ -18,8 +18,9 @@
 
 | 領域 | スタック |
 |------|----------|
-| フロント | Next.js + TypeScript（App Router 推奨） |
+| フロント | Next.js + TypeScript（App Router 推奨）、パッケージマネージャは **npm**（`package-lock.json`） |
 | バックエンド | FastAPI + uvicorn |
+| バックエンド（Drizzle のみ） | **pnpm**（`pnpm-lock.yaml`）— Drizzle Studio / `drizzle-kit` 用の Node 依存 |
 | データベース | PostgreSQL + pgvector（ローカルは `ankane/pgvector` イメージ） |
 
 ### ディレクトリ境界
@@ -69,7 +70,12 @@
 - **導入前:** パッケージ単体で `npm view <pkg>`（説明・最新版・依存の概要）。必要なら https://github.com/advisories やパッケージの Security タブを確認。
 - **導入後:** `package-lock.json` をコミットし、`npm audit` を実行。
 
-### Python（`backend/`）
+### pnpm（`backend/` — Drizzle Studio / drizzle-kit のみ）
+
+- **導入前:** 上記「新規パッケージを入れる前」と同様に npm レジストリ上の供給元を確認（`pnpm view <pkg>` でも可）。
+- **導入後:** `pnpm-lock.yaml` をコミットし、`pnpm audit` を実行。コマンドは `backend/` で `pnpm install` / `pnpm run db:studio` 等（`package.json` の `packageManager` を参照）。
+
+### Python（`backend/` FastAPI）
 
 - **導入前:** PyPI／GitHub で既知脆弱性・Issue をざっと確認。実行ファイル系・ネットワーク権限を要するパッケージは依存関係も含め注意。
 - **導入後:** 版本固定（`requirements.txt` または `uv.lock` 等）を維持し、可能なら **`pip-audit`**（またはチーム標準の同等ツール）で既知 CVE をスキャン。修正不可能な場合は理由と期限を残す。

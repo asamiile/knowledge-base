@@ -9,3 +9,4 @@ venv/
 .env.local
 *.egg-info/
 dist/
+node_modules/
