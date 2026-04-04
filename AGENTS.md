@@ -98,7 +98,7 @@
 |------|------|------|
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。npm audit 0 件。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
-| STEP 3 | 未着手 | STEP 2 の DB スキーマに依存 |
+| STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
 | STEP 4 | 未着手 | `/api/analyze` 契約に依存 |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
 
@@ -112,10 +112,50 @@
 **STEP 2 完了定義**
 
 - `DATABASE_URL` で PostgreSQL（pgvector）に接続できる。
-- `documents`（`text`, `embedding: vector(1536)`）と `raw_data`（`source`, `content: jsonb`）が定義され、起動時にテーブルが作成される。
+- `documents`（`text`, `embedding: vector(768)` ※Gemini `gemini-embedding-001` の出力次元を 768 に合わせる）と `raw_data`（`source`, `content: jsonb`）が定義され、起動時にテーブルが作成される。
 - アプリ起動時に `CREATE EXTENSION IF NOT EXISTS vector` が実行される。
 - `GET /health` が DB 疎通を含め成功する。
 - **STEP 3 着手条件:** 本表で STEP 2 を「完了」に更新したこと。
+
+**STEP 3 完了定義**
+
+- 環境変数 `GOOGLE_API_KEY` で Gemini 埋め込み・生成を呼び出せる。
+- `DATA_DIR`（Compose ではリポジトリ直下 `data/` を `backend` の `/app/data` にマウント）の `.md` / `.txt` をチャンク化し、`documents` にベクトル付きで保存できる。`.json` は `raw_data` に格納できる。
+- `POST /api/analyze` が下記「HTTP API 契約」の JSON 形式で応答する。`reindex_sources: true` で `data/` の再取り込み（既存 `documents` / `raw_data` の置換）ができる。
+- **STEP 4 着手条件:** 本表で STEP 3 を「完了」に更新したこと。
+
+---
+
+## HTTP API 契約
+
+### `POST /api/analyze`
+
+**Request（JSON）**
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `question` | string | はい | ユーザ質問（1〜8000 文字） |
+| `reindex_sources` | boolean | いいえ | `true` のとき `DATA_DIR` を再取り込み（既存の `documents` と `raw_data` を削除してから再構築） |
+| `top_k` | int | いいえ | ベクトル検索の件数（1〜20）。省略時は環境変数 `RAG_TOP_K`（既定 5） |
+
+**Response（JSON）**
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `answer` | string | 回答本文 |
+| `key_points` | string[] | 重要箇条書き |
+| `citations` | object[] | `document_id`（int）, `excerpt`（string） |
+
+**ステータスコード**
+
+- `503` — `GOOGLE_API_KEY` 未設定。
+- `400` — 検索対象のドキュメントがない（初回は `reindex_sources: true` で `data/` を取り込むか、`data/` に `.md`/`.txt` を配置する）。
+
+**環境変数（STEP 3）**
+
+- `GOOGLE_API_KEY` — 必須（分析API利用時）。
+- `GEMINI_LLM_MODEL` — 既定 `gemini-2.5-flash`（2.0 Flash は新規利用向けに終了）。
+- `GEMINI_EMBEDDING_MODEL` — 既定 `gemini-embedding-001`（768 次元は `EmbedContentConfig` で指定。`documents.embedding` と一致）。
 
 ---
 
@@ -188,6 +228,165 @@ AGENTS.md と STEP 2 の DB スキーマに従い、STEP 3 を実装してくだ
 
 STEP 2 のテーブル設計を破壊的に変える場合は理由と移行方針を残す。
 ```
+
+### STEP 3 — 動作確認手順（「どこまでできているか」の見分け方）
+
+#### 結論：どこまでやれば良いか（必須・推奨・任意）
+
+| レベル | やること | 完了の判断 | STEP に進んで良いか |
+|--------|----------|------------|---------------------|
+| **必須** | ホストで `pytest -q` を実行し、**失敗ゼロ**にする | **`N passed`** かつ **`0 failed`**（`skipped` があっても可） | **はい**（STEP 4 に進んでよい最低ライン） |
+| **推奨** | 上に加え、DB を 768 次元に揃え **`6 passed`**（スモークなし） | 出力が **`6 passed`** | 自動テストで取り込み〜応答まで**自分の DB で**確認済み |
+| **任意** | API を起動し、**実キー**で `curl` により `POST /api/analyze` が **200** | 返却 JSON に `answer` / `key_points` / `citations` | **本物の Gemini 経路**まで見たいときだけ |
+
+**迷ったら:** **必須だけやれば STEP 3 の動作確認は「済んだ」扱いでよい。** 余力があれば **推奨**、実 API を触りたければ **任意**。
+
+#### 明示チェックリスト（コピペ用）
+
+**□ 必須（これだけは実施）**
+
+1. Postgres を起動する: `docker compose up -d db`（ルートディレクトリ）
+2. 依存を入れる: `cd backend && pip install -r requirements.txt`
+3. テストを実行する: `pytest -q`
+4. **`failed` が 1 つも無い**ことを確認する（`5 passed, 1 skipped` でも **必須は達成**）
+
+**□ 推奨（スモークまで通したいとき）**
+
+5. `5 passed, 1 skipped` のとき: ルートで `docker compose down -v` → `docker compose up -d db`（**DB 全消去**・開発用のみ）
+6. もう一度 `cd backend && pytest -q` → **`6 passed`** を確認
+
+**□ 任意（Gemini を実際に叩く）**
+
+7. `backend/.env` に `GOOGLE_API_KEY` を設定し、API を起動（`docker compose up -d` 等）
+8. 次を実行し **HTTP 200** と JSON フィールドを確認:
+
+```bash
+curl -s -X POST http://localhost:8000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"question":"資料の要点は？","reindex_sources":true,"top_k":5}'
+```
+
+---
+
+**1. リポジトリに「実装として含まれている」もの（コードがある＝機能の土台はある）**
+
+| 項目 | 内容 |
+|------|------|
+| API | `POST /api/analyze`（契約は下記「HTTP API 契約」） |
+| 取り込み | `data/` の `.md` / `.txt` → チャンク・埋め込み → `documents`、`.json` → `raw_data` |
+| 検索 | pgvector コサイン距離で top-k |
+| 生成 | `GOOGLE_API_KEY` 利用時、Gemini で構造化 JSON 応答 |
+| 起動時 | `backend/.env` の `load_dotenv`（Docker では `GOOGLE_API_KEY` を compose の空上書きしない構成） |
+
+ここは **テストを回さなくても実装済み**。「動いたか」は別。
+
+**2. あなたの環境で「検証できている」か（これで可否が決まる）**
+
+| 段階 | 何を確認しているか | **できている**と言える条件 | **まだ**のとき |
+|------|-------------------|---------------------------|----------------|
+| **A-①** | API・DB の土台 | `pytest -q` で **少なくとも 5 件が passed**（失敗ゼロ） | `failed` がある、または pytest 自体が動かない |
+| **A-②** | 取り込み〜回答まで（**Gemini はモック**） | 同じく `pytest -q` で **6 passed**（`test_analyze_smoke` まで通る） | **5 passed, 1 skipped** → **A-② は未検証**。理由はほぼ確実に **`documents.embedding` が DB 上まだ 1536 等で、ORM の 768 と不一致** |
+| **B** | 実キーで埋め込み・**本物の Gemini** | API 起動後、`curl` 等で **200** ＋ JSON に `answer` / `key_points` / `citations` | **B を実行していない** → **実 API 経路は未確認**（実装はあっても、キー・ネットワーク・`DATA_DIR` の不備はこの段で初めて分かる） |
+
+**`pytest -q` の出力の読み方（早見）**
+
+| 表示 | 意味 |
+|------|------|
+| `6 passed` | **A-① と A-② の両方**が、この環境では通っている |
+| `5 passed, 1 skipped` | **A-① まで OK**。A-② は DB を 768 次元に揃えるまでスキップ |
+| `failed` 付き | 表示されたテスト名を直すまで **STEP 3 動作確認として未達** |
+
+#### 具体手順：「自分の環境で締める」ときに何をするか
+
+**やりたいことは二つだけです。**（1）自動テストでスモークまで通す → **6 passed**。（2）実キーで 1 回 API を叩く → **200 + JSON**。
+
+---
+
+**（1）A-② まで通す＝`pytest` を `6 passed` にする**
+
+| いまの状態 | 意味 |
+|------------|------|
+| `5 passed, 1 skipped` | DB の `documents.embedding` 列が **まだ古い次元（例: 1536）** などで、**ORM の 768 と一致していない**ことが多い。`create_all` は**既存列を書き換えない**ので、開発用 DB は**作り直し**が手っ取り早い。 |
+
+**Docker Compose で `db` を使っている場合（コピペ用）**
+
+1. リポジトリ**ルート**で、ボリュームごと DB を消す（**Postgres のデータは全消去**。開発用のみで実施）。
+
+```bash
+docker compose down -v
+```
+
+2. DB だけ起動する。
+
+```bash
+docker compose up -d db
+```
+
+3. `backend/.env` の **`DATABASE_URL` がホストから見えること**を確認する。pytest はホストの Python から繋ぐため、**`...@127.0.0.1:5432/...`** のような形が必要（`...@db:5432` はコンテナ内向けなのでホストの pytest では失敗しやすい）。
+
+4. 新しい空の DB に **768 次元の `documents` テーブル**を作らせる。次のどちらかでよい。
+
+   - `cd backend && pytest -q`（アプリの `init_db` が `create_all` する）  
+   - または先に `docker compose up -d backend` などで API を一度起動してから pytest
+
+5. 再度:
+
+```bash
+cd backend && pytest -q
+```
+
+→ **`6 passed`** なら（1）は完了。
+
+---
+
+**（2）B＝本物の Gemini で通したい（任意）**
+
+1. `backend/.env` に **`GOOGLE_API_KEY=`（実キー）** を書く（行頭 `#` でコメントアウトしない）。
+
+2. API を起動する（例: `docker compose up -d` で backend まで、または `backend` で `uvicorn`）。
+
+3. **`data/`** に `.md` または `.txt` がある（未配置なら `data/sample.md` をそのまま使える）。Compose の backend は通常 **`./data` → `/app/data`**。ホストだけで uvicorn する場合は `backend/.env` の **`DATA_DIR`** を、リポジトリ直下の `data/` の**絶対パス**などに合わせる。
+
+4. ターミナルで:
+
+```bash
+curl -s -X POST http://localhost:8000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"question":"資料の要点は？","reindex_sources":true,"top_k":5}'
+```
+
+5. HTTP **200** で、返却 JSON に **`answer` / `key_points` / `citations`** があれば（2）は完了。  
+   **503** → キーが読めていない（`.env` の場所・API 再起動を確認）。**400** → `DATA_DIR` または `data/` 内のテキストを確認。
+
+---
+
+**注意:** `docker compose down -v` は**名前付きボリュームに入っている DB を消す**操作です。共有の本番データには使わないこと。
+
+**3. 実行コマンド**
+
+**A（自動・Gemini 不要）**
+
+1. PostgreSQL 起動（例: `docker compose up -d db`）。
+2. `backend/.env` に `DATABASE_URL`（ホストからなら `127.0.0.1:5432`）。
+3. `cd backend && pip install -r requirements.txt && pytest -q`
+
+**B（実 API・任意）**
+
+1. `backend/.env` に `GOOGLE_API_KEY=...`。
+2. `data/` に `.md` / `.txt` を配置。Compose 以外で動かす場合は `DATA_DIR` がその `data/` を指すこと。
+3. API 起動後、例（初回は取り込みを確実にするなら `reindex_sources: true`）:
+
+```bash
+curl -s -X POST http://localhost:8000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"question":"資料の要点は？","reindex_sources":true,"top_k":5}'
+```
+
+- **200** かつ上記 JSON フィールドがあれば **B 達成**。
+- **503** → `GOOGLE_API_KEY` 未読込（`.env`・再起動を確認）。
+- **400** → `data/` にテキストが無い、または `DATA_DIR` がズレている。
+
+**4. 目安の要約** — 上記の **「結論：どこまでやれば良いか」** の表と **チェックリスト** を参照。
 
 ### STEP 4 — フロント UI
 

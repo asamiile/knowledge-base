@@ -3,16 +3,7 @@
 `fastapi.testclient.TestClient` は内部的に httpx で ASGI に接続する。
 """
 
-import pytest
 from fastapi.testclient import TestClient
-
-from app.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    with TestClient(app) as c:
-        yield c
 
 
 def test_root_returns_200(client: TestClient) -> None:

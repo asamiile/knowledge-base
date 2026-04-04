@@ -12,7 +12,20 @@
 ### ローカル起動
 
 ```bash
+docker compose up
+```
+
+- 初回起動時と `Dockerfile` 変更後
+
+```bash
 docker compose up --build
+```
+
+- バックグラウンドで起動する場合
+
+```bash
+docker compose up -d --build
+ログは docker compose logs -f
 ```
 
 | サービス | URL | ポート |
@@ -21,71 +34,57 @@ docker compose up --build
 | API（FastAPI） | http://localhost:8000 | 8000 |
 | API ドキュメント（Swagger UI） | http://localhost:8000/docs | 8000 |
 | PostgreSQL（pgvector） | localhost:5432 | 5432 |
+| Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio)（ローカル :4983 経由） | 4983 |
 
 #### API の疎通確認
 
 - `GET http://localhost:8000/health`
 
+#### Gemini APIの設定
+
+1. [Google AI Studio](https://aistudio.google.com/apikey) でキーを発行する。
+2. `backend/.env` にキーを設定する
+3. `GEMINI_LLM_MODEL` `GEMINI_EMBEDDING_MODEL` を設定する
+
+- テストコマンド例
+
+```bash
+curl -s -X POST http://localhost:8000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"question":"サンプル資料の要点は？","reindex_sources":true}'
+```
+
+#### pytestの実行
+
+```bash
+docker compose up -d --build
+docker compose exec backend pytest -q
+```
+
 ### Drizzle Studio
 
 ORM は **SQLAlchemy のまま**にし、[Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview) は開発時の **DB 閲覧**と、`drizzle-kit pull` による **イントロスペクション**（`drizzle/schema.ts` の更新）だけに使う。マイグレーションの正は引き続き SQLAlchemy 側。
 
-- PostgreSQL を起動する
+#### Studio 起動
 
 ```bash
-docker compose up -d db
+docker compose --profile drizzle up -d drizzle-studio
 ```
 
-- 初回のみ、`backend` で以下を実行する
+- ブラウザで **https://local.drizzle.studio** を開く
+
+#### スキーマのイントロスペクション（`drizzle/schema.ts` 更新）
+
+- SQLAlchemy 側でテーブル定義を変えたあと
 
 ```bash
-cd backend
-pnpm install
-```
-
-- `backend/.env` にStudio用URLを記述する
-
-設定例:
-
-```env
-DATABASE_URL_STUDIO=postgresql://knowledge:knowledge@127.0.0.1:5432/knowledge
-```
-
-- Drizzle Studioを起動する
-
-```bash
-cd backend
-DATABASE_URL_STUDIO=postgresql://knowledge:knowledge@127.0.0.1:5432/knowledge pnpm run db:studio
-```
-
-- 起動後、ブラウザで **https://local.drizzle.studio** を開く
-
-- SQLAlchemy 側でテーブル定義を変えたあと、Drizzle のスキーマファイルを DB に合わせて取り直す
-
-```bash
-cd backend
-DATABASE_URL_STUDIO=postgresql://knowledge:knowledge@127.0.0.1:5432/knowledge pnpm run db:pull
-```
-
-#### トラブルシューティング
-
-- ポートが既に使われている場合は、占有しているNodeプロセスを終了する。
-
-```bash
-lsof -i :4983
-kill <PID>
-```
-
-- 別ポートで Studio を起動する例:
-
-```bash
-cd backend
-DATABASE_URL_STUDIO=postgresql://knowledge:knowledge@127.0.0.1:5432/knowledge pnpm exec drizzle-kit studio --port 4984
+docker compose --profile drizzle run --rm drizzle-studio \
+  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm install --frozen-lockfile && pnpm run db:pull"
 ```
 
 ### Agent Skills
 
-- 追加のコマンド例
+- インストールコマンドの例
 
 ```bash
 npx skills add vercel-labs/agent-skills -y --agent claude-code cursor

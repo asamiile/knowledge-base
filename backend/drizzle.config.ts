@@ -1,12 +1,10 @@
 /**
- * Drizzle Kit（Studio / introspection）はホスト上の Node から実行する。
+ * Drizzle Kit（Studio / introspection）
  *
- * `backend/.env` の DATABASE_URL が Docker 内 API 向けに `...@db:5432` になっている場合、
- * ホストから Drizzle を叩くときは接続できない（`db` はコンテナ内ホスト名のため）。
- * そのときは `...@127.0.0.1:5432`（または localhost）に書き換えた URL を `.env` に置くか、
- * 下記の DATABASE_URL_STUDIO があればこちらを優先する。
+ * - ホスト: `...@127.0.0.1:5432` を `DATABASE_URL` または `DATABASE_URL_STUDIO` に（`db` は名前解決できない）。
+ * - Docker: `docker compose --profile drizzle` の `drizzle-studio` サービスが `DATABASE_URL_STUDIO=@db:5432` を注入する。
  *
- * 前提: docker-compose で db の 5432 がホストに公開されていること。
+ * `backend/.env` の DATABASE_URL が `...@db:5432` のままでも、上記の環境変数で上書きできる。
  */
 import { config as loadEnv } from "dotenv";
 import { defineConfig } from "drizzle-kit";

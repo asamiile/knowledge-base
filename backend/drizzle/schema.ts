@@ -3,7 +3,7 @@ import { pgTable, serial, text, vector, varchar, jsonb } from "drizzle-orm/pg-co
 export const documents = pgTable("documents", {
 	id: serial().primaryKey().notNull(),
 	text: text().notNull(),
-	embedding: vector({ dimensions: 1536 }),
+	embedding: vector({ dimensions: 768 }),
 });
 
 export const rawData = pgTable("raw_data", {
