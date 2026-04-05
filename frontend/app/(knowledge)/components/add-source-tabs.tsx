@@ -73,12 +73,13 @@ export function AddSourceTabs({
 
         <TabsContent value="upload" className="flex flex-col gap-3">
           <p className="text-muted-foreground text-xs">
-            アップロード可能なファイル形式：.md、.txt、.json
+            アップロード可能なファイル形式：.md、.txt、.json、.pdf（PDF
+            はテキスト抽出後に索引化）
           </p>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".md,.txt,.json,text/markdown,text/plain,application/json"
+            accept=".md,.txt,.json,.pdf,text/markdown,text/plain,application/json,application/pdf"
             onChange={onPickUploadFile}
             disabled={busyAny}
             className="sr-only"
