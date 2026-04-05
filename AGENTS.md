@@ -78,6 +78,7 @@
 | `app/main.py` | アプリ起動・ルータ登録 |
 | `app/api/routes_data.py` | アップロード・再インデックス |
 | `app/api/routes_imports.py` | 外部ソース取り込み（現状 arXiv） |
+| `app/services/extract/` | ベクトル索引用ファイル列挙・テキスト抽出（`.md`/`.txt`、将来 PDF 等） |
 | `app/services/ingest.py` | `DATA_DIR` → `documents` / `raw_data` |
 | `app/services/source_import/` | 外部ソース別の取り込みロジック |
 
@@ -89,7 +90,8 @@
 | 箇所 | 役割 |
 |------|------|
 | `app/api/routes_data.py` | `DATA_DIR` へのアップロード保存、拡張子はホワイトリスト。`POST /api/data/reindex` で全ツリー再取り込み |
-| `app/services/ingest.py` | `**/*.md` / `**/*.txt` をチャンク化して `documents`、`**/*.json` を `raw_data` に保存（いずれも `DATA_DIR` 走査） |
+| `app/services/extract/` | ベクトル用パス列挙と生テキスト抽出（現状 `.md`/`.txt`）。`ingest` がここ経由で列挙 |
+| `app/services/ingest.py` | extract で得たテキストをチャンク化して `documents`、`**/*.json` を `raw_data` に保存 |
 | `app/api/routes_imports.py` | 現状は arXiv 専用。`app/services/source_import/arxiv.py` が Atom 取得→Markdown 保存 |
 
 ### 目標
@@ -113,7 +115,7 @@
 |--------------|------|------------|
 | **0** | 本節のドキュメント化と案 A/B の決定（**この表まで含む**） | 実装着手前に合意 |
 | **1** | `routes_imports` のエラー処理共通化、`source_import` のエクスポート整理 | **完了** — `translate_import_http_errors`・`app/services/source_import/__init__.py` 整理 |
-| **2** | `extract` 層（拡張子→抽出）を追加し、`.md`/`.txt` は現行ロジックへ委譲。`ingest` の列挙をその層経由に | 回帰なし |
+| **2** | `extract` 層（拡張子→抽出）を追加し、`.md`/`.txt` は現行ロジックへ委譲。`ingest` の列挙をその層経由に | **完了** — `app/services/extract/vector_sources.py` |
 | **3** | アップロードで PDF を許可→抽出→案 A に沿ってテキストを `DATA_DIR` に配置→`reindex` で索引化 | API・フロントの拡張子・上限文言と一致 |
 | **4** | 2 つ目の外部 importer（プロトコル確定、必要なら小さな実装） | OpenAPI とフロント型の追加が定型的 |
 | **5** | （任意）案 B への移行、または `ingest` の再設計 | 運用上の必要性が出たとき |

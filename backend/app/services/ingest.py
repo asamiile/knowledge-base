@@ -11,13 +11,10 @@ from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 from sqlalchemy.orm import Session
 
 from app.models.tables import Document, RawData
-
-
-def _collect_text_files(data_dir: Path) -> list[Path]:
-    paths: list[Path] = []
-    for pattern in ("**/*.md", "**/*.txt"):
-        paths.extend(sorted(p for p in data_dir.glob(pattern) if p.is_file()))
-    return paths
+from app.services.extract import (
+    collect_vector_source_paths,
+    extract_text_for_vector_ingest,
+)
 
 
 def _collect_json_files(data_dir: Path) -> list[Path]:
@@ -29,7 +26,7 @@ def has_vector_source_files(data_dir: Path) -> bool:
     p = data_dir.resolve()
     if not p.is_dir():
         return False
-    return bool(_collect_text_files(p))
+    return bool(collect_vector_source_paths(p))
 
 
 def has_any_source_files(data_dir: Path) -> bool:
@@ -37,7 +34,7 @@ def has_any_source_files(data_dir: Path) -> bool:
     p = data_dir.resolve()
     if not p.is_dir():
         return False
-    return bool(_collect_text_files(p) or _collect_json_files(p))
+    return bool(collect_vector_source_paths(p) or _collect_json_files(p))
 
 
 def ingest_data_directory(
@@ -61,8 +58,8 @@ def ingest_data_directory(
     splitter = SentenceSplitter(chunk_size=1024, chunk_overlap=128)
     doc_chunks = 0
 
-    for path in _collect_text_files(data_dir):
-        text = path.read_text(encoding="utf-8", errors="replace")
+    for path in collect_vector_source_paths(data_dir):
+        text = extract_text_for_vector_ingest(path)
         if not text.strip():
             continue
         header = f"[source:{path.relative_to(data_dir)}]\n"
