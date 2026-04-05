@@ -19,7 +19,32 @@ type AddSourceMainTab = "upload" | "arxiv";
 
 /** `/add` — 資料を追加 */
 export default function AddSourcesPage() {
-  const s = useKnowledgeStudio();
+  const {
+    error,
+    info,
+    busy,
+    fileInputRef,
+    onPickUploadFile,
+    pendingUpload,
+    cancelPendingUpload,
+    confirmPendingUpload,
+    searchArxivIds,
+    setSearchArxivIds,
+    arxivSearch,
+    setArxivSearch,
+    arxivMax,
+    setArxivMax,
+    arxivPreviewEntries,
+    arxivPreviewSelectedIds,
+    fetchArxivPreviewFromAddPage,
+    toggleArxivPreviewSelected,
+    setArxivPreviewAllSelected,
+    confirmArxivImportFromPreview,
+    clearArxivPreview,
+    pendingReindex,
+    onReindexClick,
+  } = useKnowledgeStudio();
+
   const [addSourceMainTab, setAddSourceMainTab] =
     useState<AddSourceMainTab>("upload");
 
@@ -30,36 +55,36 @@ export default function AddSourcesPage() {
       setAddSourceMainTab((prev) => {
         if (prev === next) return prev;
         if (next === "arxiv") {
-          s.cancelPendingUpload();
+          cancelPendingUpload();
         } else {
-          s.clearArxivPreview();
+          clearArxivPreview();
         }
         return next;
       });
     },
-    [s.cancelPendingUpload, s.clearArxivPreview],
+    [cancelPendingUpload, clearArxivPreview],
   );
 
-  const busyUpload = s.busy === "upload";
-  const busyArxivPreview = s.busy === "arxiv-preview";
-  const busyArxivImport = s.busy === "arxiv-import";
-  const busyAny = s.busy !== null;
+  const busyUpload = busy === "upload";
+  const busyArxivPreview = busy === "arxiv-preview";
+  const busyArxivImport = busy === "arxiv-import";
+  const busyAny = busy !== null;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <div className="mx-auto max-w-3xl space-y-4">
-        {s.error && (
+        {error && (
           <Alert variant="error">
             <AlertTitle>エラー</AlertTitle>
             <AlertDescription className="font-mono text-xs break-all">
-              {s.error}
+              {error}
             </AlertDescription>
           </Alert>
         )}
-        {s.info && !s.error && (
+        {info && !error && (
           <Alert variant="success">
             <AlertTitle>完了</AlertTitle>
-            <AlertDescription>{s.info}</AlertDescription>
+            <AlertDescription>{info}</AlertDescription>
           </Alert>
         )}
 
@@ -92,19 +117,19 @@ export default function AddSourcesPage() {
                   アップロード可能なファイル形式：.md、.txt、.json
                 </p>
                 <input
-                  ref={s.fileInputRef}
+                  ref={fileInputRef}
                   type="file"
                   accept=".md,.txt,.json,text/markdown,text/plain,application/json"
-                  onChange={s.onPickUploadFile}
+                  onChange={onPickUploadFile}
                   disabled={busyAny}
                   className="sr-only"
                   title="アップロードするファイルを選択"
                 />
-                {!s.pendingUpload ? (
+                {!pendingUpload ? (
                   <Button
                     variant="outline"
                     disabled={busyAny}
-                    onClick={() => s.fileInputRef.current?.click()}
+                    onClick={() => fileInputRef.current?.click()}
                     className="w-fit rounded-xl"
                     type="button"
                   >
@@ -115,7 +140,7 @@ export default function AddSourcesPage() {
                   <div className="flex flex-col gap-2">
                     <p className="text-foreground text-sm">
                       <span className="font-medium">
-                        {s.pendingUpload.file.name}
+                        {pendingUpload.file.name}
                       </span>
                       <span className="text-muted-foreground">
                         を選択しています。内容の確認は下のカードで行えます。
@@ -125,7 +150,7 @@ export default function AddSourcesPage() {
                       <Button
                         variant="outline"
                         disabled={busyAny}
-                        onClick={() => s.cancelPendingUpload()}
+                        onClick={() => cancelPendingUpload()}
                         className="rounded-xl"
                         type="button"
                       >
@@ -135,9 +160,9 @@ export default function AddSourcesPage() {
                         variant="outline"
                         disabled={busyAny}
                         onClick={() => {
-                          s.cancelPendingUpload();
+                          cancelPendingUpload();
                           window.setTimeout(() => {
-                            s.fileInputRef.current?.click();
+                            fileInputRef.current?.click();
                           }, 0);
                         }}
                         className="rounded-xl"
@@ -186,8 +211,8 @@ export default function AddSourcesPage() {
                       </div>
                       <Textarea
                         id="arxiv-paper-ids"
-                        value={s.searchArxivIds}
-                        onChange={(e) => s.setSearchArxivIds(e.target.value)}
+                        value={searchArxivIds}
+                        onChange={(e) => setSearchArxivIds(e.target.value)}
                         rows={2}
                         placeholder="2301.00001 または https://arxiv.org/abs/...、複数入力可"
                         disabled={busyAny}
@@ -197,7 +222,7 @@ export default function AddSourcesPage() {
                     <Button
                       variant="secondary"
                       disabled={busyAny}
-                      onClick={() => void s.fetchArxivPreviewFromAddPage("id")}
+                      onClick={() => void fetchArxivPreviewFromAddPage("id")}
                       className="w-fit rounded-xl"
                       type="button"
                     >
@@ -219,8 +244,8 @@ export default function AddSourcesPage() {
                       </div>
                       <Input
                         id="arxiv-keyword"
-                        value={s.arxivSearch}
-                        onChange={(e) => s.setArxivSearch(e.target.value)}
+                        value={arxivSearch}
+                        onChange={(e) => setArxivSearch(e.target.value)}
                         placeholder="例: video diffusion"
                         disabled={busyAny}
                         className="rounded-xl"
@@ -237,9 +262,9 @@ export default function AddSourcesPage() {
                           min={1}
                           max={20}
                           className="w-24 rounded-xl"
-                          value={s.arxivMax}
+                          value={arxivMax}
                           onChange={(e) =>
-                            s.setArxivMax(Number(e.target.value) || 5)
+                            setArxivMax(Number(e.target.value) || 5)
                           }
                           disabled={busyAny}
                         />
@@ -248,7 +273,7 @@ export default function AddSourcesPage() {
                         variant="secondary"
                         disabled={busyAny}
                         onClick={() =>
-                          void s.fetchArxivPreviewFromAddPage("keyword")
+                          void fetchArxivPreviewFromAddPage("keyword")
                         }
                         className="w-fit rounded-xl"
                         type="button"
@@ -263,43 +288,43 @@ export default function AddSourcesPage() {
           </CardContent>
         </Card>
 
-        {addSourceMainTab === "upload" && s.pendingUpload && (
+        {addSourceMainTab === "upload" && pendingUpload && (
           <AddSourceFilePreviewCard
-            pending={s.pendingUpload}
+            pending={pendingUpload}
             disabled={busyAny}
             uploadBusy={busyUpload}
-            onCancel={() => s.cancelPendingUpload()}
-            onConfirm={() => void s.confirmPendingUpload()}
+            onCancel={() => cancelPendingUpload()}
+            onConfirm={() => void confirmPendingUpload()}
           />
         )}
 
         {addSourceMainTab === "arxiv" &&
-          s.arxivPreviewEntries &&
-          s.arxivPreviewEntries.length > 0 && (
-          <AddSourceArxivPreviewCard
-            entries={s.arxivPreviewEntries}
-            selectedIds={s.arxivPreviewSelectedIds}
-            disabled={busyAny}
-            importBusy={busyArxivImport}
-            onToggleSelected={(id) => s.toggleArxivPreviewSelected(id)}
-            onSelectAll={(sel) => s.setArxivPreviewAllSelected(sel)}
-            onClose={() => s.clearArxivPreview()}
-            onConfirmImport={() => void s.confirmArxivImportFromPreview()}
-          />
-        )}
+          arxivPreviewEntries &&
+          arxivPreviewEntries.length > 0 && (
+            <AddSourceArxivPreviewCard
+              entries={arxivPreviewEntries}
+              selectedIds={arxivPreviewSelectedIds}
+              disabled={busyAny}
+              importBusy={busyArxivImport}
+              onToggleSelected={(id) => toggleArxivPreviewSelected(id)}
+              onSelectAll={(sel) => setArxivPreviewAllSelected(sel)}
+              onClose={() => clearArxivPreview()}
+              onConfirmImport={() => void confirmArxivImportFromPreview()}
+            />
+          )}
 
         <Button
-          disabled={busyAny || !s.pendingReindex}
-          onClick={() => void s.onReindexClick()}
+          disabled={busyAny || !pendingReindex}
+          onClick={() => void onReindexClick()}
           className="w-fit rounded-xl gap-2"
           title={
-            !s.pendingReindex && s.busy === null
+            !pendingReindex && busy === null
               ? "ファイルのアップロードまたは arXiv 取り込み（ファイル保存）のあとに実行できます"
               : undefined
           }
         >
           <Database className="size-4" />
-          {s.busy === "reindex" ? "更新中…" : "インデックスを更新"}
+          {busy === "reindex" ? "更新中…" : "インデックスを更新"}
         </Button>
       </div>
     </div>

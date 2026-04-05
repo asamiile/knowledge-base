@@ -27,22 +27,40 @@ import { downloadJson } from "@/lib/download-json";
 
 /** `/` — 質問（RAG 分析） */
 export default function AskPage() {
-  const s = useKnowledgeStudio();
+  const {
+    error,
+    result,
+    statsRows,
+    question,
+    setQuestion,
+    onAskQuestionCompositionStart,
+    onAskQuestionCompositionEnd,
+    onAskQuestionTextareaKeyDown,
+    busy,
+    askOptionsTriggerRef,
+    askOptionsPanelRef,
+    askOptionsOpen,
+    setAskOptionsOpen,
+    askOptionsCoords,
+    topK,
+    setTopK,
+    submitAnalyze,
+  } = useKnowledgeStudio();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-3xl space-y-4 pb-10">
-          {s.error && (
+          {error && (
             <Alert variant="error">
               <AlertTitle>エラー</AlertTitle>
               <AlertDescription className="font-mono text-xs break-all">
-                {s.error}
+                {error}
               </AlertDescription>
             </Alert>
           )}
 
-          {s.result && (
+          {result && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-heading text-muted-foreground text-sm font-medium">
@@ -54,7 +72,7 @@ export default function AskPage() {
                   onClick={() =>
                     downloadJson(
                       `analyze-${new Date().toISOString().slice(0, 19)}.json`,
-                      s.result,
+                      result,
                     )
                   }
                 >
@@ -75,7 +93,7 @@ export default function AskPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {s.statsRows.map((row) => (
+                      {statsRows.map((row) => (
                         <TableRow key={row.label}>
                           <TableCell className="text-muted-foreground">
                             {row.label}
@@ -93,7 +111,7 @@ export default function AskPage() {
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {s.result.answer}
+                    {result.answer}
                   </p>
                 </CardContent>
               </Card>
@@ -104,7 +122,7 @@ export default function AskPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                    {s.result.key_points.map((k, i) => (
+                    {result.key_points.map((k, i) => (
                       <li key={i}>{k}</li>
                     ))}
                   </ul>
@@ -117,7 +135,7 @@ export default function AskPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3 text-sm">
-                    {s.result.citations.map((c, i) => (
+                    {result.citations.map((c, i) => (
                       <li
                         key={i}
                         className="bg-muted/50 rounded-lg border p-3"
@@ -143,61 +161,50 @@ export default function AskPage() {
           <div className="border-border/80 bg-muted/40 dark:bg-muted/25 flex flex-col rounded-[1.75rem] border shadow-sm">
             <Textarea
               placeholder="知識ベースに質問…"
-              value={s.question}
-              onChange={(e) => s.setQuestion(e.target.value)}
-              onCompositionStart={() => {
-                s.imeComposingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                s.imeComposingRef.current = false;
-              }}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter" || e.shiftKey) return;
-                if (s.imeComposingRef.current || e.nativeEvent.isComposing) {
-                  return;
-                }
-                e.preventDefault();
-                s.submitAnalyze();
-              }}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onCompositionStart={onAskQuestionCompositionStart}
+              onCompositionEnd={onAskQuestionCompositionEnd}
+              onKeyDown={onAskQuestionTextareaKeyDown}
               rows={4}
-              disabled={s.busy !== null}
+              disabled={busy !== null}
               className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-4 pt-3.5 pb-2 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm"
             />
             <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-0.5">
               <div className="shrink-0">
                 <Button
-                  ref={s.askOptionsTriggerRef}
+                  ref={askOptionsTriggerRef}
                   type="button"
                   variant="ghost"
                   size="sm"
-                  disabled={s.busy !== null}
+                  disabled={busy !== null}
                   className="text-muted-foreground hover:text-foreground h-9 gap-2 rounded-full px-3 has-[>svg]:px-2.5"
-                  aria-expanded={s.askOptionsOpen}
+                  aria-expanded={askOptionsOpen}
                   aria-haspopup="dialog"
                   aria-controls="ask-options-panel"
-                  onClick={() => s.setAskOptionsOpen((o) => !o)}
+                  onClick={() => setAskOptionsOpen((o) => !o)}
                 >
                   <SlidersHorizontal className="size-4 opacity-80" />
                   オプション
-                  {s.topK !== 5 && (
+                  {topK !== 5 && (
                     <span className="bg-primary/15 text-primary rounded-full px-1.5 py-px text-[10px] font-medium tabular-nums">
-                      k={s.topK}
+                      k={topK}
                     </span>
                   )}
                 </Button>
-                {s.askOptionsOpen &&
-                  s.askOptionsCoords &&
+                {askOptionsOpen &&
+                  askOptionsCoords &&
                   typeof document !== "undefined" &&
                   createPortal(
                     <div
                       id="ask-options-panel"
-                      ref={s.askOptionsPanelRef}
+                      ref={askOptionsPanelRef}
                       role="dialog"
                       aria-label="検索オプション（top_k）"
                       className="border-border bg-popover text-popover-foreground ring-foreground/10 fixed z-[200] w-80 rounded-lg border p-3 shadow-md ring-1"
                       style={{
-                        left: s.askOptionsCoords.left,
-                        bottom: s.askOptionsCoords.bottom,
+                        left: askOptionsCoords.left,
+                        bottom: askOptionsCoords.bottom,
                       }}
                     >
                       <div className="flex flex-col gap-1.5">
@@ -213,11 +220,11 @@ export default function AskPage() {
                           min={1}
                           max={20}
                           className="h-9 w-full rounded-lg"
-                          value={s.topK}
+                          value={topK}
                           onChange={(e) =>
-                            s.setTopK(Number(e.target.value) || 5)
+                            setTopK(Number(e.target.value) || 5)
                           }
-                          disabled={s.busy !== null}
+                          disabled={busy !== null}
                         />
                       </div>
                     </div>,
@@ -228,11 +235,11 @@ export default function AskPage() {
                 type="button"
                 size="icon-lg"
                 className="size-10 shrink-0 rounded-full"
-                onClick={() => s.submitAnalyze()}
-                disabled={s.busy !== null || !s.question.trim()}
-                aria-label={s.busy === "analyze" ? "分析中" : "分析する"}
+                onClick={() => submitAnalyze()}
+                disabled={busy !== null || !question.trim()}
+                aria-label={busy === "analyze" ? "分析中" : "分析する"}
               >
-                {s.busy === "analyze" ? (
+                {busy === "analyze" ? (
                   <Loader2 className="size-5 animate-spin" aria-hidden />
                 ) : (
                   <ArrowUp className="size-5" strokeWidth={2.25} aria-hidden />

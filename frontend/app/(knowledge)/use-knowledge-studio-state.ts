@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { AnalyzeResponse } from "@/lib/api/analyze";
@@ -438,6 +438,26 @@ export function useKnowledgeStudioState() {
     void onAnalyze();
   }, [busy, question, onAnalyze]);
 
+  const onAskQuestionCompositionStart = useCallback(() => {
+    imeComposingRef.current = true;
+  }, []);
+
+  const onAskQuestionCompositionEnd = useCallback(() => {
+    imeComposingRef.current = false;
+  }, []);
+
+  const onAskQuestionTextareaKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key !== "Enter" || e.shiftKey) return;
+      if (imeComposingRef.current || e.nativeEvent.isComposing) {
+        return;
+      }
+      e.preventDefault();
+      submitAnalyze();
+    },
+    [submitAnalyze],
+  );
+
   const onPickUploadFile = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const f = e.target.files?.[0];
@@ -695,7 +715,9 @@ export function useKnowledgeStudioState() {
     runSavedMaterialSearch,
     patchSavedMaterialSearch,
     deleteSavedMaterialSearch,
-    imeComposingRef,
+    onAskQuestionCompositionStart,
+    onAskQuestionCompositionEnd,
+    onAskQuestionTextareaKeyDown,
     question,
     setQuestion,
     topK,
