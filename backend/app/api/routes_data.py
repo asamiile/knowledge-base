@@ -9,12 +9,13 @@ from app.core.settings import get_data_dir
 from app.db import get_db
 from app.schemas.ingest_api import DataReindexResponse, DataUploadResponse
 from app.services.embeddings import build_embedding_model
+from app.services.extract.pdf_upload import write_pdf_extracted_markdown
 from app.services.ingest import ingest_data_directory
 
 router = APIRouter(prefix="/api/data", tags=["data"])
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-_ALLOWED = {".md", ".txt", ".json"}
+_ALLOWED = {".md", ".txt", ".json", ".pdf"}
 
 
 def _safe_upload_name(name: str) -> str:
@@ -47,7 +48,10 @@ def reindex_data_dir(db: Session = Depends(get_db)) -> DataReindexResponse:
 
 @router.post("/upload", response_model=DataUploadResponse)
 async def upload_source(file: UploadFile = File(...)) -> DataUploadResponse:
-    """アップロードしたファイルを `data/uploads/` に保存（取り込みは `POST /api/data/reindex` または analyze の再インデックス）。"""
+    """アップロードしたファイルを `data/uploads/` に保存（取り込みは `POST /api/data/reindex` 等）。
+
+    PDF の場合は案 A に従い、抽出テキストを `uploads/extracted/{stem}.md` にも書き出す。
+    """
     filename = _safe_upload_name(file.filename or "")
     raw = await file.read()
     if len(raw) > _MAX_UPLOAD_BYTES:
@@ -61,6 +65,15 @@ async def upload_source(file: UploadFile = File(...)) -> DataUploadResponse:
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / filename
     dest.write_bytes(raw)
+    if Path(filename).suffix.lower() == ".pdf":
+        try:
+            write_pdf_extracted_markdown(
+                data_dir, upload_filename=filename, pdf_bytes=raw
+            )
+        except ValueError as e:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     rel = dest.relative_to(data_dir)
     return DataUploadResponse(
         path=str(rel).replace("\\", "/"),

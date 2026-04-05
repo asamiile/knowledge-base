@@ -124,6 +124,41 @@ def test_knowledge_stats(client: TestClient, clean_documents: None) -> None:
     assert body["raw_data_rows"] == 0
 
 
+def test_upload_pdf_writes_extracted_markdown(
+    client: TestClient, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+
+    def fake_extract(_data: bytes) -> str:
+        return "Hello from PDF"
+
+    with patch(
+        "app.services.extract.pdf_upload.extract_plain_text_from_pdf_bytes",
+        side_effect=fake_extract,
+    ):
+        r = client.post(
+            "/api/data/upload",
+            files={"file": ("doc.pdf", b"%PDF-1.4\n", "application/pdf")},
+        )
+    assert r.status_code == 200, r.text
+    md = tmp_path / "uploads" / "extracted" / "doc.md"
+    assert md.is_file()
+    assert "Hello from PDF" in md.read_text(encoding="utf-8")
+    assert "doc.pdf" in md.read_text(encoding="utf-8")
+
+
+def test_upload_pdf_invalid_returns_400(
+    client: TestClient, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("bad.pdf", b"not a pdf", "application/pdf")},
+    )
+    assert r.status_code == 400
+    assert not (tmp_path / "uploads" / "bad.pdf").is_file()
+
+
 def test_import_arxiv_http_error(client: TestClient, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
 

@@ -67,6 +67,67 @@
 
 ---
 
+## バックエンド取り込みパイプラインの拡張計画（リファクタ）
+
+この節は **`backend/`** の責務整理と、**PDF 等の追加**・**別の外部 API 取り込み**を見据えた改修の一次ソースとする（重複ドキュメントは置かず、本節に集約する）。
+
+### backend/ 実装の入り口
+
+| パス（`backend/` 相対） | 概要 |
+|------------------------|------|
+| `app/main.py` | アプリ起動・ルータ登録 |
+| `app/api/routes_data.py` | アップロード・再インデックス |
+| `app/api/routes_imports.py` | 外部ソース取り込み（現状 arXiv） |
+| `app/services/extract/` | ベクトル索引用ファイル列挙・テキスト抽出（`.md`/`.txt`、将来 PDF 等） |
+| `app/services/ingest.py` | `DATA_DIR` → `documents` / `raw_data` |
+| `app/services/source_import/` | 外部ソース別の取り込みロジック |
+
+**テスト（リポジトリルートから、Compose 起動済み想定）:** `docker compose exec backend pytest -q`  
+**環境変数:** `backend/.env`（テンプレは `backend/.env.example`）。
+
+### 現状（把握用）
+
+| 箇所 | 役割 |
+|------|------|
+| `app/api/routes_data.py` | `DATA_DIR` へのアップロード保存（`.md`/`.txt`/`.json`/`.pdf`）。PDF は `uploads/extracted/*.md` にも抽出保存。`POST /api/data/reindex` で全ツリー再取り込み |
+| `app/services/extract/` | ベクトル用パス列挙と生テキスト抽出（現状 `.md`/`.txt`）。`ingest` がここ経由で列挙 |
+| `app/services/ingest.py` | extract で得たテキストをチャンク化して `documents`、`**/*.json` を `raw_data` に保存 |
+| `app/api/routes_imports.py` | 現状は arXiv 専用。`app/services/source_import/arxiv.py` が Atom 取得→Markdown 保存 |
+
+### 目標
+
+1. **「ファイルを置く」と「索引に載せる」を分離**し、形式が増えても `ingest` のコアは「正規化済みテキストのチャンク化」に寄せる。
+2. **外部ソースは `source_import` 配下のモジュール**を増やす形で拡張（ルートは薄く、HTTP エラー映射は共通化）。
+3. **設定**（外部 API の URL・キー・タイムアウト）は `app/core/settings` に集約し、テストで差し替え可能にする。
+
+### テキスト化結果の受け渡し: 案 A と案 B（採用）
+
+| 案 | 内容 | 利点 | 欠点 |
+|----|------|------|------|
+| **A** | 抽出したテキストを **`DATA_DIR` 配下のテキストファイル**（例: `uploads/extracted/*.md`）に書き出し、既存の `ingest` 走査でベクトル化 | 既存 `reindex` フローと整合・デバッグしやすい・段階導入のリスクが低い | 中間ファイルの I/O と掃除ポリシーが要設計 |
+| **B** | 抽出結果をメモリまたは一時ストレージの **`IngestItem` リスト**として `ingest` に渡し、グロブ走査に依存しない | I/O が少ない・パイプラインが一箇所に集約されやすい | `ingest_data_directory` の責務変更が大きく、回帰テストの負荷が増えやすい |
+
+**採用（フェーズ 0 の決定）:** **案 A を既定とする。** まず PDF 等は「保存→抽出→抽出済みテキストを `DATA_DIR` 上に置く→既存 `POST /api/data/reindex`」で全体を動かす。パフォーマンスや重複 I/O が問題になった段階で、案 B への寄せを **別フェーズ**で検討する。
+
+### 実施フェーズ（バックエンド）
+
+| 内部フェーズ | 内容 | 完了の目安 |
+|--------------|------|------------|
+| **0** | 本節のドキュメント化と案 A/B の決定（**この表まで含む**） | 実装着手前に合意 |
+| **1** | `routes_imports` のエラー処理共通化、`source_import` のエクスポート整理 | **完了** — `translate_import_http_errors`・`app/services/source_import/__init__.py` 整理 |
+| **2** | `extract` 層（拡張子→抽出）を追加し、`.md`/`.txt` は現行ロジックへ委譲。`ingest` の列挙をその層経由に | **完了** — `app/services/extract/vector_sources.py` |
+| **3** | アップロードで PDF を許可→抽出→案 A に沿ってテキストを `DATA_DIR` に配置→`reindex` で索引化 | **完了** — `pypdf`・`uploads/extracted/*.md`・フロント `accept` |
+| **4** | 2 つ目の外部 importer（プロトコル確定、必要なら小さな実装） | OpenAPI とフロント型の追加が定型的 |
+| **5** | （任意）案 B への移行、または `ingest` の再設計 | 運用上の必要性が出たとき |
+
+### PDF・外部 API を増やすときの注意
+
+- **PDF:** テキスト埋め込み PDF とスキャン PDF（OCR）は難度が異なる。**初回スコープはテキスト抽出のみ**とし、OCR は別計画とする。
+- **外部 API:** レート制限・利用規約・失敗時のユーザー向けメッセージに加え、本番では **実行証跡**（既存の `saved_search_run_logs` 周りの方針と整合）を意識する。
+- **セキュリティ・コスト:** アップロード上限（現状 10 MiB）と再インデックス時の CPU/メモリ・タイムアウトを、バイナリ形式追加時に再確認する。
+
+---
+
 ## 依存関係のセキュリティ（pnpm / Python）
 
 **方針:** `pnpm add`（または `pnpm install`）/ `pip install` で **新規パッケージを追加する前**に、既知リスクの有無を確認する。追加後もロックファイルベースで監査する。
@@ -173,7 +234,7 @@
 
 ### `POST /api/data/upload`
 
-multipart の `file` 1 件。拡張子 **`.md` / `.txt` / `.json`** のみ、最大 **10 MiB**。保存先は `DATA_DIR/uploads/`（既存同名は上書き）。
+multipart の `file` 1 件。拡張子 **`.md` / `.txt` / `.json` / `.pdf`**、最大 **10 MiB**。保存先は `DATA_DIR/uploads/`（既存同名は上書き）。**PDF** は同時に **`DATA_DIR/uploads/extracted/{元ファイルstem}.md`** に抽出テキストを書き出し、再インデックス時に **`.md` として**ベクトル化の対象になる（案 A）。画像のみの PDF 等で抽出できない場合はプレースホルダ文言のみの `.md` になる。
 
 **Response（JSON）:** `path`（DATA_DIR からの相対パス）, `filename`, `size_bytes`
 
