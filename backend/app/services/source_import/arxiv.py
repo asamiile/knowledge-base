@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import re
+import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +16,11 @@ import httpx
 ARXIV_API = "https://export.arxiv.org/api/query"
 USER_AGENT = "knowledge-base/0.1 (local-dev; https://arxiv.org/help/api)"
 _ATOM = "{http://www.w3.org/2005/Atom}"
+_MAX_PDF_BYTES = 35 * 1024 * 1024
+# 連続 PDF GET の間隔（負荷配慮・秒）
+_PDF_FETCH_INTERVAL_SEC = 2.0
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -68,6 +75,35 @@ def _arxiv_get(params: dict[str, str | int]) -> str:
         return r.text
 
 
+def fetch_arxiv_pdf_bytes(
+    arxiv_id: str,
+    *,
+    max_bytes: int = _MAX_PDF_BYTES,
+) -> bytes:
+    """`https://arxiv.org/pdf/{id}.pdf` を取得する。"""
+    aid = arxiv_id.strip()
+    if not aid:
+        raise ValueError("arXiv ID が空です。")
+    url = f"https://arxiv.org/pdf/{aid}.pdf"
+    with httpx.Client(timeout=120.0, follow_redirects=True) as client:
+        with client.stream(
+            "GET",
+            url,
+            headers={"User-Agent": USER_AGENT},
+        ) as r:
+            r.raise_for_status()
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in r.iter_bytes():
+                total += len(chunk)
+                if total > max_bytes:
+                    raise ValueError(
+                        f"PDF が大きすぎます（{max_bytes // (1024 * 1024)} MiB 上限）。",
+                    )
+                chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _parse_atom_entries(xml_text: str) -> list[_ArxivEntry]:
     root = ET.fromstring(xml_text)
     entries: list[_ArxivEntry] = []
@@ -112,17 +148,32 @@ def _canonical_abs_url(id_url: str) -> str:
     return f"https://arxiv.org/abs/{u.lstrip('/')}"
 
 
-def _entry_to_markdown(entry: _ArxivEntry) -> str:
+def _entry_to_markdown(
+    entry: _ArxivEntry,
+    *,
+    full_text: str | None = None,
+    full_text_error: str | None = None,
+) -> str:
     stem = _entry_file_stem(entry)
     authors = ", ".join(entry.authors) if entry.authors else "(unknown)"
     url = _canonical_abs_url(entry.id_url)
-    return (
+    body = (
         f"# {entry.title}\n\n"
         f"**arXiv:** `{stem}`  \n"
         f"**URL:** {url}  \n"
         f"**Authors:** {authors}\n\n"
         f"## Abstract\n\n{entry.summary}\n"
     )
+    if full_text and full_text.strip():
+        body += f"\n## Full text (from PDF)\n\n{full_text.strip()}\n"
+    elif full_text_error:
+        err = full_text_error.replace("\n", " ").strip()[:800]
+        body += (
+            "\n## Full text (from PDF)\n\n"
+            f"*（PDF の取得・抽出に失敗しました: {err}。"
+            " Abstract のみが索引の主な内容になります。）*\n"
+        )
+    return body
 
 
 def fetch_arxiv_entries(
@@ -162,7 +213,7 @@ def fetch_arxiv_entries(
 
 
 def entry_import_id(entry: _ArxivEntry) -> str:
-    """取り込み API の arxiv_ids に渡せる短い ID。"""
+    """取り込み API の arxiv_ids に渡す短い ID。"""
     norm = _normalize_arxiv_ids([entry.id_url])
     if norm:
         return norm[0]
@@ -174,19 +225,71 @@ def entry_abs_url(entry: _ArxivEntry) -> str:
     return _canonical_abs_url(entry.id_url)
 
 
+def _resolve_full_text_for_entry(
+    entry: _ArxivEntry,
+    *,
+    include_full_text: bool,
+) -> tuple[str | None, str | None]:
+    """(full_text, error_message) — どちらか一方のみ non-None。"""
+    if not include_full_text:
+        return None, None
+    aid = entry_import_id(entry)
+    try:
+        from app.services.extract.pdf_text import extract_plain_text_from_pdf_bytes
+    except ModuleNotFoundError:
+        return (
+            None,
+            "pypdf が未インストールです。pip install -r requirements.txt "
+            "または Docker イメージの再ビルドが必要です。",
+        )
+    try:
+        raw = fetch_arxiv_pdf_bytes(aid)
+        text = extract_plain_text_from_pdf_bytes(raw)
+        if text.strip():
+            return text.strip(), None
+        return (
+            None,
+            "PDF からテキストを抽出できませんでした（画像中心の PDF の可能性）。",
+        )
+    except httpx.HTTPError as e:
+        logger.warning("arXiv PDF fetch failed for %s: %s", aid, e)
+        return None, f"PDF 取得エラー: {e}"
+    except ValueError as e:
+        logger.warning("arXiv PDF extract failed for %s: %s", aid, e)
+        return None, str(e)
+    except Exception as e:  # pragma: no cover
+        logger.exception("arXiv PDF unexpected error for %s", aid)
+        return None, str(e)
+
+
 def write_arxiv_entries_to_data_dir(
     data_dir: Path,
     entries: list[_ArxivEntry],
+    *,
+    include_full_text: bool = False,
 ) -> list[str]:
     """エントリを `imports/arxiv/*.md` に保存。戻り値は DATA_DIR からの相対パス。"""
     data_dir = data_dir.resolve()
     out_dir = data_dir / "imports" / "arxiv"
     out_dir.mkdir(parents=True, exist_ok=True)
     rel_paths: list[str] = []
-    for entry in entries:
+    for i, entry in enumerate(entries):
+        if include_full_text and i > 0:
+            time.sleep(_PDF_FETCH_INTERVAL_SEC)
+        ftext, ferr = _resolve_full_text_for_entry(
+            entry,
+            include_full_text=include_full_text,
+        )
         stem = _entry_file_stem(entry)
         path = out_dir / f"{stem}.md"
-        path.write_text(_entry_to_markdown(entry), encoding="utf-8")
+        path.write_text(
+            _entry_to_markdown(
+                entry,
+                full_text=ftext,
+                full_text_error=ferr,
+            ),
+            encoding="utf-8",
+        )
         rel_paths.append(str(path.relative_to(data_dir)))
     return rel_paths
 
@@ -197,6 +300,7 @@ def import_arxiv_to_data_dir(
     arxiv_ids: list[str],
     search_query: str | None,
     max_results: int,
+    include_full_text: bool = False,
 ) -> list[str]:
     """arXiv から取得し `imports/arxiv/*.md` に保存。戻り値は DATA_DIR からの相対パス。"""
     entries = fetch_arxiv_entries(
@@ -204,4 +308,9 @@ def import_arxiv_to_data_dir(
         search_query=search_query,
         max_results=max_results,
     )
-    return write_arxiv_entries_to_data_dir(data_dir, entries)
+    return write_arxiv_entries_to_data_dir(
+        data_dir,
+        entries,
+        include_full_text=include_full_text,
+    )
+

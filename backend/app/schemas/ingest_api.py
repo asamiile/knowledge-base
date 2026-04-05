@@ -42,6 +42,13 @@ class ArxivImportRequest(BaseModel):
         le=20,
         description="search_query 使用時の最大件数",
     )
+    include_full_text: bool = Field(
+        default=False,
+        description=(
+            "true のとき各エントリについて arxiv.org/pdf の PDF を取得し、"
+            "抽出テキストを .md の「Full text」に追記する。失敗時は Abstract のみ。"
+        ),
+    )
 
     @model_validator(mode="after")
     def _needs_source(self) -> Self:

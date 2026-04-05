@@ -21,10 +21,13 @@ def extract_text_for_vector_ingest(path: Path) -> str:
     """拡張子に応じてベクトル投入用の正規化前テキストを返す。
 
     現状は `.md` / `.txt` のみ（UTF-8、不正バイトは置換）。その他は `ValueError`。
+
+    PostgreSQL の `text` 列には U+0000（NUL）を格納できない。PDF 由来の抽出に混ざるため除去する。
     """
     suf = path.suffix.lower()
     if suf in VECTOR_INDEX_NATIVE_SUFFIXES:
-        return path.read_text(encoding="utf-8", errors="replace")
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        return raw.replace("\x00", "")
     raise ValueError(
         f"vector ingest で未対応の拡張子です: {path.suffix!r} ({path})",
     )

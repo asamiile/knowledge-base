@@ -52,6 +52,8 @@ export async function postArxivImport(body: {
   arxiv_ids?: string[];
   search_query?: string;
   max_results?: number;
+  /** PDF から本文抽出を .md に追記（失敗時は Abstract のみ） */
+  include_full_text?: boolean;
 }): Promise<ArxivImportResponse> {
   return fetchJson<ArxivImportResponse>(`${apiBase()}/api/data/imports/arxiv`, {
     method: "POST",

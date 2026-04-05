@@ -22,6 +22,8 @@ export default function AddSourcesPage() {
     setArxivMax,
     arxivPreviewEntries,
     arxivPreviewSelectedIds,
+    arxivImportIncludeFullText,
+    setArxivImportIncludeFullText,
     fetchArxivPreviewFromAddPage,
     toggleArxivPreviewSelected,
     setArxivPreviewAllSelected,
@@ -49,6 +51,8 @@ export default function AddSourcesPage() {
       setArxivMax={setArxivMax}
       arxivPreviewEntries={arxivPreviewEntries}
       arxivPreviewSelectedIds={arxivPreviewSelectedIds}
+      arxivImportIncludeFullText={arxivImportIncludeFullText}
+      setArxivImportIncludeFullText={setArxivImportIncludeFullText}
       fetchArxivPreviewFromAddPage={fetchArxivPreviewFromAddPage}
       toggleArxivPreviewSelected={toggleArxivPreviewSelected}
       setArxivPreviewAllSelected={setArxivPreviewAllSelected}
