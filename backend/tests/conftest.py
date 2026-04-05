@@ -13,8 +13,8 @@ os.environ.setdefault(
 )
 
 _repo_root = Path(__file__).resolve().parents[2]
-# STEP 3: リポジトリ直下 data/（サンプル Markdown）
-os.environ.setdefault("DATA_DIR", str(_repo_root / "data"))
+# STEP 3: backend/data/（サンプル Markdown・DATA_DIR の既定に合わせる）
+os.environ.setdefault("DATA_DIR", str(_repo_root / "backend" / "data"))
 
 
 @pytest.fixture
@@ -38,6 +38,40 @@ def clean_documents() -> None:
     try:
         session.execute(delete(Document))
         session.execute(delete(RawData))
+        session.commit()
+    finally:
+        session.close()
+    yield
+
+
+@pytest.fixture
+def clean_run_logs() -> None:
+    """saved_search_run_logs を空にする。"""
+    from sqlalchemy import delete
+
+    from app.db.session import SessionLocal
+    from app.models.tables import SavedSearchRunLog
+
+    session = SessionLocal()
+    try:
+        session.execute(delete(SavedSearchRunLog))
+        session.commit()
+    finally:
+        session.close()
+    yield
+
+
+@pytest.fixture
+def clean_saved_searches() -> None:
+    """saved_search_conditions を空にする。"""
+    from sqlalchemy import delete
+
+    from app.db.session import SessionLocal
+    from app.models.tables import SavedSearch
+
+    session = SessionLocal()
+    try:
+        session.execute(delete(SavedSearch))
         session.commit()
     finally:
         session.close()

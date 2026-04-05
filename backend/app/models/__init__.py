@@ -1,3 +1,3 @@
-from app.models.tables import Document, RawData
+from app.models.tables import Document, RawData, SavedSearch, SavedSearchRunLog
 
-__all__ = ["Document", "RawData"]
+__all__ = ["Document", "RawData", "SavedSearch", "SavedSearchRunLog"]

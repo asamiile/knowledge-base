@@ -2,6 +2,10 @@
 
 このファイルが **単一の一次ソース**です。以降の実装は「該当 STEP の節だけを開いて実装する」運用とする。
 
+### ドキュメント編集（エージェント向け）
+
+- **README.md** — ユーザーから **明示的に依頼されたときだけ** 編集する。トラブルシュートや補足を「気軽に」追記しない。説明が要る場合は **会話で答える**か、**本ファイルの該当節**に最小限で書く。
+
 ---
 
 ## プロジェクト目的と設計思想
@@ -11,6 +15,13 @@
   - **装飾最小:** UI と説明は必要十分に留める。
   - **前処理の自動化:** 取り込み〜正規化を手作業に頼りすぎない構成を目指す。
   - **再利用可能な JSON 出力:** API 契約とスキーマを明確にし、機械可読な結果を一級市民として扱う。
+  - **ユーザーストーリー起点:** ユーザーストーリーに基づいて、**必要な文言・デザイン・機能のみ**を実装する（ストーリーに紐づかない装飾・説明・API・画面は追加しない）。
+
+### UI（エージェントがフロントを触るとき）
+
+- **文章ではなく UI デザインで表現する:** 操作の意味・状態・つながりは、**長文の説明より**レイアウト・情報の階層・コンポーネントの選び方（カード／タブ／リスト、ラベルと入力の対応、バッジ、区切り、アイコン、余白とグリッド）で示す。
+- **説明文は少なく:** 画面内のヘルプ調の段落を増やさない。どうしても補足が要るときは **短い 1 行・placeholder・項目名** に留め、画面を「読み物」にしない。
+- **視覚で説明する:** 選択肢の違い・必須／任意・件数・モード切替などは、**タイポグラフィ・色の抑揚・コントロールの並び・空／詰まり**で区別し、同じ内容を文章で繰り返さない。
 
 ---
 
@@ -18,16 +29,16 @@
 
 | 領域 | スタック |
 |------|----------|
-| フロント | Next.js + TypeScript（App Router 推奨）、パッケージマネージャは **npm**（`package-lock.json`） |
+| フロント | Next.js + TypeScript（App Router 推奨） |
+| Node（ワークスペース） | **pnpm workspace**（ルートの `pnpm-lock.yaml`）— `frontend/` と `backend/` の Drizzle 用 Node 依存をまとめる |
 | バックエンド | FastAPI + uvicorn |
-| バックエンド（Drizzle のみ） | **pnpm**（`pnpm-lock.yaml`）— Drizzle Studio / `drizzle-kit` 用の Node 依存 |
 | データベース | PostgreSQL + pgvector（ローカルは `ankane/pgvector` イメージ） |
 
 ### ディレクトリ境界
 
 - `frontend/` — Next.js のみ。バックエンド実装・DB スキーマは **触らない**（API 契約に沿ったクライアント呼び出しのみ）。
 - `backend/` — FastAPI・DB アクセス・RAG/LLM ロジック。**Next のページ構成やコンポーネントは触らない**。
-- リポジトリ直下 — `docker-compose.yml`、`AGENTS.md` など共有インフラ・資料。
+- リポジトリ直下 — `docker-compose.yml`、`pnpm-workspace.yaml`、`package.json`（ワークスペースルート）、`AGENTS.md` など共有インフラ・資料。
 
 共有するのは **環境変数名・API の入出力契約** に限定し、相手側の設定ファイルを勝手に書き換えない。
 
@@ -38,7 +49,7 @@
 - **フロント:** ローカル秘密は `frontend/.env.local`。公開してよい値は `NEXT_PUBLIC_*` のみ。
 - **バックエンド:** `backend/.env`（Compose では同ファイルを `.env` としてマウントする想定でよい）。
 - **テンプレート:** `frontend/.env.example` / `backend/.env.example` をリポジトリに含め、実値は含めない。
-- **Git:** `frontend/.gitignore` / `backend/.gitignore`（またはルート統合）で `.env`、`.env.local`、`.venv`、`node_modules` などを必ず除外する。
+- **Git:** ルートの `.gitignore` で `.env`、`.env.local`、`.venv`、`node_modules` などを必ず除外する。
 
 ---
 
@@ -50,13 +61,15 @@
 | `backend` | 8000 | `DATABASE_URL` は `.env` から読む。DB 起動待ちは `depends_on` に加え、簡易 wait スクリプトまたは **初回接続リトライ**で吸収する方針でよい |
 | `db` | 5432 | `image: ankane/pgvector` |
 
-各パッケージに `.dockerignore` を置き、開発用 Dockerfile は **ボリュームマウント + ホットリロード**（フロント: `npm run dev`、バックエンド: `uvicorn --reload`）を前提とする。
+各パッケージに `.dockerignore` を置く（フロントの Docker ビルドは **リポジトリルートを context** にし、ルートに `.dockerignore` も置く）。開発用 Dockerfile は **ボリュームマウント + ホットリロード**（フロント: `pnpm run dev`、バックエンド: compose の `command` で `uvicorn --reload`）を前提とする。
+
+**推奨する本番永続化（ファイル）:** アップロード先はこれまでどおり **`DATA_DIR/uploads/`**（コンテナ内は `DATA_DIR=/app/data`）。DB へバイナリ直保存はせず、**Docker の命名ボリュームで `/app/data` を永続化**する。具体的にはルートの **`docker-compose.prod.yml`**（`knowledge_data` → `/app/data`）を参照。再インデックス後のベクトルチャンクは既存どおり **`documents` / `raw_data`** に載る。
 
 ---
 
-## 依存関係のセキュリティ（npm / Python）
+## 依存関係のセキュリティ（pnpm / Python）
 
-**方針:** `npm install` / `pip install` で **新規パッケージを追加する前**に、既知リスクの有無を確認する。追加後もロックファイルベースで監査する。
+**方針:** `pnpm add`（または `pnpm install`）/ `pip install` で **新規パッケージを追加する前**に、既知リスクの有無を確認する。追加後もロックファイルベースで監査する。
 
 **高危険度の脆弱性:** 放置せず、更新・代替・例外理由の記録のいずれかで扱う。例外を選ぶ場合は理由を本ファイルまたは PR 説明に残す。
 
@@ -65,15 +78,10 @@
 - **供給元の確認:** 正しいパッケージ名か（タイポスクワッティング回避）、メンテ状況・星・最近のコミット／リリースを目視。
 - **レジストリ情報:** npm ならパッケージページと公開者；PyPI ならプロジェクトリンク・Maintainer を確認。
 
-### npm（`frontend/`）
-
-- **導入前:** パッケージ単体で `npm view <pkg>`（説明・最新版・依存の概要）。必要なら https://github.com/advisories やパッケージの Security タブを確認。
-- **導入後:** `package-lock.json` をコミットし、`npm audit` を実行。
-
-### pnpm（`backend/` — Drizzle Studio / drizzle-kit のみ）
+### pnpm（ルート — `frontend/` と `backend/`）
 
 - **導入前:** 上記「新規パッケージを入れる前」と同様に npm レジストリ上の供給元を確認（`pnpm view <pkg>` でも可）。
-- **導入後:** `pnpm-lock.yaml` をコミットし、`pnpm audit` を実行。コマンドは `backend/` で `pnpm install` / `pnpm run db:studio` 等（`package.json` の `packageManager` を参照）。
+- **導入後:** **ルートの** `pnpm-lock.yaml` をコミットし、ルートで `pnpm audit` を実行。依存の追加はルートで `pnpm add <pkg> --filter frontend`（または `--filter knowledge-base-backend-drizzle`）など。**日常の起動・フロント開発は Docker Compose を前提**とし、コンテナ起動時に `pnpm install` が走る。ホストで直接触る場合のみ、ルートの `package.json`（`pnpm dev:frontend` / `pnpm run db:studio` 等）を参照する。
 
 ### Python（`backend/` FastAPI）
 
@@ -96,11 +104,17 @@
 
 | STEP | 状態 | メモ |
 |------|------|------|
-| STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。npm audit 0 件。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
+| STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。pnpm audit / pip-audit を適宜。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
-| STEP 4 | 未着手 | `/api/analyze` 契約に依存 |
+| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。5 画面（質問する / 資料を追加 / 資料の検索 / 定期実行 / **実行ログ** `/saved/logs`）。`saved_search_conditions` CRUD、`saved_search_run_logs` の参照用 API（一覧・詳細・ジョブ向け `POST`）。ブラウザ内の定期は MVP、本番はサーバー側ジョブ想定（下記「予定仕様」） |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
+
+### 定期実行・取り込み（予定仕様）
+
+- **自動取り込みまで行う場合:** 何が DB・ストレージに入ったかの **証跡がほぼ必須**（監査・再現・説明のため）。フロントは **`/saved/logs`** で `saved_search_run_logs` を一覧・本文表示する。
+- **通知:** 本番の定期実行では、**成功・失敗を Discord 等へ通知**する予定（サーバー常駐ジョブとセット）。
+- **API（ジョブが行を足す）:** `GET /api/knowledge/saved-search-run-logs`、`GET /api/knowledge/saved-search-run-logs/{id}`、`POST /api/knowledge/saved-search-run-logs`（`title_snapshot`・`status`・`imported_content`・`error_message` 等）。認可は現状なし（単一テナント前提）。
 
 **STEP 1 完了定義**
 
@@ -120,8 +134,8 @@
 **STEP 3 完了定義**
 
 - 環境変数 `GOOGLE_API_KEY` で Gemini 埋め込み・生成を呼び出せる。
-- `DATA_DIR`（Compose ではリポジトリ直下 `data/` を `backend` の `/app/data` にマウント）の `.md` / `.txt` をチャンク化し、`documents` にベクトル付きで保存できる。`.json` は `raw_data` に格納できる。
-- `POST /api/analyze` が下記「HTTP API 契約」の JSON 形式で応答する。`reindex_sources: true` で `data/` の再取り込み（既存 `documents` / `raw_data` の置換）ができる。
+- `DATA_DIR`（既定は **`backend/data/`**。Compose では `./backend/data` を `/app/data` にマウント）の `.md` / `.txt` をチャンク化し、`documents` にベクトル付きで保存できる。`.json` は `raw_data` に格納できる。
+- `POST /api/analyze` が下記「HTTP API 契約」の JSON 形式で応答する。`reindex_sources: true` で `DATA_DIR` の再取り込み（既存 `documents` / `raw_data` の置換）ができる。
 - **STEP 4 着手条件:** 本表で STEP 3 を「完了」に更新したこと。
 
 ---
@@ -157,6 +171,74 @@
 - `GEMINI_LLM_MODEL` — 既定 `gemini-2.5-flash`（2.0 Flash は新規利用向けに終了）。
 - `GEMINI_EMBEDDING_MODEL` — 既定 `gemini-embedding-001`（768 次元は `EmbedContentConfig` で指定。`documents.embedding` と一致）。
 
+### `POST /api/data/upload`
+
+multipart の `file` 1 件。拡張子 **`.md` / `.txt` / `.json`** のみ、最大 **10 MiB**。保存先は `DATA_DIR/uploads/`（既存同名は上書き）。
+
+**Response（JSON）:** `path`（DATA_DIR からの相対パス）, `filename`, `size_bytes`
+
+**ステータスコード:** `400`（不正な拡張子・ファイル名）, `413`（サイズ超過）
+
+取り込み（チャンク化・embedding）は **`POST /api/data/reindex`**（LLM なし）または **`POST /api/analyze` の `reindex_sources: true`** で実行（いずれも `DATA_DIR` ツリー全体を対象）。
+
+### `POST /api/data/reindex`
+
+本文なし。`DATA_DIR` を再取り込みし、既存の `documents` / `raw_data` を置き換える。
+
+**Response（JSON）:** `document_chunks`, `raw_data_rows`（`GET /api/knowledge/stats` と同名）
+
+**ステータスコード:** `503`（`GOOGLE_API_KEY` 未設定など embedding 初期化失敗）
+
+### `POST /api/data/imports/arxiv`
+
+arXiv Atom API からメタデータ・要約を取得し（**API キー不要**）、`DATA_DIR/imports/arxiv/*.md` に保存する。オープンデータ連携の第 1 弾；同型のエンドポイントを `app/api/routes_imports.py` / `app/services/source_import/` に追加していく想定。
+
+**Request（JSON）**
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `arxiv_ids` | string[] | いいえ | ID または `https://arxiv.org/abs/...` 形式（複数可。`arxiv_ids` と `search_query` のどちらか一方以上） |
+| `search_query` | string | いいえ | 全文検索クエリ（内部では `all:...`） |
+| `max_results` | int | いいえ | 検索時の最大件数（1〜20、既定 5） |
+
+**Response（JSON）:** `written`（相対パスの配列）, `entry_count`
+
+**ステータスコード:** `422`（入力検証）, `502`（arXiv HTTP / Atom 解析エラー）
+
+### `GET /api/knowledge/stats`
+
+インデックス概要（フロントの質問タブ用）。
+
+**Response（JSON）:** `document_chunks`（embedding 付き `documents` 件数）, `raw_data_rows`
+
+### `POST /api/knowledge/search`
+
+インデックス済み `documents` への **ベクトル検索のみ**（LLM なし）。`analyze` と同様に Gemini embedding でクエリを埋め込み、cosine distance 昇順で `top_k` 件返す。
+
+**Request（JSON）:** `query`（1〜4000 文字）, `top_k`（1〜20、既定 5）
+
+**Response（JSON）:** `hits`: `{ document_id, text, distance }[]`（`distance` は小さいほど類似。`text` は長文は切り詰めあり）
+
+**ステータスコード:** `400`（チャンク 0 件など）, `503`（`GOOGLE_API_KEY` 未設定）
+
+### `GET /api/knowledge/saved-searches`
+
+保存済みローカル検索条件の一覧（作成日昇順）。
+
+**Response（JSON）:** 要素 `{ id, name, query, search_target, top_k, interval_minutes, schedule_enabled, last_run_at, created_at, updated_at }[]`（`search_target`: `knowledge` | `arxiv`）
+
+### `POST /api/knowledge/saved-searches`
+
+**Request（JSON）:** `name`, `query`（必須）, `search_target`（`knowledge` | `arxiv`、既定 `knowledge`）, `top_k`（1〜20）, `interval_minutes`（≥0）, `schedule_enabled`。間隔 0 のとき `schedule_enabled` は false として保存。
+
+### `PATCH /api/knowledge/saved-searches/{id}`
+
+部分更新。`name`, `query`, `search_target`, `top_k`, `interval_minutes`, `schedule_enabled`, `last_run_at`（ISO 8601 または null）を指定可能。
+
+### `DELETE /api/knowledge/saved-searches/{id}`
+
+**ステータスコード:** `204`（成功）, `404`（該当なし）
+
 ---
 
 ## STEP 定義と実装プロンプト（Cursor / エージェント向け）
@@ -167,7 +249,7 @@
 
 **定義**
 
-- `frontend/` — `create-next-app` 相当（TypeScript、App Router 推奨）。開発用 Dockerfile（ボリュームマウント + `npm run dev`）。
+- `frontend/` — `create-next-app` 相当（TypeScript、App Router 推奨）。開発用 Dockerfile（ルート context、ボリュームマウント + `pnpm run dev`）。
 - `backend/` — FastAPI + uvicorn。開発用 Dockerfile（`--reload`、ソースマウント）。
 - リポジトリ直下: `docker-compose.yml`（3 サービス）、各パッケージ用 `.dockerignore`。
 - `frontend/.env.example` — `NEXT_PUBLIC_API_URL=http://localhost:8000` 等。
@@ -178,12 +260,12 @@
 ```
 AGENTS.md の STEP 1 に従い、knowledge-base リポジトリにモノレポと Docker 基盤を実装してください。
 
-- frontend/: Next.js + TypeScript（App Router）、開発用 Dockerfile（ソースボリューム + npm run dev）、.dockerignore、.env.example（NEXT_PUBLIC_API_URL 等）
+- frontend/: Next.js + TypeScript（App Router）、開発用 Dockerfile（ルート volume + pnpm run dev）、.dockerignore、.env.example（NEXT_PUBLIC_API_URL 等）
 - backend/: FastAPI + uvicorn、開発用 Dockerfile（--reload、ソースボリューム）、.dockerignore、.env.example（Compose 用 DATABASE_URL。Supabase はプレースホルダのみ）
 - ルート: docker-compose.yml で frontend:3000、backend:8000、db:5432（image: ankane/pgvector）。環境変数と depends_on を接続し、DB 待ちは wait またはバックエンドの接続リトライでよい
 - .gitignore で .env / .env.local / .venv / node_modules 等を除外
 - バックエンドに GET /health のような最小ヘルスエンドポイントを追加してよい
-- スキャフォールド直後、frontend で npm audit、backend で pip-audit（または同等）を 1 回実行し結果を把握すること（AGENTS.md の依存関係セキュリティに従う）
+- スキャフォールド直後、リポジトリルートで `pnpm audit`、backend で pip-audit（または同等）を 1 回実行し結果を把握すること（AGENTS.md の依存関係セキュリティに従う）
 
 計画ファイルは編集しないこと。完了したら AGENTS.md の「現在のステータス」で STEP 1 を完了に更新すること。
 ```
@@ -345,7 +427,7 @@ cd backend && pytest -q
 
 2. API を起動する（例: `docker compose up -d` で backend まで、または `backend` で `uvicorn`）。
 
-3. **`data/`** に `.md` または `.txt` がある（未配置なら `data/sample.md` をそのまま使える）。Compose の backend は通常 **`./data` → `/app/data`**。ホストだけで uvicorn する場合は `backend/.env` の **`DATA_DIR`** を、リポジトリ直下の `data/` の**絶対パス**などに合わせる。
+3. **`backend/data/`** に `.md` または `.txt` がある（未配置なら `backend/data/sample.md` をそのまま使える）。Compose の backend は **`./backend/data` → `/app/data`**。ホストだけで uvicorn する場合は `backend/.env` の **`DATA_DIR`** を **`backend/data`** の絶対パス、または `backend` で作業中なら `./data` に合わせる。
 
 4. ターミナルで:
 
@@ -356,7 +438,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 ```
 
 5. HTTP **200** で、返却 JSON に **`answer` / `key_points` / `citations`** があれば（2）は完了。  
-   **503** → キーが読めていない（`.env` の場所・API 再起動を確認）。**400** → `DATA_DIR` または `data/` 内のテキストを確認。
+   **503** → キーが読めていない（`.env` の場所・API 再起動を確認）。**400** → `DATA_DIR`（`backend/data/`）内のテキストを確認。
 
 ---
 
@@ -373,7 +455,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 **B（実 API・任意）**
 
 1. `backend/.env` に `GOOGLE_API_KEY=...`。
-2. `data/` に `.md` / `.txt` を配置。Compose 以外で動かす場合は `DATA_DIR` がその `data/` を指すこと。
+2. `backend/data/` に `.md` / `.txt` を配置。Compose 以外で動かす場合は `DATA_DIR` がそのディレクトリを指すこと（例: `DATA_DIR=./data`）。
 3. API 起動後、例（初回は取り込みを確実にするなら `reindex_sources: true`）:
 
 ```bash
@@ -384,7 +466,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 
 - **200** かつ上記 JSON フィールドがあれば **B 達成**。
 - **503** → `GOOGLE_API_KEY` 未読込（`.env`・再起動を確認）。
-- **400** → `data/` にテキストが無い、または `DATA_DIR` がズレている。
+- **400** → `backend/data/` にテキストが無い、または `DATA_DIR` がズレている。
 
 **4. 目安の要約** — 上記の **「結論：どこまでやれば良いか」** の表と **チェックリスト** を参照。
 
@@ -394,6 +476,7 @@ curl -s -X POST http://localhost:8000/api/analyze \
 
 - アップロード、質問、結果表示。
 - JSON ダウンロード、数値の簡易テーブル（shadcn/ui またはプレーン Tailwind）。
+- 外部取り込み（**arXiv** ほか）：バックエンドは `app/services/source_import/` と `POST /api/data/imports/*` で段階的に拡張。フロントは必要に応じてフォームを追加。
 
 **プロンプト（実装用・原文相当）**
 
@@ -425,7 +508,7 @@ AGENTS.md に従い、STEP 5 を実装してください。
 - バックエンドを PORT 環境変数に対応させ、本番用の最適化 Dockerfile を用意
 - フロントは apiClient 等で API ベース URL を本番/開発で切り替え
 - .github/workflows/deploy.yml に Cloud Run デプロイの雛形を追加（秘密値は GitHub Secrets 想定でプレースホルダ）
-- 任意: npm audit / pip-audit を CI に組み込む
+- 任意: pnpm audit / pip-audit を CI に組み込む
 
 完了後、AGENTS.md のステータス表を更新する。
 ```

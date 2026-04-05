@@ -1,16 +1,19 @@
+# 開発用: compose でリポジトリルート → /workspace、frontend の node_modules / .next は named volume。
+# イメージ内のインストールはシード用。実際の依存は compose の command でルートから pnpm install。
 FROM node:20-alpine
 
-WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
-COPY package.json package-lock.json ./
-RUN npm ci
+WORKDIR /workspace
 
-COPY docker-entrypoint.dev.sh /docker-entrypoint.dev.sh
-RUN chmod +x /docker-entrypoint.dev.sh
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
+COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
 
-COPY . .
+RUN pnpm install --frozen-lockfile
+
+WORKDIR /workspace/frontend
 
 EXPOSE 3000
 
-ENTRYPOINT ["/docker-entrypoint.dev.sh"]
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]

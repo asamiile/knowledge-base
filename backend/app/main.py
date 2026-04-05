@@ -9,10 +9,14 @@ load_dotenv(_backend_dir / ".env")
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.routes_analyze import router as analyze_router
+from app.api.routes_data import router as data_router
+from app.api.routes_imports import router as imports_router
+from app.api.routes_knowledge import router as knowledge_router
 from app.db import get_db, init_db
 
 
@@ -28,6 +32,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+def custom_openapi() -> dict:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+    )
+    for path_item in schema.get("paths", {}).values():
+        for op in path_item.values():
+            if not isinstance(op, dict):
+                continue
+            ok = op.get("responses", {}).get("200")
+            if isinstance(ok, dict) and ok.get("description") == "Successful Response":
+                ok["description"] = "Success"
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -37,6 +63,9 @@ app.add_middleware(
 )
 
 app.include_router(analyze_router)
+app.include_router(data_router)
+app.include_router(imports_router)
+app.include_router(knowledge_router)
 
 
 @app.get("/")

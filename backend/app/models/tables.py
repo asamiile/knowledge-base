@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -30,3 +34,85 @@ class RawData(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(String(1024), nullable=False)
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
+class SavedSearch(Base):
+    """インデックス検索または arXiv 検索の保存条件（単一テナント・認可なし）。"""
+
+    __tablename__ = "saved_search_conditions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    name: Mapped[str] = mapped_column(String(512), nullable=False)
+    # knowledge=ローカル資料への意味検索全文
+    # arxiv=キーワード検索用（論文 ID は arxiv_ids）。/add と同様に id_list と search_query を合成
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    arxiv_ids: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
+    search_target: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="knowledge",
+    )
+    top_k: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    schedule_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+    last_run_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class SavedSearchRunLog(Base):
+    """定期実行（サーバー側ジョブ想定）の 1 回ぶんの結果・取り込み証跡。"""
+
+    __tablename__ = "saved_search_run_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    saved_search_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("saved_search_conditions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    title_snapshot: Mapped[str] = mapped_column(
+        String(512),
+        nullable=False,
+        default="Untitled",
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imported_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imported_payload: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )

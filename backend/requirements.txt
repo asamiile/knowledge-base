@@ -1,5 +1,6 @@
 # Pinned for reproducibility; run pip-audit after updates (see AGENTS.md)
 fastapi==0.135.3
+python-multipart==0.0.20
 uvicorn[standard]==0.32.1
 python-dotenv==1.2.2
 sqlalchemy==2.0.36
