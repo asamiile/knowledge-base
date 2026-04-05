@@ -83,10 +83,10 @@ export function ArxivQueryTabs({
               id={idsInputId}
               value={arxivIds}
               onChange={(e) => onArxivIdsChange(e.target.value)}
-              rows={2}
-              placeholder="2301.00001 または https://arxiv.org/abs/...、複数入力可"
+              rows={5}
+              placeholder={"0000.00000\nhttps://arxiv.org/abs/0000.00000"}
               disabled={disabled}
-              className="rounded-xl"
+              className="rounded-xl field-sizing-fixed"
             />
           </div>
           {paperIdTabFooter}
