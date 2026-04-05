@@ -17,6 +17,12 @@
   - **再利用可能な JSON 出力:** API 契約とスキーマを明確にし、機械可読な結果を一級市民として扱う。
   - **ユーザーストーリー起点:** ユーザーストーリーに基づいて、**必要な文言・デザイン・機能のみ**を実装する（ストーリーに紐づかない装飾・説明・API・画面は追加しない）。
 
+### UI（エージェントがフロントを触るとき）
+
+- **文章ではなく UI デザインで表現する:** 操作の意味・状態・つながりは、**長文の説明より**レイアウト・情報の階層・コンポーネントの選び方（カード／タブ／リスト、ラベルと入力の対応、バッジ、区切り、アイコン、余白とグリッド）で示す。
+- **説明文は少なく:** 画面内のヘルプ調の段落を増やさない。どうしても補足が要るときは **短い 1 行・placeholder・項目名** に留め、画面を「読み物」にしない。
+- **視覚で説明する:** 選択肢の違い・必須／任意・件数・モード切替などは、**タイポグラフィ・色の抑揚・コントロールの並び・空／詰まり**で区別し、同じ内容を文章で繰り返さない。
+
 ---
 
 ## 技術スタックとモノレポ構成
@@ -101,8 +107,14 @@
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。pnpm audit / pip-audit を適宜。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
-| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。4 画面（質問する / 資料を追加 / 資料の検索 / 検索条件の保存）。`GET /api/knowledge/stats`・`POST /api/knowledge/search`・`saved_material_searches` の CRUD（`GET|POST|PATCH|DELETE /api/knowledge/saved-searches`）。保存条件は PostgreSQL。ブラウザ内の定期は MVP、本番の定期は cron 等から `POST /api/knowledge/search` 想定 |
+| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。5 画面（質問する / 資料を追加 / 資料の検索 / 定期実行 / **実行ログ** `/saved/logs`）。`saved_search_conditions` CRUD、`saved_search_run_logs` の参照用 API（一覧・詳細・ジョブ向け `POST`）。ブラウザ内の定期は MVP、本番はサーバー側ジョブ想定（下記「予定仕様」） |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
+
+### 定期実行・取り込み（予定仕様）
+
+- **自動取り込みまで行う場合:** 何が DB・ストレージに入ったかの **証跡がほぼ必須**（監査・再現・説明のため）。フロントは **`/saved/logs`** で `saved_search_run_logs` を一覧・本文表示する。
+- **通知:** 本番の定期実行では、**成功・失敗を Discord 等へ通知**する予定（サーバー常駐ジョブとセット）。
+- **API（ジョブが行を足す）:** `GET /api/knowledge/saved-search-run-logs`、`GET /api/knowledge/saved-search-run-logs/{id}`、`POST /api/knowledge/saved-search-run-logs`（`title_snapshot`・`status`・`imported_content`・`error_message` 等）。認可は現状なし（単一テナント前提）。
 
 **STEP 1 完了定義**
 
@@ -213,15 +225,15 @@ arXiv Atom API からメタデータ・要約を取得し（**API キー不要**
 
 保存済みローカル検索条件の一覧（作成日昇順）。
 
-**Response（JSON）:** 要素 `{ id, name, query, top_k, interval_minutes, schedule_enabled, last_run_at, created_at, updated_at }[]`
+**Response（JSON）:** 要素 `{ id, name, query, search_target, top_k, interval_minutes, schedule_enabled, last_run_at, created_at, updated_at }[]`（`search_target`: `knowledge` | `arxiv`）
 
 ### `POST /api/knowledge/saved-searches`
 
-**Request（JSON）:** `name`, `query`（必須）, `top_k`（1〜20）, `interval_minutes`（≥0）, `schedule_enabled`。間隔 0 のとき `schedule_enabled` は false として保存。
+**Request（JSON）:** `name`, `query`（必須）, `search_target`（`knowledge` | `arxiv`、既定 `knowledge`）, `top_k`（1〜20）, `interval_minutes`（≥0）, `schedule_enabled`。間隔 0 のとき `schedule_enabled` は false として保存。
 
 ### `PATCH /api/knowledge/saved-searches/{id}`
 
-部分更新。`last_run_at`（ISO 8601 または null）で最終実行時刻を更新可能。
+部分更新。`name`, `query`, `search_target`, `top_k`, `interval_minutes`, `schedule_enabled`, `last_run_at`（ISO 8601 または null）を指定可能。
 
 ### `DELETE /api/knowledge/saved-searches/{id}`
 

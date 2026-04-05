@@ -1,1 +1,6 @@
-export type KnowledgeSection = "ask" | "sources" | "search" | "saved";
+export type KnowledgeSection =
+  | "ask"
+  | "sources"
+  | "search"
+  | "saved"
+  | "savedLogs";

@@ -5,15 +5,12 @@ import { BookOpen, Database, Upload } from "lucide-react";
 
 import { AddSourceArxivPreviewCard } from "../components/add-source-arxiv-preview-card";
 import { AddSourceFilePreviewCard } from "../components/add-source-file-preview-card";
+import { ArxivQueryTabs } from "../components/arxiv-query-tabs";
 import { useKnowledgeStudio } from "../knowledge-studio-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 
 type AddSourceMainTab = "upload" | "arxiv";
 
@@ -176,49 +173,31 @@ export default function AddSourcesPage() {
               </TabsContent>
 
               <TabsContent value="arxiv" className="flex flex-col gap-4">
-                <p className="text-muted-foreground text-xs">
-                  <a
-                    href="https://arxiv.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-foreground underline underline-offset-2 hover:text-primary"
-                  >
-                    arXiv
-                  </a>
-                  の論文IDまたはキーワードで取得します。取得方法は下のタブで切り替えます
-                </p>
-                <Tabs defaultValue="id" className="gap-4">
-                  <TabsList className="inline-flex w-fit shrink-0 flex-nowrap justify-start self-start">
-                    <TabsTrigger value="id" className="flex-none px-3">
-                      論文ID
-                    </TabsTrigger>
-                    <TabsTrigger value="keyword" className="flex-none px-3">
-                      キーワード
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="id" className="flex flex-col gap-4">
-                    <div className="grid gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Label
-                          htmlFor="arxiv-paper-ids"
-                          className="text-foreground text-sm font-medium"
-                        >
-                          論文ID
-                        </Label>
-                        <Badge variant="secondary" className="font-normal">
-                          必須
-                        </Badge>
-                      </div>
-                      <Textarea
-                        id="arxiv-paper-ids"
-                        value={searchArxivIds}
-                        onChange={(e) => setSearchArxivIds(e.target.value)}
-                        rows={2}
-                        placeholder="2301.00001 または https://arxiv.org/abs/...、複数入力可"
-                        disabled={busyAny}
-                        className="rounded-xl"
-                      />
-                    </div>
+                <ArxivQueryTabs
+                  intro={
+                    <p>
+                      <a
+                        href="https://arxiv.org/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground underline underline-offset-2 hover:text-primary"
+                      >
+                        arXiv
+                      </a>
+                      の論文IDまたはキーワードを入力します。
+                    </p>
+                  }
+                  arxivIds={searchArxivIds}
+                  onArxivIdsChange={setSearchArxivIds}
+                  keyword={arxivSearch}
+                  onKeywordChange={setArxivSearch}
+                  disabled={busyAny}
+                  idsInputId="arxiv-paper-ids"
+                  keywordInputId="arxiv-keyword"
+                  maxResults={arxivMax}
+                  onMaxResultsChange={setArxivMax}
+                  maxResultsInputId="arxiv-max-results"
+                  paperIdTabFooter={
                     <Button
                       variant="secondary"
                       disabled={busyAny}
@@ -228,61 +207,21 @@ export default function AddSourcesPage() {
                     >
                       {busyArxivPreview ? "取得中…" : "一覧を取得"}
                     </Button>
-                  </TabsContent>
-                  <TabsContent value="keyword" className="flex flex-col gap-4">
-                    <div className="grid gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Label
-                          htmlFor="arxiv-keyword"
-                          className="text-foreground text-sm font-medium"
-                        >
-                          キーワード
-                        </Label>
-                        <Badge variant="secondary" className="font-normal">
-                          必須
-                        </Badge>
-                      </div>
-                      <Input
-                        id="arxiv-keyword"
-                        value={arxivSearch}
-                        onChange={(e) => setArxivSearch(e.target.value)}
-                        placeholder="例: video diffusion"
-                        disabled={busyAny}
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-3">
-                      <div className="grid w-fit gap-1">
-                        <Label htmlFor="arxiv-max-results" className="text-xs">
-                          一度に取得する件数（1〜20）
-                        </Label>
-                        <Input
-                          id="arxiv-max-results"
-                          type="number"
-                          min={1}
-                          max={20}
-                          className="w-24 rounded-xl"
-                          value={arxivMax}
-                          onChange={(e) =>
-                            setArxivMax(Number(e.target.value) || 5)
-                          }
-                          disabled={busyAny}
-                        />
-                      </div>
-                      <Button
-                        variant="secondary"
-                        disabled={busyAny}
-                        onClick={() =>
-                          void fetchArxivPreviewFromAddPage("keyword")
-                        }
-                        className="w-fit rounded-xl"
-                        type="button"
-                      >
-                        {busyArxivPreview ? "取得中…" : "一覧を取得"}
-                      </Button>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                  }
+                  keywordTabFooter={
+                    <Button
+                      variant="secondary"
+                      disabled={busyAny}
+                      onClick={() =>
+                        void fetchArxivPreviewFromAddPage("keyword")
+                      }
+                      className="w-fit rounded-xl"
+                      type="button"
+                    >
+                      {busyArxivPreview ? "取得中…" : "一覧を取得"}
+                    </Button>
+                  }
+                />
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -4,13 +4,17 @@ const STORAGE_KEY = "knowledge-base:saved-material-searches:v1";
 export const SAVED_SEARCHES_MIGRATED_TO_DB_KEY =
   "knowledge-base:saved-searches-migrated-to-db:v1";
 
-import type { SavedSearchRow } from "@/lib/api/saved-searches";
+import type { SavedSearchRow, SavedSearchTarget } from "@/lib/api/saved-searches";
 
 export type SavedMaterialSearch = {
   id: string;
   name: string;
-  /** 資料インデックスへの検索クエリ */
+  /** knowledge=ローカル検索クエリ / arxiv=キーワード検索用（論文 ID は arxivIds） */
   query: string;
+  /** arxiv の論文 ID（/add と同様、キーワードと別。保存・API では常に配列） */
+  arxivIds: string[];
+  /** knowledge=ローカルベクトル検索 / arxiv=arXiv（API・移行後は常にあり） */
+  searchTarget?: SavedSearchTarget;
   topK: number;
   /** 0 = 定期なし（手動のみ）。それ以外は分単位の間隔 */
   intervalMinutes: number;
@@ -24,6 +28,8 @@ export function savedSearchRowToClient(row: SavedSearchRow): SavedMaterialSearch
     id: row.id,
     name: row.name,
     query: row.query,
+    arxivIds: row.arxiv_ids ?? [],
+    searchTarget: row.search_target ?? "knowledge",
     topK: row.top_k,
     intervalMinutes: row.interval_minutes,
     scheduleEnabled: row.schedule_enabled,
@@ -38,15 +44,25 @@ export function loadSavedMaterialSearches(): SavedMaterialSearch[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (x): x is SavedMaterialSearch =>
-        typeof x === "object" &&
-        x !== null &&
-        "id" in x &&
-        typeof (x as SavedMaterialSearch).id === "string" &&
-        "query" in x &&
-        typeof (x as SavedMaterialSearch).query === "string",
-    );
+    return parsed
+      .filter(
+        (x): x is Record<string, unknown> =>
+          typeof x === "object" &&
+          x !== null &&
+          "id" in x &&
+          typeof (x as { id: unknown }).id === "string" &&
+          "query" in x &&
+          typeof (x as { query: unknown }).query === "string",
+      )
+      .map(
+        (x) =>
+          ({
+            ...x,
+            arxivIds: Array.isArray(x.arxivIds)
+              ? (x.arxivIds as unknown[]).filter((y) => typeof y === "string")
+              : [],
+          }) as SavedMaterialSearch,
+      );
   } catch {
     return [];
   }

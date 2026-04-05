@@ -1,5 +1,7 @@
 """ナレッジインデックスの参照（UI 用メタ情報・資料検索）。"""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -8,7 +10,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.db import get_db
-from app.models.tables import Document, RawData, SavedSearch
+from app.models.tables import Document, RawData, SavedSearch, SavedSearchRunLog
 from app.schemas.knowledge_search import (
     MaterialSearchHit,
     MaterialSearchRequest,
@@ -19,10 +21,38 @@ from app.schemas.saved_search import (
     SavedSearchPatch,
     SavedSearchRead,
 )
+from app.schemas.saved_search_run_log import (
+    SavedSearchRunLogCreate,
+    SavedSearchRunLogListItem,
+    SavedSearchRunLogRead,
+)
 from app.services.embeddings import build_embedding_model
 from app.services.material_search import run_material_search
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
+
+
+def _normalize_stored_arxiv_ids(raw: object) -> list[str]:
+    if raw is None or not isinstance(raw, list):
+        return []
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
+def _validate_saved_row_or_400(*, search_target: str, query: str, arxiv_ids: list[str]) -> None:
+    q = (query or "").strip()
+    ids = [x for x in arxiv_ids if x]
+    if search_target == "knowledge":
+        if not q:
+            raise HTTPException(
+                status_code=400,
+                detail="knowledge search requires non-empty query",
+            )
+        return
+    if not ids and not q:
+        raise HTTPException(
+            status_code=400,
+            detail="arxiv search requires non-empty arxiv_ids and/or query",
+        )
 
 
 @router.get("/stats")
@@ -94,6 +124,8 @@ def create_saved_search(
     row = SavedSearch(
         name=req.name.strip(),
         query=req.query,
+        arxiv_ids=list(req.arxiv_ids),
+        search_target=req.search_target,
         top_k=req.top_k,
         interval_minutes=req.interval_minutes,
         schedule_enabled=enabled,
@@ -117,7 +149,11 @@ def patch_saved_search(
     if "name" in data:
         row.name = data["name"].strip()
     if "query" in data:
-        row.query = data["query"]
+        row.query = data["query"] or ""
+    if "arxiv_ids" in data and data["arxiv_ids"] is not None:
+        row.arxiv_ids = _normalize_stored_arxiv_ids(data["arxiv_ids"])
+    if "search_target" in data and data["search_target"] is not None:
+        row.search_target = data["search_target"]
     if "top_k" in data:
         row.top_k = data["top_k"]
     if "interval_minutes" in data:
@@ -126,6 +162,14 @@ def patch_saved_search(
         row.schedule_enabled = data["schedule_enabled"]
     if "last_run_at" in data:
         row.last_run_at = data["last_run_at"]
+    if row.search_target == "knowledge":
+        row.arxiv_ids = []
+    row.arxiv_ids = _normalize_stored_arxiv_ids(row.arxiv_ids)
+    _validate_saved_row_or_400(
+        search_target=row.search_target,
+        query=row.query,
+        arxiv_ids=row.arxiv_ids,
+    )
     if row.interval_minutes <= 0:
         row.schedule_enabled = False
     db.commit()
@@ -144,3 +188,55 @@ def delete_saved_search(
     db.delete(row)
     db.commit()
     return Response(status_code=204)
+
+
+@router.get("/saved-search-run-logs", response_model=list[SavedSearchRunLogListItem])
+def list_saved_search_run_logs(
+    db: Session = Depends(get_db),
+    limit: int = 200,
+) -> list[SavedSearchRunLogListItem]:
+    lim = max(1, min(limit, 500))
+    rows = db.scalars(
+        select(SavedSearchRunLog)
+        .order_by(SavedSearchRunLog.created_at.desc())
+        .limit(lim),
+    ).all()
+    return [SavedSearchRunLogListItem.model_validate(r) for r in rows]
+
+
+@router.get(
+    "/saved-search-run-logs/{log_id}",
+    response_model=SavedSearchRunLogRead,
+)
+def get_saved_search_run_log(
+    log_id: UUID,
+    db: Session = Depends(get_db),
+) -> SavedSearchRunLogRead:
+    row = db.get(SavedSearchRunLog, log_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="run log not found")
+    return SavedSearchRunLogRead.model_validate(row)
+
+
+@router.post(
+    "/saved-search-run-logs",
+    response_model=SavedSearchRunLogRead,
+    status_code=201,
+)
+def create_saved_search_run_log(
+    req: SavedSearchRunLogCreate,
+    db: Session = Depends(get_db),
+) -> SavedSearchRunLogRead:
+    name = req.title_snapshot.strip() or "Untitled"
+    row = SavedSearchRunLog(
+        saved_search_id=req.saved_search_id,
+        title_snapshot=name,
+        status=req.status,
+        error_message=req.error_message,
+        imported_content=req.imported_content,
+        imported_payload=req.imported_payload,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return SavedSearchRunLogRead.model_validate(row)

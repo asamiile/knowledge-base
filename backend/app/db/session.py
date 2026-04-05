@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_database_url
 from app.db.base import Base
+from app.db.saved_search_migrate import migrate_saved_search_schema
 
 engine = create_engine(get_database_url(), pool_pre_ping=True)
 
@@ -17,6 +18,7 @@ def init_db() -> None:
 
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        migrate_saved_search_schema(conn)
     Base.metadata.create_all(bind=engine)
 
 

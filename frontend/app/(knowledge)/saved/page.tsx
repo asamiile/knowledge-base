@@ -1,5 +1,6 @@
 "use client";
 
+import { ArxivQueryTabs } from "../components/arxiv-query-tabs";
 import { useKnowledgeStudio } from "../knowledge-studio-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import type {
+  PeriodicSavedSearchTarget,
+  SavedSearchTarget,
+} from "@/lib/api/saved-searches";
+
+/** 定期保存フォームの外部ソース一覧（項目を足すだけで拡張） */
+const SAVED_SEARCH_TARGET_FORM_OPTIONS: {
+  value: PeriodicSavedSearchTarget;
+  label: string;
+}[] = [{ value: "arxiv", label: "arXiv" }];
 
 const INTERVAL_OPTIONS: { value: string; label: string }[] = [
   { value: "0", label: "定期なし（手動のみ）" },
@@ -32,82 +42,136 @@ const INTERVAL_OPTIONS: { value: string; label: string }[] = [
   { value: "1440", label: "24 時間ごと" },
 ];
 
-/** `/saved` — 検索条件の保存 */
+/** 一覧の既存レコード用（新規保存は arXiv のみ） */
+function searchTargetLabel(v: SavedSearchTarget): string {
+  if (v === "knowledge") return "ローカル資料インデックス";
+  return "arXiv";
+}
+
+/** `/saved` — 定期実行（保存条件） */
 export default function SavedMaterialSearchesPage() {
-  const s = useKnowledgeStudio();
+  const {
+    error,
+    info,
+    busy,
+    savedMaterialSearches,
+    saveMaterialName,
+    setSaveMaterialName,
+    saveMaterialArxivIds,
+    setSaveMaterialArxivIds,
+    saveMaterialArxivKeyword,
+    setSaveMaterialArxivKeyword,
+    saveMaterialTopK,
+    setSaveMaterialTopK,
+    saveMaterialIntervalMinutes,
+    setSaveMaterialIntervalMinutes,
+    saveMaterialScheduleEnabled,
+    setSaveMaterialScheduleEnabled,
+    saveMaterialSearchTarget,
+    setSaveMaterialSearchTarget,
+    addSavedMaterialSearch,
+    runSavedMaterialSearch,
+    patchSavedMaterialSearch,
+    deleteSavedMaterialSearch,
+  } = useKnowledgeStudio();
+
+  const busyAny = busy !== null;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <div className="mx-auto max-w-3xl space-y-4">
-        {s.error && (
+        {error && (
           <Alert variant="error">
             <AlertTitle>エラー</AlertTitle>
             <AlertDescription className="font-mono text-xs break-all">
-              {s.error}
+              {error}
             </AlertDescription>
           </Alert>
         )}
-        {s.info && !s.error && (
+        {info && !error && (
           <Alert variant="success">
             <AlertTitle>完了</AlertTitle>
-            <AlertDescription>{s.info}</AlertDescription>
+            <AlertDescription>{info}</AlertDescription>
           </Alert>
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle>検索条件の保存と定期実行</CardTitle>
-            <CardDescription>
-              表示名・クエリ・間隔を保存します。「定期を有効」は間隔が 0
-              より大きいときだけ意味があります。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          <CardContent className="flex flex-col gap-3 pt-6">
             <div className="grid gap-2">
               <Label>表示名</Label>
               <Input
-                value={s.saveMaterialName}
-                onChange={(e) => s.setSaveMaterialName(e.target.value)}
-                placeholder="例: 週次サーベイ用キーワード"
-                disabled={s.busy !== null}
+                value={saveMaterialName}
+                onChange={(e) => setSaveMaterialName(e.target.value)}
+                placeholder="一覧に表示する名前"
+                disabled={busyAny}
                 className="rounded-xl"
               />
             </div>
             <div className="grid gap-2">
-              <Label>検索クエリ（保存内容）</Label>
-              <Textarea
-                value={s.saveMaterialQuery}
-                onChange={(e) => s.setSaveMaterialQuery(e.target.value)}
-                rows={2}
-                disabled={s.busy !== null}
-                className="rounded-xl"
-              />
+              <Label>検索対象</Label>
+              <Select
+                value={saveMaterialSearchTarget}
+                onValueChange={(v) =>
+                  setSaveMaterialSearchTarget(v as PeriodicSavedSearchTarget)
+                }
+                disabled={busyAny}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SAVED_SEARCH_TARGET_FORM_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="grid gap-1">
-                <Label className="text-xs">top_k</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  className="w-20 rounded-xl"
-                  value={s.saveMaterialTopK}
-                  onChange={(e) =>
-                    s.setSaveMaterialTopK(Number(e.target.value) || 5)
-                  }
-                  disabled={s.busy !== null}
-                />
-              </div>
+            {saveMaterialSearchTarget === "arxiv" && (
+              <ArxivQueryTabs
+                intro={
+                  <p>
+                    <a
+                      href="https://arxiv.org/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-foreground underline underline-offset-2 hover:text-primary"
+                    >
+                      arXiv
+                    </a>
+                    の論文IDまたはキーワードを入力します。どちらか片方だけでも可。両方ある場合は「資料を追加」と同じく結果を合わせます。
+                  </p>
+                }
+                arxivIds={saveMaterialArxivIds}
+                onArxivIdsChange={setSaveMaterialArxivIds}
+                keyword={saveMaterialArxivKeyword}
+                onKeywordChange={setSaveMaterialArxivKeyword}
+                disabled={busyAny}
+                idsInputId="saved-arxiv-ids"
+                keywordInputId="saved-arxiv-keyword"
+                maxResults={saveMaterialTopK}
+                onMaxResultsChange={setSaveMaterialTopK}
+                maxResultsInputId="saved-arxiv-max-results"
+                showRequiredBadges={false}
+              />
+            )}
+            <div className="grid gap-3">
+              <p className="text-foreground text-sm font-medium">
+                定期実行の設定
+              </p>
               <div className="grid min-w-[200px] gap-1">
-                <Label className="text-xs">実行間隔</Label>
+                <Label className="text-xs" htmlFor="save-interval">
+                  実行間隔
+                </Label>
                 <Select
-                  value={String(s.saveMaterialIntervalMinutes)}
+                  value={String(saveMaterialIntervalMinutes)}
                   onValueChange={(v) =>
-                    s.setSaveMaterialIntervalMinutes(Number(v))
+                    setSaveMaterialIntervalMinutes(Number(v))
                   }
-                  disabled={s.busy !== null}
+                  disabled={busyAny}
                 >
-                  <SelectTrigger className="rounded-xl">
+                  <SelectTrigger id="save-interval" className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -119,56 +183,73 @@ export default function SavedMaterialSearchesPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="save-schedule"
-                checked={s.saveMaterialScheduleEnabled}
-                onCheckedChange={(v) =>
-                  s.setSaveMaterialScheduleEnabled(Boolean(v))
-                }
-                disabled={
-                  s.busy !== null || s.saveMaterialIntervalMinutes <= 0
-                }
-              />
-              <Label htmlFor="save-schedule" className="cursor-pointer text-sm font-normal">
-                保存時から定期実行を有効にする
-              </Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="save-schedule"
+                  checked={saveMaterialScheduleEnabled}
+                  onCheckedChange={(v) =>
+                    setSaveMaterialScheduleEnabled(Boolean(v))
+                  }
+                  disabled={busyAny || saveMaterialIntervalMinutes <= 0}
+                />
+                <Label
+                  htmlFor="save-schedule"
+                  className="cursor-pointer text-sm font-normal"
+                >
+                  定期実行を有効にする
+                </Label>
+              </div>
             </div>
             <Button
               type="button"
               variant="secondary"
-              disabled={s.busy !== null}
-              onClick={() => void s.addSavedMaterialSearch()}
+              disabled={busyAny}
+              onClick={() => void addSavedMaterialSearch()}
               className="w-fit rounded-xl"
             >
-              {s.busy === "savedSearchWrite" ? "保存中…" : "条件を保存"}
+              {busy === "savedSearchWrite" ? "保存中…" : "条件を保存"}
             </Button>
           </CardContent>
         </Card>
 
         <div className="space-y-3">
           <h3 className="font-heading text-sm font-medium">
-            保存した条件（{s.savedMaterialSearches.length}）
+            保存した条件（{savedMaterialSearches.length}）
           </h3>
-          {s.savedMaterialSearches.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              まだありません。上で保存すると一覧に表示されます。
-            </p>
-          ) : (
-            s.savedMaterialSearches.map((item) => (
+          {savedMaterialSearches.map((item) => (
               <Card key={item.id} className="rounded-xl">
                 <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-base">{item.name}</CardTitle>
                     <CardDescription className="mt-2 space-y-1">
-                      <p className="line-clamp-2 text-foreground/90">
-                        {item.query.trim()}
+                      <p className="text-muted-foreground text-xs">
+                        対象:{" "}
+                        {searchTargetLabel(
+                          item.searchTarget ?? "knowledge",
+                        )}
                       </p>
+                      {(item.searchTarget ?? "knowledge") === "arxiv" ? (
+                        <>
+                          {item.arxivIds.length > 0 && (
+                            <p className="line-clamp-2 font-mono text-xs text-foreground/90">
+                              論文ID: {item.arxivIds.join(", ")}
+                            </p>
+                          )}
+                          {item.query.trim() && (
+                            <p className="line-clamp-2 text-foreground/90">
+                              キーワード: {item.query.trim()}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="line-clamp-2 text-foreground/90">
+                          {item.query.trim()}
+                        </p>
+                      )}
                       <p className="text-xs">
-                        top_k {item.topK}
+                        一度に取得する件数: {item.topK}
                         {item.intervalMinutes > 0
-                          ? ` · 間隔 ${item.intervalMinutes} 分`
+                          ? ` · 実行間隔 ${item.intervalMinutes} 分`
                           : ""}
                         {item.scheduleEnabled ? " · 定期オン" : ""}
                       </p>
@@ -185,17 +266,17 @@ export default function SavedMaterialSearchesPage() {
                           id={`sched-${item.id}`}
                           checked={item.scheduleEnabled}
                           disabled={
-                            s.busy !== null || item.intervalMinutes <= 0
+                            busyAny || item.intervalMinutes <= 0
                           }
                           onCheckedChange={(v) => {
                             const on = Boolean(v);
                             if (on && item.intervalMinutes <= 0) {
-                              void s.patchSavedMaterialSearch(item.id, {
+                              void patchSavedMaterialSearch(item.id, {
                                 intervalMinutes: 15,
                                 scheduleEnabled: true,
                               });
                             } else {
-                              void s.patchSavedMaterialSearch(item.id, {
+                              void patchSavedMaterialSearch(item.id, {
                                 scheduleEnabled: on,
                               });
                             }
@@ -212,13 +293,13 @@ export default function SavedMaterialSearchesPage() {
                         value={String(item.intervalMinutes)}
                         onValueChange={(v) => {
                           const mins = Number(v);
-                          void s.patchSavedMaterialSearch(item.id, {
+                          void patchSavedMaterialSearch(item.id, {
                             intervalMinutes: mins,
                             scheduleEnabled:
                               mins > 0 ? item.scheduleEnabled : false,
                           });
                         }}
-                        disabled={s.busy !== null}
+                        disabled={busyAny}
                       >
                         <SelectTrigger className="h-8 w-[160px] rounded-lg text-xs">
                           <SelectValue />
@@ -234,20 +315,22 @@ export default function SavedMaterialSearchesPage() {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                    <Button
-                      size="sm"
-                      className="rounded-lg"
-                      disabled={s.busy !== null}
-                      onClick={() => void s.runSavedMaterialSearch(item)}
-                    >
-                      今すぐ検索
-                    </Button>
+                    {(item.searchTarget ?? "knowledge") !== "arxiv" && (
+                      <Button
+                        size="sm"
+                        className="rounded-lg"
+                        disabled={busyAny}
+                        onClick={() => void runSavedMaterialSearch(item)}
+                      >
+                        今すぐ検索
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      disabled={s.busy !== null}
+                      disabled={busyAny}
                       onClick={() =>
-                        void s.deleteSavedMaterialSearch(item.id)
+                        void deleteSavedMaterialSearch(item.id)
                       }
                     >
                       削除
@@ -255,8 +338,7 @@ export default function SavedMaterialSearchesPage() {
                   </div>
                 </CardHeader>
               </Card>
-            ))
-          )}
+          ))}
         </div>
       </div>
     </div>

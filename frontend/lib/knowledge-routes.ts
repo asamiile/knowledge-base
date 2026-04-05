@@ -5,12 +5,14 @@ export const KNOWLEDGE_PATHS: Record<KnowledgeSection, string> = {
   sources: "/add",
   search: "/search",
   saved: "/saved",
+  savedLogs: "/saved/logs",
 };
 
 const PATH_TO_SECTION: Record<string, KnowledgeSection> = {
   "/": "ask",
   "/add": "sources",
   "/search": "search",
+  "/saved/logs": "savedLogs",
   "/saved": "saved",
 };
 

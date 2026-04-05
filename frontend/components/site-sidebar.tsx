@@ -1,7 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
+
 import {
-  Bookmark,
   FolderInput,
   MessageSquareText,
   RefreshCw,
@@ -9,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { SidebarPeriodicRunLogs } from "@/components/sidebar-periodic-run-logs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,13 +26,6 @@ import {
 import type { KnowledgeSection } from "@/lib/knowledge-section";
 import type { KnowledgeStats } from "@/lib/api/knowledge";
 import { cn } from "@/lib/utils";
-
-/**
- * 折りたたみ時: フッター「統計を更新」と同じ outline・高さ h-7・アイコンのみ（ラベルは sr-only）
- */
-const navBtnIconMode = cn(
-  "group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:min-h-7 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:rounded-[min(var(--radius-md),12px)] group-data-[collapsible=icon]:border group-data-[collapsible=icon]:border-border group-data-[collapsible=icon]:bg-background group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:shadow-none hover:group-data-[collapsible=icon]:bg-muted hover:group-data-[collapsible=icon]:text-foreground group-data-[collapsible=icon]:[&_svg]:size-3.5 dark:group-data-[collapsible=icon]:border-input dark:group-data-[collapsible=icon]:bg-input/30 dark:hover:group-data-[collapsible=icon]:bg-input/50",
-);
 
 export function SiteSidebar({
   activeSection,
@@ -75,7 +70,6 @@ export function SiteSidebar({
               isActive={activeSection === "ask"}
               tooltip="質問する"
               disabled={navDisabled("ask")}
-              className={navBtnIconMode}
               onClick={() => onSectionChange("ask")}
             >
               <MessageSquareText />
@@ -89,7 +83,6 @@ export function SiteSidebar({
               isActive={activeSection === "sources"}
               tooltip="資料を追加"
               disabled={navDisabled("sources")}
-              className={navBtnIconMode}
               onClick={() => onSectionChange("sources")}
             >
               <FolderInput />
@@ -103,7 +96,6 @@ export function SiteSidebar({
               isActive={activeSection === "search"}
               tooltip="資料の検索"
               disabled={navDisabled("search")}
-              className={navBtnIconMode}
               onClick={() => onSectionChange("search")}
             >
               <Search />
@@ -112,20 +104,13 @@ export function SiteSidebar({
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={activeSection === "saved"}
-              tooltip="検索条件の保存"
-              disabled={navDisabled("saved")}
-              className={navBtnIconMode}
-              onClick={() => onSectionChange("saved")}
-            >
-              <Bookmark />
-              <span className="group-data-[collapsible=icon]:sr-only">
-                検索条件の保存
-              </span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <Suspense fallback={null}>
+            <SidebarPeriodicRunLogs
+              activeSection={activeSection}
+              onSectionChange={onSectionChange}
+              navDisabled={navDisabled}
+            />
+          </Suspense>
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
@@ -141,7 +126,12 @@ export function SiteSidebar({
           <Button
             variant="outline"
             size="sm"
-            className="w-full group-data-[collapsible=icon]:px-2"
+            className={cn(
+              "w-full",
+              "group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:min-h-8 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:shadow-none",
+              "hover:group-data-[collapsible=icon]:bg-sidebar-accent hover:group-data-[collapsible=icon]:text-sidebar-accent-foreground",
+              "dark:group-data-[collapsible=icon]:bg-transparent dark:hover:group-data-[collapsible=icon]:bg-sidebar-accent",
+            )}
             disabled={statsLoading}
             onClick={onRefreshStats}
           >

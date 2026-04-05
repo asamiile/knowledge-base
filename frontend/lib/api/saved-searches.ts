@@ -1,9 +1,16 @@
 import { apiBase, fetchJson } from "./api";
 
+export type SavedSearchTarget = "knowledge" | "arxiv";
+
+/** `/saved` フォームで選べる対象（ローカル索引は `/search` のため除外） */
+export type PeriodicSavedSearchTarget = Exclude<SavedSearchTarget, "knowledge">;
+
 export type SavedSearchRow = {
   id: string;
   name: string;
   query: string;
+  arxiv_ids: string[];
+  search_target: SavedSearchTarget;
   top_k: number;
   interval_minutes: number;
   schedule_enabled: boolean;
@@ -15,6 +22,8 @@ export type SavedSearchRow = {
 export type SavedSearchCreateBody = {
   name: string;
   query: string;
+  arxiv_ids?: string[];
+  search_target?: SavedSearchTarget;
   top_k?: number;
   interval_minutes?: number;
   schedule_enabled?: boolean;
@@ -23,6 +32,8 @@ export type SavedSearchCreateBody = {
 export type SavedSearchPatchBody = {
   name?: string;
   query?: string;
+  arxiv_ids?: string[];
+  search_target?: SavedSearchTarget;
   top_k?: number;
   interval_minutes?: number;
   schedule_enabled?: boolean;

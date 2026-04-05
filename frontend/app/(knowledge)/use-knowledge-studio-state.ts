@@ -27,9 +27,11 @@ import {
   deleteSavedSearch,
   listSavedSearches,
   patchSavedSearch,
+  type PeriodicSavedSearchTarget,
 } from "@/lib/api/saved-searches";
 import type { KnowledgeSection } from "@/lib/knowledge-section";
 import { pathToSection, sectionToPath } from "@/lib/knowledge-routes";
+import { splitArxivIdsInput } from "@/lib/arxiv-input";
 import {
   loadSavedMaterialSearches,
   SAVED_SEARCHES_MIGRATED_TO_DB_KEY,
@@ -105,13 +107,17 @@ export function useKnowledgeStudioState() {
   const [savedMaterialSearches, setSavedMaterialSearches] = useState<
     SavedMaterialSearch[]
   >([]);
-  const [saveMaterialName, setSaveMaterialName] = useState("");
-  const [saveMaterialQuery, setSaveMaterialQuery] = useState("");
+  const [saveMaterialName, setSaveMaterialName] = useState("Untitled");
+  const [saveMaterialArxivIds, setSaveMaterialArxivIds] = useState("");
+  const [saveMaterialArxivKeyword, setSaveMaterialArxivKeyword] =
+    useState("");
   const [saveMaterialTopK, setSaveMaterialTopK] = useState(5);
   const [saveMaterialIntervalMinutes, setSaveMaterialIntervalMinutes] =
     useState(0);
   const [saveMaterialScheduleEnabled, setSaveMaterialScheduleEnabled] =
     useState(false);
+  const [saveMaterialSearchTarget, setSaveMaterialSearchTarget] =
+    useState<PeriodicSavedSearchTarget>("arxiv");
 
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -153,6 +159,8 @@ export function useKnowledgeStudioState() {
               const created = await createSavedSearch({
                 name: item.name,
                 query: item.query,
+                arxiv_ids: item.arxivIds ?? [],
+                search_target: item.searchTarget ?? "knowledge",
                 top_k: item.topK,
                 interval_minutes: item.intervalMinutes,
                 schedule_enabled:
@@ -248,23 +256,36 @@ export function useKnowledgeStudioState() {
       if (busyRef.current !== null || silentScheduleLock.current) return;
       const now = Date.now();
       const list = savedMaterialRef.current;
-      const item = list.find(
-        (s) =>
-          s.scheduleEnabled &&
-          s.intervalMinutes > 0 &&
-          s.query.trim() &&
-          (!s.lastRunAt ||
-            now - new Date(s.lastRunAt).getTime() >=
-              s.intervalMinutes * 60_000),
-      );
+      const item = list.find((s) => {
+        if (!s.scheduleEnabled || s.intervalMinutes <= 0) return false;
+        const hasInput =
+          (s.searchTarget ?? "knowledge") === "arxiv"
+            ? s.query.trim().length > 0 || (s.arxivIds?.length ?? 0) > 0
+            : s.query.trim().length > 0;
+        if (!hasInput) return false;
+        return (
+          !s.lastRunAt ||
+          now - new Date(s.lastRunAt).getTime() >= s.intervalMinutes * 60_000
+        );
+      });
       if (!item) return;
 
       silentScheduleLock.current = true;
       try {
-        await postKnowledgeSearch({
-          query: item.query.trim(),
-          top_k: item.topK,
-        });
+        if ((item.searchTarget ?? "knowledge") === "arxiv") {
+          const ids = item.arxivIds ?? [];
+          const q = item.query.trim();
+          await postArxivPreview({
+            arxiv_ids: ids.length > 0 ? ids : undefined,
+            search_query: q || undefined,
+            max_results: item.topK,
+          });
+        } else {
+          await postKnowledgeSearch({
+            query: item.query.trim(),
+            top_k: item.topK,
+          });
+        }
         const ts = new Date().toISOString();
         try {
           const row = await patchSavedSearch(item.id, { last_run_at: ts });
@@ -336,10 +357,7 @@ export function useKnowledgeStudioState() {
       setError(null);
       setInfo(null);
       clearArxivPreview();
-      const ids = searchArxivIds
-        .split(/[\s,]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const ids = splitArxivIdsInput(searchArxivIds);
       const q = arxivSearch.trim();
       if (mode === "id") {
         if (ids.length === 0) {
@@ -560,9 +578,10 @@ export function useKnowledgeStudioState() {
       setError("表示名を入力してください。");
       return;
     }
-    const q = saveMaterialQuery.trim();
-    if (!q) {
-      setError("保存する検索クエリを入力してください。");
+    const ids = splitArxivIdsInput(saveMaterialArxivIds);
+    const kw = saveMaterialArxivKeyword.trim();
+    if (ids.length === 0 && !kw) {
+      setError("論文IDまたはキーワードのいずれかを入力してください。");
       return;
     }
     setError(null);
@@ -573,7 +592,9 @@ export function useKnowledgeStudioState() {
     try {
       const row = await createSavedSearch({
         name,
-        query: saveMaterialQuery,
+        query: kw,
+        arxiv_ids: ids,
+        search_target: saveMaterialSearchTarget,
         top_k: saveMaterialTopK,
         interval_minutes: interval,
         schedule_enabled: scheduleOn,
@@ -582,11 +603,13 @@ export function useKnowledgeStudioState() {
         ...prev,
         savedSearchRowToClient(row),
       ]);
-      setSaveMaterialName("");
-      setSaveMaterialQuery("");
+      setSaveMaterialName("Untitled");
+      setSaveMaterialArxivIds("");
+      setSaveMaterialArxivKeyword("");
       setSaveMaterialTopK(5);
       setSaveMaterialIntervalMinutes(0);
       setSaveMaterialScheduleEnabled(false);
+      setSaveMaterialSearchTarget("arxiv");
       setInfo(`「${name}」を保存しました。`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -595,28 +618,64 @@ export function useKnowledgeStudioState() {
     }
   }, [
     saveMaterialName,
-    saveMaterialQuery,
+    saveMaterialArxivIds,
+    saveMaterialArxivKeyword,
     saveMaterialTopK,
     saveMaterialIntervalMinutes,
     saveMaterialScheduleEnabled,
+    saveMaterialSearchTarget,
   ]);
 
   const runSavedMaterialSearch = useCallback(
     async (item: SavedMaterialSearch) => {
-      const ok = await runMaterialSearchImmediate(item.query, item.topK);
-      if (!ok) return;
+      const q = item.query.trim();
+      const ids = item.arxivIds ?? [];
+      if ((item.searchTarget ?? "knowledge") === "arxiv") {
+        if (ids.length === 0 && !q) {
+          setError("論文IDまたはキーワードのいずれかが必要です。");
+          return;
+        }
+      } else if (!q) {
+        setError("検索クエリが空です。");
+        return;
+      }
+      setError(null);
+      setInfo(null);
+
+      if ((item.searchTarget ?? "knowledge") === "arxiv") {
+        setBusy("savedSearchRun");
+        try {
+          const res = await postArxivPreview({
+            arxiv_ids: ids.length > 0 ? ids : undefined,
+            search_query: q || undefined,
+            max_results: item.topK,
+          });
+          setInfo(
+            `「${item.name}」: arXiv で ${res.entries.length} 件ヒット（プレビューのみ。取り込みは「資料を追加」の arXiv から行えます）。`,
+          );
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+          return;
+        } finally {
+          setBusy(null);
+        }
+      } else {
+        const ok = await runMaterialSearchImmediate(q, item.topK);
+        if (!ok) return;
+      }
+
       const ts = new Date().toISOString();
       try {
         const row = await patchSavedSearch(item.id, { last_run_at: ts });
         setSavedMaterialSearches((prev) =>
-          prev.map((s) =>
-            s.id === item.id ? savedSearchRowToClient(row) : s,
+          prev.map((x) =>
+            x.id === item.id ? savedSearchRowToClient(row) : x,
           ),
         );
       } catch {
         setSavedMaterialSearches((prev) =>
-          prev.map((s) =>
-            s.id === item.id ? { ...s, lastRunAt: ts } : s,
+          prev.map((x) =>
+            x.id === item.id ? { ...x, lastRunAt: ts } : x,
           ),
         );
       }
@@ -629,7 +688,11 @@ export function useKnowledgeStudioState() {
       const body: Parameters<typeof patchSavedSearch>[1] = {};
       if (patch.name !== undefined) body.name = patch.name;
       if (patch.query !== undefined) body.query = patch.query;
+      if (patch.arxivIds !== undefined) body.arxiv_ids = patch.arxivIds;
       if (patch.topK !== undefined) body.top_k = patch.topK;
+      if (patch.searchTarget !== undefined) {
+        body.search_target = patch.searchTarget;
+      }
       if (patch.intervalMinutes !== undefined) {
         body.interval_minutes = patch.intervalMinutes;
       }
@@ -703,14 +766,18 @@ export function useKnowledgeStudioState() {
     savedMaterialSearches,
     saveMaterialName,
     setSaveMaterialName,
-    saveMaterialQuery,
-    setSaveMaterialQuery,
+    saveMaterialArxivIds,
+    setSaveMaterialArxivIds,
+    saveMaterialArxivKeyword,
+    setSaveMaterialArxivKeyword,
     saveMaterialTopK,
     setSaveMaterialTopK,
     saveMaterialIntervalMinutes,
     setSaveMaterialIntervalMinutes,
     saveMaterialScheduleEnabled,
     setSaveMaterialScheduleEnabled,
+    saveMaterialSearchTarget,
+    setSaveMaterialSearchTarget,
     addSavedMaterialSearch,
     runSavedMaterialSearch,
     patchSavedMaterialSearch,

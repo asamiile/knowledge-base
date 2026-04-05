@@ -40,6 +40,23 @@ def _normalize_arxiv_ids(raw: list[str]) -> list[str]:
     return out
 
 
+# https://info.arxiv.org/help/api/user-manual.html#query_details
+_ARXIV_FIELD_PREFIX = re.compile(
+    r"^(all|ti|au|abs|co|jr|cat|rn|id)\s*:",
+    re.IGNORECASE,
+)
+
+
+def _arxiv_api_search_query(user_q: str) -> str:
+    """ユーザ入力を arXiv の search_query に渡す。フィールド指定済みなら all: を付けない。"""
+    q = user_q.strip()
+    if not q:
+        return q
+    if _ARXIV_FIELD_PREFIX.match(q):
+        return q
+    return f"all:{q}"
+
+
 def _arxiv_get(params: dict[str, str | int]) -> str:
     with httpx.Client(timeout=45.0, follow_redirects=True) as client:
         r = client.get(
@@ -128,9 +145,10 @@ def fetch_arxiv_entries(
 
     q = (search_query or "").strip()
     if q:
+        sq = _arxiv_api_search_query(q)
         text = _arxiv_get(
             {
-                "search_query": f"all:{q}",
+                "search_query": sq,
                 "start": 0,
                 "max_results": max_results,
             }
