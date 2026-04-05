@@ -110,7 +110,7 @@ def test_import_arxiv_include_full_text_appends_body(
             return_value=b"%PDF-fake",
         ),
         patch(
-            "app.services.source_import.arxiv.extract_plain_text_from_pdf_bytes",
+            "app.services.extract.pdf_text.extract_plain_text_from_pdf_bytes",
             return_value="Introduction\n\nFull paper body here.",
         ),
     ):
@@ -170,7 +170,7 @@ def test_upload_pdf_writes_extracted_markdown(
         return "Hello from PDF"
 
     with patch(
-        "app.services.extract.pdf_upload.extract_plain_text_from_pdf_bytes",
+        "app.services.extract.pdf_text.extract_plain_text_from_pdf_bytes",
         side_effect=fake_extract,
     ):
         r = client.post(
