@@ -2,6 +2,8 @@
 
 import type { MaterialSearchHit } from "@/lib/api/knowledge";
 
+import { SeparatedResultsList } from "./separated-results";
+
 type MaterialSearchResultsProps = {
   /** null のときは何も表示しない */
   results: MaterialSearchHit[] | null;
@@ -23,21 +25,20 @@ export function MaterialSearchResults({
         </p>
       )}
       {results.length > 0 && (
-        <ul className="flex flex-col gap-4">
-          {results.map((h) => (
-            <li
-              key={`${h.document_id}-${h.distance}`}
-              className="border-border bg-muted/35 rounded-xl border p-4 shadow-sm"
-            >
+        <SeparatedResultsList
+          items={results}
+          keyExtractor={(h) => `${h.document_id}-${h.distance}`}
+          renderItem={(h) => (
+            <article>
               <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
                 id {h.document_id} · distance {h.distance.toFixed(4)}
               </p>
-              <div className="font-sans mt-3 text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word text-foreground">
+              <div className="text-foreground mt-3 font-sans text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {h.text}
               </div>
-            </li>
-          ))}
-        </ul>
+            </article>
+          )}
+        />
       )}
     </div>
   );

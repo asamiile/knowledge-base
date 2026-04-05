@@ -10,9 +10,9 @@ const alertVariants = cva(
       variant: {
         default: "bg-card text-card-foreground",
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "border-red-200 bg-red-50/80 text-foreground dark:border-red-950 dark:bg-red-950/35 [&_[data-slot=alert-title]]:text-red-900 dark:[&_[data-slot=alert-title]]:text-red-100 [&_[data-slot=alert-description]]:text-red-950/85 dark:[&_[data-slot=alert-description]]:text-red-50/85 [&_svg]:text-red-600 dark:[&_svg]:text-red-400",
         error:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "border-red-200 bg-red-50/80 text-foreground dark:border-red-950 dark:bg-red-950/35 [&_[data-slot=alert-title]]:text-red-900 dark:[&_[data-slot=alert-title]]:text-red-100 [&_[data-slot=alert-description]]:text-red-950/85 dark:[&_[data-slot=alert-description]]:text-red-50/85 [&_svg]:text-red-600 dark:[&_svg]:text-red-400",
         info:
           "border-blue-200 bg-blue-50/80 text-foreground dark:border-blue-900 dark:bg-blue-950/35 *:data-[slot=alert-description]:text-blue-950/85 dark:*:data-[slot=alert-description]:text-blue-50/85 *:[svg]:text-blue-600 dark:*:[svg]:text-blue-400",
         success:

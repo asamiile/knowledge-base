@@ -3,8 +3,9 @@
 import type { ArxivPreviewEntry } from "@/lib/api/data";
 import { textSnippet } from "@/lib/text-snippet";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+
+import { SeparatedResultsList } from "./separated-results";
 
 type AddSourceArxivPreviewCardProps = {
   entries: ArxivPreviewEntry[];
@@ -28,54 +29,53 @@ export function AddSourceArxivPreviewCard({
   onConfirmImport,
 }: AddSourceArxivPreviewCardProps) {
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 pt-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-foreground text-sm font-medium">
-            取り込み対象
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-lg"
-              disabled={disabled}
-              onClick={() => onSelectAll(true)}
-            >
-              すべて選択
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-lg"
-              disabled={disabled}
-              onClick={() => onSelectAll(false)}
-            >
-              すべて解除
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="rounded-lg"
-              disabled={disabled}
-              onClick={onClose}
-            >
-              一覧を閉じる
-            </Button>
-          </div>
+    <section className="flex flex-col gap-3" aria-label="arXiv 取り込みプレビュー">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-foreground text-sm font-medium">
+          取り込み対象
+        </span>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-lg"
+            disabled={disabled}
+            onClick={() => onSelectAll(true)}
+          >
+            すべて選択
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-lg"
+            disabled={disabled}
+            onClick={() => onSelectAll(false)}
+          >
+            すべて解除
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="rounded-lg"
+            disabled={disabled}
+            onClick={onClose}
+          >
+            一覧を閉じる
+          </Button>
         </div>
-        <ul className="flex max-h-80 flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
-          {entries.map((e, i) => {
+      </div>
+      <div className="max-h-80 overflow-y-auto overscroll-contain pr-1">
+        <SeparatedResultsList
+          items={entries}
+          keyExtractor={(e, i) => `${e.arxiv_id}-${i}`}
+          renderItem={(e, i) => {
             const checked = selectedIds.includes(e.arxiv_id);
             const cbId = `arxiv-preview-${i}`;
             return (
-              <li
-                key={`${e.arxiv_id}-${i}`}
-                className="bg-muted/30 flex gap-3 rounded-xl border p-3"
-              >
+              <div className="flex gap-3">
                 <Checkbox
                   id={cbId}
                   checked={checked}
@@ -111,19 +111,19 @@ export function AddSourceArxivPreviewCard({
                     arXiv で開く
                   </a>
                 </div>
-              </li>
+              </div>
             );
-          })}
-        </ul>
-        <Button
-          disabled={disabled}
-          onClick={onConfirmImport}
-          className="w-fit rounded-xl"
-          type="button"
-        >
-          {importBusy ? "取り込み中…" : "選択した論文を取り込む"}
-        </Button>
-      </CardContent>
-    </Card>
+          }}
+        />
+      </div>
+      <Button
+        disabled={disabled}
+        onClick={onConfirmImport}
+        className="w-fit rounded-xl"
+        type="button"
+      >
+        {importBusy ? "取り込み中…" : "選択した論文を取り込む"}
+      </Button>
+    </section>
   );
 }

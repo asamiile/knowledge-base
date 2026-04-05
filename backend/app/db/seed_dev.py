@@ -10,10 +10,21 @@ Docker:
 documents / raw_data / saved_search / run_logs を揃える。
 再実行すると同じキー（UUID・source など）に上書きマージされ、
 [DEV-SEED] プレフィックス付きチャンクは不足分だけ追補される。
+
+本番誤実行防止:
+  - ``ENVIRONMENT`` または ``APP_ENV`` が ``production`` / ``prod`` のとき、
+    デフォルトではシードを終了（exit 2）します。
+  - どうしてもその接続先 DB へ入れる場合のみ ``ALLOW_DEV_SEED=1``（または true/yes/on）
+    を設定してください（非推奨）。
+
+ローカルでは ``ENVIRONMENT`` を未設定にするか ``development`` 等にしておけば
+そのまま実行できます。
 """
 
 from __future__ import annotations
 
+import os
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +37,43 @@ from app.db import SessionLocal, init_db
 from app.models.tables import Document, RawData, SavedSearch, SavedSearchRunLog
 
 _DEV_SEED_URL = "https://knowledge-base.local/dev-seed#v1"
+
+_PROD_ENV_NAMES = frozenset({"production", "prod"})
+
+
+def _production_like_environment() -> bool:
+    for key in ("ENVIRONMENT", "APP_ENV"):
+        raw = (os.environ.get(key) or "").strip().lower()
+        if raw in _PROD_ENV_NAMES:
+            return True
+    return False
+
+
+def _explicit_dev_seed_override() -> bool:
+    return os.environ.get("ALLOW_DEV_SEED", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _ensure_dev_seed_permitted() -> None:
+    if not _production_like_environment():
+        return
+    if _explicit_dev_seed_override():
+        print(
+            "seed_dev: 警告: production 相当の ENV ですが ALLOW_DEV_SEED=1 のため続行します。",
+            file=sys.stderr,
+        )
+        return
+    print(
+        "seed_dev: 中止しました。本番相当環境では開発用シードを実行しません。\n"
+        "  ローカル: ENVIRONMENT を未設定にするか development にしてください。\n"
+        "  意図的に続行する場合のみ ALLOW_DEV_SEED=1（非推奨）。",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
 
 
 def _uuid(key: str) -> uuid.UUID:
@@ -178,6 +226,7 @@ def seed_dev(db: Session) -> None:
 def main() -> None:
     _backend_dir = Path(__file__).resolve().parent.parent.parent
     load_dotenv(_backend_dir / ".env")
+    _ensure_dev_seed_permitted()
     init_db()
     session = SessionLocal()
     try:

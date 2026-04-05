@@ -4,14 +4,12 @@ import { createPortal } from "react-dom";
 import { ArrowUp, Loader2, SlidersHorizontal } from "lucide-react";
 
 import { useKnowledgeStudio } from "./knowledge-studio-context";
+import {
+  SeparatedResults,
+  SeparatedResultsList,
+} from "./components/separated-results";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -80,11 +78,14 @@ export default function AskPage() {
                 </Button>
               </div>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">メトリクス</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <SeparatedResults>
+                <section aria-labelledby="ask-metrics-heading">
+                  <h3
+                    id="ask-metrics-heading"
+                    className="font-heading pb-2 text-base font-medium"
+                  >
+                    メトリクス
+                  </h3>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -105,52 +106,51 @@ export default function AskPage() {
                       ))}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
+                </section>
 
-              <Card>
-                <CardContent className="pt-6">
+                <section aria-label="回答本文">
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
                     {result.answer}
                   </p>
-                </CardContent>
-              </Card>
+                </section>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">ポイント</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <section aria-labelledby="ask-points-heading">
+                  <h3
+                    id="ask-points-heading"
+                    className="font-heading pb-2 text-base font-medium"
+                  >
+                    ポイント
+                  </h3>
                   <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
                     {result.key_points.map((k, i) => (
                       <li key={i}>{k}</li>
                     ))}
                   </ul>
-                </CardContent>
-              </Card>
+                </section>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">引用</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 text-sm">
-                    {result.citations.map((c, i) => (
-                      <li
-                        key={i}
-                        className="bg-muted/50 rounded-lg border p-3"
-                      >
+                <section aria-labelledby="ask-citations-heading">
+                  <h3
+                    id="ask-citations-heading"
+                    className="font-heading pb-2 text-base font-medium"
+                  >
+                    引用
+                  </h3>
+                  <SeparatedResultsList
+                    items={result.citations}
+                    keyExtractor={(_, i) => i}
+                    renderItem={(c) => (
+                      <article>
                         <span className="font-mono text-muted-foreground text-xs">
                           doc #{c.document_id}
                         </span>
-                        <p className="mt-1 leading-relaxed whitespace-pre-wrap">
+                        <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
                           {c.excerpt}
                         </p>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+                      </article>
+                    )}
+                  />
+                </section>
+              </SeparatedResults>
             </>
           )}
         </div>

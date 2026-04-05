@@ -37,6 +37,8 @@ services:
     environment:
       DATABASE_URL: postgresql://knowledge:knowledge@db:5432/knowledge
       DATA_DIR: /app/data
+      # seed_dev 等の本番誤実行防止（app.db.seed_dev が参照）
+      ENVIRONMENT: production
     volumes:
       - knowledge_data:/app/data
     depends_on:

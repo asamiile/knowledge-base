@@ -90,8 +90,11 @@ export function SavedSearchRunLogsContent() {
                   </AlertDescription>
                 </Alert>
               )}
-              <div className="bg-card rounded-xl border p-4">
-                <p className="text-muted-foreground mb-2 text-xs font-medium">
+              <section
+                className="flex flex-col gap-2"
+                aria-label="取り込んだ内容"
+              >
+                <p className="text-muted-foreground text-xs font-medium">
                   取り込んだ内容
                 </p>
                 {detail.imported_content?.trim() ? (
@@ -107,7 +110,7 @@ export function SavedSearchRunLogsContent() {
                     を記録すると表示されます）。
                   </p>
                 )}
-              </div>
+              </section>
             </>
           ) : null}
         </div>
