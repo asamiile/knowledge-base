@@ -1,10 +1,8 @@
 """外部オープンデータ API からの取り込み（arXiv ほか将来拡張）。"""
 
 import logging
-import xml.etree.ElementTree as ET
 
-import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.core.settings import get_data_dir
 from app.schemas.ingest_api import (
@@ -13,14 +11,16 @@ from app.schemas.ingest_api import (
     ArxivPreviewEntry,
     ArxivPreviewResponse,
 )
-from app.services.source_import.arxiv import (
+from app.services.source_import import (
     entry_abs_url,
     entry_import_id,
     fetch_arxiv_entries,
     import_arxiv_to_data_dir,
+    translate_import_http_errors,
 )
 
 logger = logging.getLogger(__name__)
+_ARXIV = "arXiv"
 
 router = APIRouter(prefix="/api/data/imports", tags=["data"])
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/data/imports", tags=["data"])
 @router.post("/arxiv/preview", response_model=ArxivPreviewResponse)
 def preview_arxiv(req: ArxivImportRequest) -> ArxivPreviewResponse:
     """取得結果の一覧のみ返す（ディスクには保存しない）。"""
-    try:
+    with translate_import_http_errors(logger, source_label=_ARXIV):
         entries = fetch_arxiv_entries(
             arxiv_ids=list(req.arxiv_ids),
             search_query=req.search_query,
@@ -45,23 +45,11 @@ def preview_arxiv(req: ArxivImportRequest) -> ArxivPreviewResponse:
             for e in entries
         ]
         return ArxivPreviewResponse(entries=rows)
-    except httpx.HTTPError as e:
-        logger.warning("arXiv API request failed: %s", e)
-        raise HTTPException(
-            status_code=502,
-            detail=f"arXiv API 取得に失敗しました: {e}",
-        ) from e
-    except ET.ParseError as e:
-        logger.warning("arXiv Atom parse failed: %s", e)
-        raise HTTPException(
-            status_code=502,
-            detail=f"arXiv 応答の解析に失敗しました: {e}",
-        ) from e
 
 
 @router.post("/arxiv", response_model=ArxivImportResponse)
 def import_arxiv(req: ArxivImportRequest) -> ArxivImportResponse:
-    try:
+    with translate_import_http_errors(logger, source_label=_ARXIV):
         written = import_arxiv_to_data_dir(
             get_data_dir(),
             arxiv_ids=list(req.arxiv_ids),
@@ -69,15 +57,3 @@ def import_arxiv(req: ArxivImportRequest) -> ArxivImportResponse:
             max_results=req.max_results,
         )
         return ArxivImportResponse(written=written, entry_count=len(written))
-    except httpx.HTTPError as e:
-        logger.warning("arXiv API request failed: %s", e)
-        raise HTTPException(
-            status_code=502,
-            detail=f"arXiv API 取得に失敗しました: {e}",
-        ) from e
-    except ET.ParseError as e:
-        logger.warning("arXiv Atom parse failed: %s", e)
-        raise HTTPException(
-            status_code=502,
-            detail=f"arXiv 応答の解析に失敗しました: {e}",
-        ) from e
