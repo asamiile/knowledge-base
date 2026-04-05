@@ -55,5 +55,6 @@ def import_arxiv(req: ArxivImportRequest) -> ArxivImportResponse:
             arxiv_ids=list(req.arxiv_ids),
             search_query=req.search_query,
             max_results=req.max_results,
+            include_full_text=req.include_full_text,
         )
         return ArxivImportResponse(written=written, entry_count=len(written))

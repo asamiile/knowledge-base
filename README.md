@@ -49,6 +49,12 @@ curl -s -X POST http://localhost:8000/api/analyze \
   -d '{"question":"サンプル資料の要点は？","reindex_sources":true}'
 ```
 
+### Seedの投入
+
+```bach
+docker compose exec backend python -m app.db.seed_dev
+```
+
 ### pytestの実行
 
 ```bash

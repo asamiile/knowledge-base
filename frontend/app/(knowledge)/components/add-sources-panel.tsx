@@ -29,6 +29,8 @@ export type AddSourcesPanelProps = {
   setArxivMax: Dispatch<SetStateAction<number>>;
   arxivPreviewEntries: ArxivPreviewEntry[] | null;
   arxivPreviewSelectedIds: string[];
+  arxivImportIncludeFullText: boolean;
+  setArxivImportIncludeFullText: (v: boolean) => void;
   fetchArxivPreviewFromAddPage: (
     mode: "id" | "keyword",
   ) => void | Promise<boolean>;
@@ -58,6 +60,8 @@ export function AddSourcesPanel({
   setArxivMax,
   arxivPreviewEntries,
   arxivPreviewSelectedIds,
+  arxivImportIncludeFullText,
+  setArxivImportIncludeFullText,
   fetchArxivPreviewFromAddPage,
   toggleArxivPreviewSelected,
   setArxivPreviewAllSelected,
@@ -132,6 +136,8 @@ export function AddSourcesPanel({
               selectedIds={arxivPreviewSelectedIds}
               disabled={busyAny}
               importBusy={busyArxivImport}
+              includeFullText={arxivImportIncludeFullText}
+              onIncludeFullTextChange={setArxivImportIncludeFullText}
               onToggleSelected={(id) => toggleArxivPreviewSelected(id)}
               onSelectAll={(sel) => setArxivPreviewAllSelected(sel)}
               onClose={() => clearArxivPreview()}

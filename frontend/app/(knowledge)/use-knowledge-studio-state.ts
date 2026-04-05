@@ -41,6 +41,8 @@ export function useKnowledgeStudioState() {
     setArxivMax: addSource.setArxivMax,
     arxivPreviewEntries: addSource.arxivPreviewEntries,
     arxivPreviewSelectedIds: addSource.arxivPreviewSelectedIds,
+    arxivImportIncludeFullText: addSource.arxivImportIncludeFullText,
+    setArxivImportIncludeFullText: addSource.setArxivImportIncludeFullText,
     fetchArxivPreviewFromAddPage: addSource.fetchArxivPreviewFromAddPage,
     toggleArxivPreviewSelected: addSource.toggleArxivPreviewSelected,
     setArxivPreviewAllSelected: addSource.setArxivPreviewAllSelected,

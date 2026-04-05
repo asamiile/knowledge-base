@@ -33,6 +33,8 @@ export function useAddSource(
   const [arxivPreviewSelectedIds, setArxivPreviewSelectedIds] = useState<
     string[]
   >([]);
+  const [arxivImportIncludeFullText, setArxivImportIncludeFullText] =
+    useState(false);
 
   const [pendingUpload, setPendingUpload] = useState<{
     file: File;
@@ -131,6 +133,7 @@ export function useAddSource(
       const res = await postArxivImport({
         arxiv_ids: arxivPreviewSelectedIds,
         max_results: arxivMax,
+        include_full_text: arxivImportIncludeFullText,
       });
       setInfo(
         `取得: ${res.entry_count} 件 → ${res.written.join(", ") || "(ファイルなし)"}`,
@@ -147,6 +150,7 @@ export function useAddSource(
       setBusy(null);
     }
   }, [
+    arxivImportIncludeFullText,
     arxivMax,
     arxivPreviewSelectedIds,
     clearArxivPreview,
@@ -233,6 +237,8 @@ export function useAddSource(
     setArxivMax,
     arxivPreviewEntries,
     arxivPreviewSelectedIds,
+    arxivImportIncludeFullText,
+    setArxivImportIncludeFullText,
     fetchArxivPreviewFromAddPage,
     toggleArxivPreviewSelected,
     setArxivPreviewAllSelected,

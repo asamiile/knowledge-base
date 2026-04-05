@@ -12,6 +12,8 @@ type AddSourceArxivPreviewCardProps = {
   selectedIds: string[];
   disabled: boolean;
   importBusy: boolean;
+  includeFullText: boolean;
+  onIncludeFullTextChange: (value: boolean) => void;
   onToggleSelected: (arxivId: string) => void;
   onSelectAll: (selected: boolean) => void;
   onClose: () => void;
@@ -23,6 +25,8 @@ export function AddSourceArxivPreviewCard({
   selectedIds,
   disabled,
   importBusy,
+  includeFullText,
+  onIncludeFullTextChange,
   onToggleSelected,
   onSelectAll,
   onClose,
@@ -115,6 +119,24 @@ export function AddSourceArxivPreviewCard({
             );
           }}
         />
+      </div>
+      <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
+        <Checkbox
+          id="arxiv-import-full-text"
+          checked={includeFullText}
+          disabled={disabled}
+          onCheckedChange={(c) =>
+            onIncludeFullTextChange(c === true)
+          }
+          className="mt-0.5"
+        />
+        <label
+          htmlFor="arxiv-import-full-text"
+          className="text-muted-foreground cursor-pointer text-xs leading-snug"
+        >
+          PDF から本文も取り込む（質問・検索に有利。論文ごとに取得のため時間がかかります。失敗時は
+          Abstract のみ）
+        </label>
       </div>
       <Button
         disabled={disabled}

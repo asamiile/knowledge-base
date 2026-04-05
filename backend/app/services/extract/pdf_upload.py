@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.services.extract.pdf_text import extract_plain_text_from_pdf_bytes
-
 _EMPTY_PDF_HINT = (
     "この PDF から抽出できるテキストはありませんでした。"
     "画像のみの PDF では OCR 等が別途必要です。"
@@ -26,6 +24,13 @@ def write_pdf_extracted_markdown(
     data_dir = data_dir.resolve()
     base = Path(upload_filename).name
     stem = Path(base).stem
+    try:
+        from app.services.extract.pdf_text import extract_plain_text_from_pdf_bytes
+    except ModuleNotFoundError as e:
+        raise ValueError(
+            "PDF 処理には pypdf が必要です。requirements.txt をイン"
+            "ストールするか、backend コンテナを再ビルドしてください。",
+        ) from e
     text = extract_plain_text_from_pdf_bytes(pdf_bytes)
     body = text if text else _EMPTY_PDF_HINT
     md = (

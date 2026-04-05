@@ -89,6 +89,43 @@ def test_import_arxiv_by_id_mocked(client: TestClient, tmp_path: Path, monkeypat
     assert "Sample Paper" in text
     assert "https://arxiv.org/abs/" in text
     assert "Test abstract." in text
+    assert "Full text (from PDF)" not in text
+
+
+def test_import_arxiv_include_full_text_appends_body(
+    client: TestClient, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+
+    def fake_atom(*_args: object, **_kwargs: object) -> str:
+        return _ATOM_SAMPLE
+
+    with (
+        patch(
+            "app.services.source_import.arxiv._arxiv_get",
+            side_effect=fake_atom,
+        ),
+        patch(
+            "app.services.source_import.arxiv.fetch_arxiv_pdf_bytes",
+            return_value=b"%PDF-fake",
+        ),
+        patch(
+            "app.services.extract.pdf_text.extract_plain_text_from_pdf_bytes",
+            return_value="Introduction\n\nFull paper body here.",
+        ),
+    ):
+        r = client.post(
+            "/api/data/imports/arxiv",
+            json={
+                "arxiv_ids": ["2301.00001"],
+                "include_full_text": True,
+            },
+        )
+    assert r.status_code == 200, r.text
+    written = r.json()["written"][0]
+    text = (tmp_path / written).read_text(encoding="utf-8")
+    assert "Full text (from PDF)" in text
+    assert "Full paper body here." in text
 
 
 def test_import_arxiv_validation_requires_source(client: TestClient) -> None:
@@ -133,7 +170,7 @@ def test_upload_pdf_writes_extracted_markdown(
         return "Hello from PDF"
 
     with patch(
-        "app.services.extract.pdf_upload.extract_plain_text_from_pdf_bytes",
+        "app.services.extract.pdf_text.extract_plain_text_from_pdf_bytes",
         side_effect=fake_extract,
     ):
         r = client.post(

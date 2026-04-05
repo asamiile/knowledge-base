@@ -28,6 +28,12 @@ def test_extract_text_for_vector_ingest_md(tmp_path: Path) -> None:
     assert extract_text_for_vector_ingest(p) == "hello\u2028"
 
 
+def test_extract_text_for_vector_ingest_strips_nul_for_postgres_text(tmp_path: Path) -> None:
+    p = tmp_path / "bad.md"
+    p.write_bytes("a\x00b".encode("utf-8"))
+    assert extract_text_for_vector_ingest(p) == "ab"
+
+
 def test_extract_text_for_vector_ingest_rejects_unknown_suffix(
     tmp_path: Path,
 ) -> None:
