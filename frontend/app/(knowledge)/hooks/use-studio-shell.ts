@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export type StudioShell = {
   busy: string | null;
@@ -13,17 +13,20 @@ export type StudioShell = {
 
 /**
  * ナレッジスタジオ全体で共有する busy / トースト相当の error・info。
- * ルート遷移時にメッセージをクリアする。
+ * ルート遷移時にメッセージをクリアする（effect 内 setState は eslint 回避のためレンダー同期）。
  */
 export function useStudioShell(pathname: string): StudioShell {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [messagesClearedForPath, setMessagesClearedForPath] =
+    useState(pathname);
 
-  useEffect(() => {
-    setInfo(null);
+  if (pathname !== messagesClearedForPath) {
+    setMessagesClearedForPath(pathname);
     setError(null);
-  }, [pathname]);
+    setInfo(null);
+  }
 
   return { busy, setBusy, error, setError, info, setInfo };
 }

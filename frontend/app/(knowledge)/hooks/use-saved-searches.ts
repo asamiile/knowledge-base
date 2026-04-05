@@ -106,7 +106,7 @@ export function useSavedSearches(
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setError]);
 
   useEffect(() => {
     const runDue = async () => {
