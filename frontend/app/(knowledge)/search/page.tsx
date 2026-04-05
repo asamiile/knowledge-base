@@ -1,8 +1,8 @@
 "use client";
 
 import { MaterialSearchResults } from "../components/material-search-results";
+import { StudioAlerts } from "../components/studio-alerts";
 import { useKnowledgeStudio } from "../knowledge-studio-context";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,20 +14,7 @@ export default function MaterialSearchPage() {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <div className="mx-auto w-full max-w-4xl space-y-4">
-        {s.error && (
-          <Alert variant="error">
-            <AlertTitle>エラー</AlertTitle>
-            <AlertDescription className="font-mono text-xs break-all">
-              {s.error}
-            </AlertDescription>
-          </Alert>
-        )}
-        {s.info && !s.error && (
-          <Alert variant="success">
-            <AlertTitle>完了</AlertTitle>
-            <AlertDescription>{s.info}</AlertDescription>
-          </Alert>
-        )}
+        <StudioAlerts error={s.error} info={s.info} />
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
