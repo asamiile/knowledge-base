@@ -36,6 +36,22 @@ class RawData(Base):
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
 
+
+class QuestionHistory(Base):
+    """質問と Analyze 応答のスナップショット（スタジオ履歴）。"""
+
+    __tablename__ = "question_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
 class SavedSearch(Base):
     """インデックス検索または arXiv 検索の保存条件（単一テナント・認可なし）。"""
 

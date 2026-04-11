@@ -50,6 +50,17 @@ export function useKnowledgeStudioState() {
     clearArxivPreview: addSource.clearArxivPreview,
     pendingReindex: addSource.pendingReindex,
     onReindexClick: addSource.onReindexClick,
+    pendingBatchFiles: addSource.pendingBatchFiles,
+    cancelPendingBatch: addSource.cancelPendingBatch,
+    confirmPendingBatch: addSource.confirmPendingBatch,
+    onUploadFilesDropped: addSource.onUploadFilesDropped,
+    reindexDialogOpen: addSource.reindexDialogOpen,
+    onConfirmReindexDialog: addSource.onConfirmReindexDialog,
+    onCancelReindexDialog: addSource.onCancelReindexDialog,
+    autoReindexAfterImport: addSource.autoReindexAfterImport,
+    setAutoReindexAfterImport: addSource.setAutoReindexAfterImport,
+    sourceFiles: addSource.sourceFiles,
+    refreshSourceFiles: addSource.refreshSourceFiles,
     materialSearchQuery: material.materialSearchQuery,
     setMaterialSearchQuery: material.setMaterialSearchQuery,
     materialSearchTopK: material.materialSearchTopK,
@@ -91,6 +102,9 @@ export function useKnowledgeStudioState() {
     askOptionsPanelRef: ask.askOptionsPanelRef,
     askOptionsCoords: ask.askOptionsCoords,
     submitAnalyze: ask.submitAnalyze,
+    questionHistory: ask.questionHistory,
+    refreshQuestionHistory: ask.refreshQuestionHistory,
+    applyQuestionHistoryItem: ask.applyQuestionHistoryItem,
   };
 }
 

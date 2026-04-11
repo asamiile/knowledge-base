@@ -1,5 +1,6 @@
 """STEP 4 — データ投入・外部ソース向け API スキーマ。"""
 
+from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -18,6 +19,18 @@ class DataReindexResponse(BaseModel):
 
     document_chunks: int = Field(description="ベクトル付きチャンク数")
     raw_data_rows: int = Field(description="raw_data 行数")
+
+
+class DataFileInfo(BaseModel):
+    """`GET /api/data/files` の 1 行。"""
+
+    path: str = Field(description="DATA_DIR からの相対パス（POSIX）")
+    size_bytes: int
+    modified_at: datetime
+
+
+class DataFilesResponse(BaseModel):
+    files: list[DataFileInfo]
 
 
 class ArxivImportRequest(BaseModel):

@@ -11,9 +11,13 @@ export default function AddSourcesPage() {
     busy,
     fileInputRef,
     onPickUploadFile,
+    onUploadFilesDropped,
     pendingUpload,
+    pendingBatchFiles,
     cancelPendingUpload,
+    cancelPendingBatch,
     confirmPendingUpload,
+    confirmPendingBatch,
     searchArxivIds,
     setSearchArxivIds,
     arxivSearch,
@@ -31,6 +35,13 @@ export default function AddSourcesPage() {
     clearArxivPreview,
     pendingReindex,
     onReindexClick,
+    reindexDialogOpen,
+    onConfirmReindexDialog,
+    onCancelReindexDialog,
+    autoReindexAfterImport,
+    setAutoReindexAfterImport,
+    sourceFiles,
+    refreshSourceFiles,
   } = useKnowledgeStudio();
 
   return (
@@ -40,9 +51,13 @@ export default function AddSourcesPage() {
       busy={busy}
       fileInputRef={fileInputRef}
       onPickUploadFile={onPickUploadFile}
+      onUploadFilesDropped={onUploadFilesDropped}
       pendingUpload={pendingUpload}
+      pendingBatchFiles={pendingBatchFiles}
       cancelPendingUpload={cancelPendingUpload}
+      cancelPendingBatch={cancelPendingBatch}
       confirmPendingUpload={confirmPendingUpload}
+      confirmPendingBatch={confirmPendingBatch}
       searchArxivIds={searchArxivIds}
       setSearchArxivIds={setSearchArxivIds}
       arxivSearch={arxivSearch}
@@ -60,6 +75,13 @@ export default function AddSourcesPage() {
       clearArxivPreview={clearArxivPreview}
       pendingReindex={pendingReindex}
       onReindexClick={onReindexClick}
+      reindexDialogOpen={reindexDialogOpen}
+      onConfirmReindexDialog={onConfirmReindexDialog}
+      onCancelReindexDialog={onCancelReindexDialog}
+      autoReindexAfterImport={autoReindexAfterImport}
+      setAutoReindexAfterImport={setAutoReindexAfterImport}
+      sourceFiles={sourceFiles}
+      refreshSourceFiles={refreshSourceFiles}
     />
   );
 }

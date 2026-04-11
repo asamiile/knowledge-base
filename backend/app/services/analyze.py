@@ -13,7 +13,7 @@ from app.core.settings import (
     get_google_api_key,
     get_rag_top_k,
 )
-from app.models.tables import Document
+from app.models.tables import Document, QuestionHistory
 from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
 from app.services.embeddings import build_embedding_model
 from app.services.ingest import (
@@ -98,4 +98,13 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
     text = resp.text
     if not text:
         raise RuntimeError("モデルから空の応答が返りました")
-    return AnalyzeResponse.model_validate_json(text)
+    result = AnalyzeResponse.model_validate_json(text)
+    if req.save_question_history:
+        db.add(
+            QuestionHistory(
+                question=req.question.strip()[:8000],
+                response=result.model_dump(mode="json"),
+            )
+        )
+        db.commit()
+    return result

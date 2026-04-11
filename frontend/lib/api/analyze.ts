@@ -12,6 +12,8 @@ export type AnalyzeBody = {
   question: string;
   reindex_sources: boolean;
   top_k?: number;
+  /** 既定 true。false で DB 履歴に残さない */
+  save_question_history?: boolean;
 };
 
 export async function postAnalyze(body: AnalyzeBody): Promise<AnalyzeResponse> {

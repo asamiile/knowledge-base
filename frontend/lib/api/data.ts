@@ -73,3 +73,18 @@ export async function postReindex(): Promise<ReindexResponse> {
     method: "POST",
   });
 }
+
+export type DataFileInfo = {
+  path: string;
+  size_bytes: number;
+  modified_at: string;
+};
+
+export async function getDataFiles(limit = 2000): Promise<DataFileInfo[]> {
+  const u = new URL(`${apiBase()}/api/data/files`);
+  u.searchParams.set("limit", String(limit));
+  const data = await fetchJson<{ files: DataFileInfo[] }>(u.toString(), {
+    method: "GET",
+  });
+  return data.files;
+}

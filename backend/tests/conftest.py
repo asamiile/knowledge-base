@@ -32,12 +32,13 @@ def clean_documents() -> None:
     from sqlalchemy import delete
 
     from app.db.session import SessionLocal
-    from app.models.tables import Document, RawData
+    from app.models.tables import Document, QuestionHistory, RawData
 
     session = SessionLocal()
     try:
         session.execute(delete(Document))
         session.execute(delete(RawData))
+        session.execute(delete(QuestionHistory))
         session.commit()
     finally:
         session.close()

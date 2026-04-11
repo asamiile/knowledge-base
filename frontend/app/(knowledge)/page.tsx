@@ -24,6 +24,9 @@ export default function AskPage() {
     topK,
     setTopK,
     submitAnalyze,
+    questionHistory,
+    refreshQuestionHistory,
+    applyQuestionHistoryItem,
   } = useKnowledgeStudio();
 
   return (
@@ -46,6 +49,9 @@ export default function AskPage() {
       topK={topK}
       setTopK={setTopK}
       submitAnalyze={submitAnalyze}
+      questionHistory={questionHistory}
+      refreshQuestionHistory={refreshQuestionHistory}
+      applyQuestionHistoryItem={applyQuestionHistoryItem}
     />
   );
 }

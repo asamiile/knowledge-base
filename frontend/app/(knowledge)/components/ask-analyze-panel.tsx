@@ -10,6 +10,7 @@ import type {
 } from "react";
 
 import type { AnalyzeResponse } from "@/lib/api/analyze";
+import type { QuestionHistoryItem } from "@/lib/api/question-history";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,9 @@ export type AskAnalyzePanelProps = {
   topK: number;
   setTopK: Dispatch<SetStateAction<number>>;
   submitAnalyze: () => void;
+  questionHistory: QuestionHistoryItem[];
+  refreshQuestionHistory: () => void | Promise<void>;
+  applyQuestionHistoryItem: (item: QuestionHistoryItem) => void;
 };
 
 /** `/` — 質問（RAG 分析）のスクロール領域＋下部コンポーザー */
@@ -61,12 +65,50 @@ export function AskAnalyzePanel({
   topK,
   setTopK,
   submitAnalyze,
+  questionHistory,
+  refreshQuestionHistory,
+  applyQuestionHistoryItem,
 }: AskAnalyzePanelProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-3xl space-y-4 pb-10">
           <StudioAlerts error={error} info={info} />
+
+          {questionHistory.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-foreground text-sm font-medium">質問履歴</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground h-8 rounded-lg text-xs"
+                  disabled={busy !== null}
+                  onClick={() => void refreshQuestionHistory()}
+                >
+                  再取得
+                </Button>
+              </div>
+              <ul className="border-border bg-muted/20 max-h-40 space-y-1 overflow-y-auto rounded-xl border p-2 text-sm">
+                {questionHistory.map((h) => (
+                  <li key={h.id}>
+                    <button
+                      type="button"
+                      disabled={busy !== null}
+                      className="hover:bg-muted/80 w-full rounded-lg px-2 py-1.5 text-left transition-colors disabled:opacity-50"
+                      onClick={() => applyQuestionHistoryItem(h)}
+                    >
+                      <span className="line-clamp-2">{h.question}</span>
+                      <span className="text-muted-foreground mt-0.5 block text-[11px] tabular-nums">
+                        {new Date(h.created_at).toLocaleString()}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {result && (
             <AskAnalyzeResult result={result} statsRows={statsRows} />

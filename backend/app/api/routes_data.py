@@ -7,12 +7,30 @@ from sqlalchemy.orm import Session
 
 from app.core.settings import get_data_dir
 from app.db import get_db
-from app.schemas.ingest_api import DataReindexResponse, DataUploadResponse
+from app.schemas.ingest_api import (
+    DataFilesResponse,
+    DataFileInfo,
+    DataReindexResponse,
+    DataUploadResponse,
+)
+from app.services.data_dir_listing import list_data_dir_files
 from app.services.embeddings import build_embedding_model
 from app.services.extract.pdf_upload import write_pdf_extracted_markdown
 from app.services.ingest import ingest_data_directory
 
 router = APIRouter(prefix="/api/data", tags=["data"])
+
+
+@router.get("/files", response_model=DataFilesResponse)
+def list_data_dir_files_endpoint(limit: int = 2000) -> DataFilesResponse:
+    """`DATA_DIR` 配下のファイル一覧（`.` で始まるパス成分は除外）。"""
+    lim = max(1, min(limit, 5000))
+    data_dir = get_data_dir().resolve()
+    rows = list_data_dir_files(data_dir, limit=lim)
+    return DataFilesResponse(
+        files=[DataFileInfo(path=p, size_bytes=s, modified_at=m) for p, s, m in rows],
+    )
+
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 _ALLOWED = {".md", ".txt", ".json", ".pdf"}
