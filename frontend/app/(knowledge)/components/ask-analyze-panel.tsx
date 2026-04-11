@@ -45,7 +45,7 @@ export type AskAnalyzePanelProps = {
   applyQuestionHistoryItem: (item: QuestionHistoryItem) => void;
 };
 
-/** `/` — 質問（RAG 分析）のスクロール領域＋下部コンポーザー */
+/** `/ask` — 質問（RAG 分析）のスクロール領域＋下部コンポーザー */
 export function AskAnalyzePanel({
   error,
   info,

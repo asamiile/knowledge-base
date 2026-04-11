@@ -1,19 +1,23 @@
 import type { KnowledgeSection } from "@/lib/knowledge-section";
 
 export const KNOWLEDGE_PATHS: Record<KnowledgeSection, string> = {
-  ask: "/",
+  dashboard: "/",
+  ask: "/ask",
   sources: "/add",
   search: "/search",
   saved: "/saved",
   savedLogs: "/saved/logs",
+  file: "/file",
 };
 
 const PATH_TO_SECTION: Record<string, KnowledgeSection> = {
-  "/": "ask",
+  "/": "dashboard",
+  "/ask": "ask",
   "/add": "sources",
   "/search": "search",
   "/saved/logs": "savedLogs",
   "/saved": "saved",
+  "/file": "file",
 };
 
 function normalizePathname(pathname: string): string {
@@ -25,7 +29,7 @@ export function sectionToPath(section: KnowledgeSection): string {
   return KNOWLEDGE_PATHS[section];
 }
 
-/** 未登録パスは ask にフォールバック（想定外 URL 用） */
+/** 未登録パスは dashboard にフォールバック */
 export function pathToSection(pathname: string): KnowledgeSection {
-  return PATH_TO_SECTION[normalizePathname(pathname)] ?? "ask";
+  return PATH_TO_SECTION[normalizePathname(pathname)] ?? "dashboard";
 }
