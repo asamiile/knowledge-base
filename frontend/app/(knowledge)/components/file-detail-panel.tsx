@@ -10,7 +10,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { FileDetailExternalMeta } from "./file-detail-external-meta";
-import { SeparatedResults } from "./separated-results";
 
 function isSafeRelativePath(path: string): boolean {
   if (!path || path.includes("..")) return false;
@@ -18,7 +17,7 @@ function isSafeRelativePath(path: string): boolean {
   return norm.length > 0;
 }
 
-/** `/search` と同様に、メイン領域をスクロール可能にする */
+/** Scrollable main column (same idea as `/search`). */
 function StudioScrollPage({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -62,10 +61,10 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
       return;
     }
     let cancelled = false;
-    setListError(null);
     void getDataFileLookup(decodedPath)
       .then((hit) => {
         if (cancelled) return;
+        setListError(null);
         setRow(hit);
       })
       .catch(() => {
@@ -129,48 +128,10 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
           key={decodedPath}
           dataPath={decodedPath}
           fileLabel={fileLabel}
-          storagePath={row?.path ?? decodedPath}
+          fileMeta={row}
+          fileMetaError={listError}
         />
       ) : null}
-
-      <div className="flex flex-col gap-4">
-        <p className="text-muted-foreground text-xs">
-          メタデータ — DATA_DIR 上のファイル（lookup API）
-        </p>
-        {listError ? (
-          <p className="text-destructive text-sm">{listError}</p>
-        ) : null}
-        {row === undefined && !listError ? (
-          <p className="text-muted-foreground text-sm">
-            サイズ・更新日時を読み込み中…
-          </p>
-        ) : null}
-        {row === null && !listError ? (
-          <p className="text-muted-foreground text-sm">
-            該当するファイルが見つかりません。パスと取り込み状況を確認してください。
-          </p>
-        ) : null}
-        {row ? (
-          <SeparatedResults>
-            <article>
-              <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
-                サイズ
-              </p>
-              <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
-                {row.size_bytes.toLocaleString()} B
-              </p>
-            </article>
-            <article>
-              <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
-                更新日時
-              </p>
-              <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
-                {new Date(row.modified_at).toLocaleString()}
-              </p>
-            </article>
-          </SeparatedResults>
-        ) : null}
-      </div>
     </StudioScrollPage>
   );
 }

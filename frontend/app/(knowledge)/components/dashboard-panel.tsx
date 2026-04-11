@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Pie, PieChart } from "recharts";
 
 import type { ArxivPrimaryCategoryStats, DataFileInfo } from "@/lib/api/data";
@@ -21,6 +21,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { countUploadAndArxiv } from "@/lib/data-file-category";
+import { arxivCategoryLabelJa } from "@/lib/arxiv-category-labels";
 
 type DashboardPanelProps = {
   onRefreshStats: () => void | Promise<void>;
@@ -67,11 +68,14 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
   const arxivCategoryPieData = useMemo(() => {
     if (!arxivStats || arxivStats.total_arxiv_files === 0) return [];
     const slices: { name: string; count: number; fill: string }[] =
-      arxivStats.items.map((item, i) => ({
-        name: item.category,
-        count: item.count,
-        fill: `hsl(${(i * 41) % 360} 65% 48%)`,
-      }));
+      arxivStats.items.map((item, i) => {
+        const ja = arxivCategoryLabelJa(item.category);
+        return {
+          name: ja || item.category,
+          count: item.count,
+          fill: `hsl(${(i * 41) % 360} 65% 48%)`,
+        };
+      });
     if (arxivStats.uncategorized > 0) {
       slices.push({
         name: "（カテゴリ未記録）",
@@ -101,18 +105,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-3xl space-y-6 pb-10">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="text-muted-foreground size-7 shrink-0" />
-              <div>
-                <h1 className="text-foreground text-lg font-semibold tracking-tight">
-                  ダッシュボード
-                </h1>
-                <p className="text-muted-foreground text-sm">
-                  取り込んだファイル数と arXiv 主カテゴリの内訳
-                </p>
-              </div>
-            </div>
+          <div className="flex justify-end">
             <Button
               type="button"
               variant="outline"
@@ -163,10 +156,6 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
             <Card className="rounded-xl border-border/80">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">分類</CardTitle>
-                <p className="text-muted-foreground text-xs font-normal leading-snug">
-                  arXiv 主カテゴリ（ファイル名の ID で Atom API、または Markdown
-                  先頭の YAML）。
-                </p>
               </CardHeader>
               <CardContent>
                 {filesLoading ? (
