@@ -1,5 +1,6 @@
 """DATA_DIR へのファイルアップロード・再取り込み。"""
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -44,6 +45,26 @@ def file_enrichment(path: str) -> FileEnrichmentResponse:
         tldr=enr.tldr,
         sources=enr.sources,
     )
+
+
+@router.get("/files/lookup", response_model=DataFileInfo)
+def lookup_data_file(path: str) -> DataFileInfo:
+    """`DATA_DIR` から相対パスで 1 ファイルのメタを返す（一覧の件数上限に依存しない）。"""
+    rel = _safe_relative_data_path(path)
+    data_dir = get_data_dir().resolve()
+    target = (data_dir / rel).resolve()
+    try:
+        rel_resolved = target.relative_to(data_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="不正な path です。") from None
+    if any(part.startswith(".") for part in rel_resolved.parts):
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
+    st = target.stat()
+    mtime = datetime.fromtimestamp(st.st_mtime, tz=UTC)
+    posix = str(rel_resolved).replace("\\", "/")
+    return DataFileInfo(path=posix, size_bytes=st.st_size, modified_at=mtime)
 
 
 @router.get("/files", response_model=DataFilesResponse)

@@ -89,6 +89,33 @@ export async function getDataFiles(limit = 2000): Promise<DataFileInfo[]> {
   return data.files;
 }
 
+/** 相対パスで 1 ファイルのメタを取得。存在しなければ null。 */
+export async function getDataFileLookup(
+  path: string,
+): Promise<DataFileInfo | null> {
+  const u = new URL(`${apiBase()}/api/data/files/lookup`);
+  u.searchParams.set("path", path);
+  const r = await fetch(u.toString(), { method: "GET" });
+  if (r.status === 404) {
+    return null;
+  }
+  const text = await r.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`API error ${r.status}: ${text.slice(0, 500)}`);
+  }
+  if (!r.ok) {
+    const detail =
+      typeof data === "object" && data && "detail" in data
+        ? JSON.stringify((data as { detail: unknown }).detail)
+        : text;
+    throw new Error(`${r.status} ${detail}`);
+  }
+  return data as DataFileInfo;
+}
+
 export type FileEnrichmentResponse = {
   path: string;
   display_name: string;

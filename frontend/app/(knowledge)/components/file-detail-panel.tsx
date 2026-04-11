@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import type { DataFileInfo } from "@/lib/api/data";
-import { getDataFiles } from "@/lib/api/data";
+import { getDataFileLookup } from "@/lib/api/data";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +49,7 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
   }, [pathParam, decodedPath]);
 
   const [row, setRow] = useState<DataFileInfo | null | undefined>(undefined);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const fileLabel = useMemo(() => {
     if (!decodedPath) return "";
@@ -62,15 +62,15 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
       return;
     }
     let cancelled = false;
-    void getDataFiles(5000)
-      .then((files) => {
+    setListError(null);
+    void getDataFileLookup(decodedPath)
+      .then((hit) => {
         if (cancelled) return;
-        const hit = files.find((f) => f.path === decodedPath);
-        setRow(hit ?? null);
+        setRow(hit);
       })
       .catch(() => {
         if (cancelled) return;
-        setFetchError("一覧の取得に失敗しました。");
+        setListError("ファイル情報の取得に失敗しました。");
         setRow(null);
       });
     return () => {
@@ -109,44 +109,6 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
     );
   }
 
-  if (fetchError) {
-    return (
-      <StudioScrollPage>
-        <p className="text-destructive text-sm">{fetchError}</p>
-        <Link
-          href="/"
-          className={cn(buttonVariants({ variant: "outline" }), "rounded-xl")}
-        >
-          ダッシュボードへ
-        </Link>
-      </StudioScrollPage>
-    );
-  }
-
-  if (row === undefined) {
-    return (
-      <StudioScrollPage>
-        <p className="text-muted-foreground text-sm">読み込み中…</p>
-      </StudioScrollPage>
-    );
-  }
-
-  if (row === null) {
-    return (
-      <StudioScrollPage>
-        <p className="text-muted-foreground text-sm">
-          該当するファイルが見つかりません。
-        </p>
-        <Link
-          href="/"
-          className={cn(buttonVariants({ variant: "outline" }), "rounded-xl")}
-        >
-          ダッシュボードへ
-        </Link>
-      </StudioScrollPage>
-    );
-  }
-
   return (
     <StudioScrollPage>
       <div className="flex flex-wrap items-center gap-3">
@@ -167,32 +129,47 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
           key={decodedPath}
           dataPath={decodedPath}
           fileLabel={fileLabel}
-          storagePath={row.path}
+          storagePath={row?.path ?? decodedPath}
         />
       ) : null}
 
       <div className="flex flex-col gap-4">
         <p className="text-muted-foreground text-xs">
-          メタデータ — DATA_DIR からの相対パス（一覧 API と同一）
+          メタデータ — DATA_DIR 上のファイル（lookup API）
         </p>
-        <SeparatedResults>
-          <article>
-            <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
-              サイズ
-            </p>
-            <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
-              {row.size_bytes.toLocaleString()} B
-            </p>
-          </article>
-          <article>
-            <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
-              更新日時
-            </p>
-            <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
-              {new Date(row.modified_at).toLocaleString()}
-            </p>
-          </article>
-        </SeparatedResults>
+        {listError ? (
+          <p className="text-destructive text-sm">{listError}</p>
+        ) : null}
+        {row === undefined && !listError ? (
+          <p className="text-muted-foreground text-sm">
+            サイズ・更新日時を読み込み中…
+          </p>
+        ) : null}
+        {row === null && !listError ? (
+          <p className="text-muted-foreground text-sm">
+            該当するファイルが見つかりません。パスと取り込み状況を確認してください。
+          </p>
+        ) : null}
+        {row ? (
+          <SeparatedResults>
+            <article>
+              <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
+                サイズ
+              </p>
+              <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
+                {row.size_bytes.toLocaleString()} B
+              </p>
+            </article>
+            <article>
+              <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
+                更新日時
+              </p>
+              <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
+                {new Date(row.modified_at).toLocaleString()}
+              </p>
+            </article>
+          </SeparatedResults>
+        ) : null}
       </div>
     </StudioScrollPage>
   );
