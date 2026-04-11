@@ -88,3 +88,22 @@ export async function getDataFiles(limit = 2000): Promise<DataFileInfo[]> {
   });
   return data.files;
 }
+
+export type FileEnrichmentResponse = {
+  path: string;
+  display_name: string;
+  arxiv_id: string | null;
+  citation_count: number | null;
+  summary: string | null;
+  tldr: string | null;
+  sources: string[];
+};
+
+/** arXiv Atom を主に、引用数は OpenAlex から表示用メタを取得する。 */
+export async function getFileEnrichment(
+  path: string,
+): Promise<FileEnrichmentResponse> {
+  const u = new URL(`${apiBase()}/api/data/files/enrichment`);
+  u.searchParams.set("path", path);
+  return fetchJson<FileEnrichmentResponse>(u.toString(), { method: "GET" });
+}

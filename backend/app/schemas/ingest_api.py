@@ -33,6 +33,33 @@ class DataFilesResponse(BaseModel):
     files: list[DataFileInfo]
 
 
+class FileEnrichmentResponse(BaseModel):
+    """`GET /api/data/files/enrichment` — arXiv Atom 主・引用のみ OpenAlex。"""
+
+    path: str = Field(description="リクエストした DATA_DIR 相対パス")
+    display_name: str = Field(description="資料名（arXiv 取り込み時は Atom の title）")
+    arxiv_id: str | None = Field(
+        default=None,
+        description="取り込みファイル名由来の arXiv ID（該当する場合のみ）",
+    )
+    citation_count: int | None = Field(
+        default=None,
+        description="引用数（新形式 arXiv ID のみ OpenAlex。arXiv には無い指標）",
+    )
+    summary: str | None = Field(
+        default=None,
+        description="要約（arXiv Atom の summary / abstract）",
+    )
+    tldr: str | None = Field(
+        default=None,
+        description="未使用（将来用）。現状は常に null",
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        description="参照した外部ソース名（arxiv / openalex）",
+    )
+
+
 class ArxivImportRequest(BaseModel):
     """`POST /api/data/imports/arxiv` のリクエスト。
 

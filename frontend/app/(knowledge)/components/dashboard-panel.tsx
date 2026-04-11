@@ -133,7 +133,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
                   </span>
                 </div>
                 <div className="flex justify-between gap-4 border-t border-border/60 pt-2">
-                  <span className="text-muted-foreground">DATA_DIR 合計</span>
+                  <span className="text-muted-foreground">合計</span>
                   <span className="font-mono tabular-nums">
                     {filesLoading ? "…" : (files?.length ?? "—")}
                   </span>

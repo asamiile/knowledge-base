@@ -8,17 +8,42 @@ from sqlalchemy.orm import Session
 from app.core.settings import get_data_dir
 from app.db import get_db
 from app.schemas.ingest_api import (
-    DataFilesResponse,
     DataFileInfo,
+    DataFilesResponse,
     DataReindexResponse,
     DataUploadResponse,
+    FileEnrichmentResponse,
 )
 from app.services.data_dir_listing import list_data_dir_files
+from app.services.external import enrichment_for_data_relative_path
 from app.services.embeddings import build_embedding_model
 from app.services.extract.pdf_upload import write_pdf_extracted_markdown
 from app.services.ingest import ingest_data_directory
 
 router = APIRouter(prefix="/api/data", tags=["data"])
+
+
+def _safe_relative_data_path(path: str) -> str:
+    raw = (path or "").strip().replace("\\", "/").lstrip("/")
+    if not raw or ".." in raw.split("/"):
+        raise HTTPException(status_code=400, detail="不正な path です。")
+    return raw
+
+
+@router.get("/files/enrichment", response_model=FileEnrichmentResponse)
+def file_enrichment(path: str) -> FileEnrichmentResponse:
+    """arXiv Atom を主に、引用数のみ OpenAlex で表示用メタを組み立てる。"""
+    rel = _safe_relative_data_path(path)
+    enr = enrichment_for_data_relative_path(rel)
+    return FileEnrichmentResponse(
+        path=rel,
+        display_name=enr.display_name,
+        arxiv_id=enr.arxiv_id,
+        citation_count=enr.citation_count,
+        summary=enr.summary,
+        tldr=enr.tldr,
+        sources=enr.sources,
+    )
 
 
 @router.get("/files", response_model=DataFilesResponse)

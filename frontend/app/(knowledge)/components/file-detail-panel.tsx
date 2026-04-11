@@ -2,24 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import type { DataFileInfo } from "@/lib/api/data";
 import { getDataFiles } from "@/lib/api/data";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
+import { FileDetailExternalMeta } from "./file-detail-external-meta";
+import { SeparatedResults } from "./separated-results";
 
 function isSafeRelativePath(path: string): boolean {
   if (!path || path.includes("..")) return false;
   const norm = path.replace(/\\/g, "/").replace(/^\/+/, "");
   return norm.length > 0;
+}
+
+/** `/search` と同様に、メイン領域をスクロール可能にする */
+function StudioScrollPage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="mx-auto w-full max-w-4xl space-y-4 pb-10">{children}</div>
+    </div>
+  );
 }
 
 type FileDetailPanelProps = {
@@ -46,6 +51,12 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
   const [row, setRow] = useState<DataFileInfo | null | undefined>(undefined);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const fileLabel = useMemo(() => {
+    if (!decodedPath) return "";
+    const seg = decodedPath.split("/").pop();
+    return seg ?? decodedPath;
+  }, [decodedPath]);
+
   useEffect(() => {
     if (!pathParam || !decodedPath || pathInvalid) {
       return;
@@ -69,7 +80,7 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
 
   if (!pathParam) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 md:px-6">
+      <StudioScrollPage>
         <p className="text-muted-foreground text-sm">
           <code className="text-foreground">path</code>{" "}
           クエリがありません。
@@ -80,13 +91,13 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         >
           ダッシュボードへ
         </Link>
-      </div>
+      </StudioScrollPage>
     );
   }
 
   if (pathInvalid) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 md:px-6">
+      <StudioScrollPage>
         <p className="text-destructive text-sm">パスが不正です。</p>
         <Link
           href="/"
@@ -94,13 +105,13 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         >
           ダッシュボードへ
         </Link>
-      </div>
+      </StudioScrollPage>
     );
   }
 
   if (fetchError) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 md:px-6">
+      <StudioScrollPage>
         <p className="text-destructive text-sm">{fetchError}</p>
         <Link
           href="/"
@@ -108,21 +119,21 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         >
           ダッシュボードへ
         </Link>
-      </div>
+      </StudioScrollPage>
     );
   }
 
   if (row === undefined) {
     return (
-      <div className="text-muted-foreground mx-auto max-w-3xl px-4 py-6 text-sm md:px-6">
-        読み込み中…
-      </div>
+      <StudioScrollPage>
+        <p className="text-muted-foreground text-sm">読み込み中…</p>
+      </StudioScrollPage>
     );
   }
 
   if (row === null) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 md:px-6">
+      <StudioScrollPage>
         <p className="text-muted-foreground text-sm">
           該当するファイルが見つかりません。
         </p>
@@ -132,18 +143,18 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         >
           ダッシュボードへ
         </Link>
-      </div>
+      </StudioScrollPage>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 pb-10 md:px-6">
+    <StudioScrollPage>
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/"
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground -ml-2 gap-1 rounded-xl"
+            "text-muted-foreground -ml-2 gap-1 rounded-xl",
           )}
         >
           <ArrowLeft className="size-4" aria-hidden />
@@ -151,40 +162,38 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         </Link>
       </div>
 
-      <div className="flex items-start gap-3">
-        <FileText className="text-muted-foreground mt-0.5 size-8 shrink-0" />
-        <div className="min-w-0">
-          <h1 className="text-foreground text-lg font-semibold tracking-tight">
-            資料の詳細
-          </h1>
-          <p className="text-muted-foreground mt-1 break-all font-mono text-sm">
-            {row.path}
-          </p>
-        </div>
-      </div>
+      {decodedPath ? (
+        <FileDetailExternalMeta
+          key={decodedPath}
+          dataPath={decodedPath}
+          fileLabel={fileLabel}
+          storagePath={row.path}
+        />
+      ) : null}
 
-      <Card className="rounded-xl border-border/80">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">メタデータ</CardTitle>
-          <CardDescription>
-            DATA_DIR からの相対パス（一覧 API と同一）
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="text-muted-foreground">サイズ</span>
-            <span className="font-mono tabular-nums">
+      <div className="flex flex-col gap-4">
+        <p className="text-muted-foreground text-xs">
+          メタデータ — DATA_DIR からの相対パス（一覧 API と同一）
+        </p>
+        <SeparatedResults>
+          <article>
+            <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
+              サイズ
+            </p>
+            <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
               {row.size_bytes.toLocaleString()} B
-            </span>
-          </div>
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="text-muted-foreground">更新日時</span>
-            <span className="font-mono text-xs tabular-nums">
+            </p>
+          </article>
+          <article>
+            <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
+              更新日時
+            </p>
+            <p className="text-foreground mt-3 font-mono text-[15px] tabular-nums">
               {new Date(row.modified_at).toLocaleString()}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            </p>
+          </article>
+        </SeparatedResults>
+      </div>
+    </StudioScrollPage>
   );
 }
