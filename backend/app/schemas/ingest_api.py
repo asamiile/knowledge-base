@@ -42,6 +42,14 @@ class FileEnrichmentResponse(BaseModel):
         default=None,
         description="取り込みファイル名由来の arXiv ID（該当する場合のみ）",
     )
+    arxiv_primary_category: str | None = Field(
+        default=None,
+        description="arXiv Atom の主カテゴリ（例: cs.LG）。該当しない場合は null",
+    )
+    arxiv_categories: list[str] = Field(
+        default_factory=list,
+        description="arXiv のカテゴリ一覧（主を先頭）。該当しない場合は空",
+    )
     citation_count: int | None = Field(
         default=None,
         description="引用数（新形式 arXiv ID のみ OpenAlex。arXiv には無い指標）",
@@ -58,6 +66,21 @@ class FileEnrichmentResponse(BaseModel):
         default_factory=list,
         description="参照した外部ソース名（arxiv / openalex）",
     )
+
+
+class ArxivPrimaryCategoryCount(BaseModel):
+    category: str = Field(description="arXiv 主カテゴリ（例: cs.LG）")
+    count: int = Field(description="そのカテゴリの取り込み .md 数")
+
+
+class ArxivPrimaryCategoryStatsResponse(BaseModel):
+    """`imports/arxiv/*.md` フロントマターの主カテゴリ集計（ダッシュボード用）。"""
+
+    items: list[ArxivPrimaryCategoryCount]
+    uncategorized: int = Field(
+        description="フロントマターに主カテゴリが無い .md 数",
+    )
+    total_arxiv_files: int = Field(description="imports/arxiv の .md 総数")
 
 
 class ArxivImportRequest(BaseModel):

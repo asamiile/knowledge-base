@@ -16,6 +16,7 @@ import httpx
 ARXIV_API = "https://export.arxiv.org/api/query"
 USER_AGENT = "knowledge-base/0.1 (local-dev; https://arxiv.org/help/api)"
 _ATOM = "{http://www.w3.org/2005/Atom}"
+_ARXIV_ATOM = "{http://arxiv.org/schemas/atom}"
 _MAX_PDF_BYTES = 35 * 1024 * 1024
 # 連続 PDF GET の間隔（負荷配慮・秒）
 _PDF_FETCH_INTERVAL_SEC = 2.0
@@ -29,6 +30,8 @@ class _ArxivEntry:
     title: str
     summary: str
     authors: list[str]
+    primary_category: str | None
+    categories: tuple[str, ...]
 
 
 def _normalize_arxiv_ids(raw: list[str]) -> list[str]:
@@ -120,12 +123,28 @@ def _parse_atom_entries(xml_text: str) -> list[_ArxivEntry]:
             name_el = au.find(f"{_ATOM}name")
             if name_el is not None and name_el.text:
                 authors.append(name_el.text.strip())
+        pc_el = el.find(f"{_ARXIV_ATOM}primary_category")
+        primary = (
+            (pc_el.get("term") or "").strip() or None if pc_el is not None else None
+        )
+        terms: list[str] = []
+        for cat in el.findall(f"{_ATOM}category"):
+            t = (cat.get("term") or "").strip()
+            if t and t not in terms:
+                terms.append(t)
+        if primary:
+            terms = [primary] + [x for x in terms if x != primary]
+        elif terms:
+            primary = terms[0]
+        categories = tuple(terms)
         entries.append(
             _ArxivEntry(
                 id_url=id_el.text.strip(),
                 title=title or "(no title)",
                 summary=summary,
                 authors=authors,
+                primary_category=primary,
+                categories=categories,
             )
         )
     return entries
@@ -148,6 +167,30 @@ def _canonical_abs_url(id_url: str) -> str:
     return f"https://arxiv.org/abs/{u.lstrip('/')}"
 
 
+def _yaml_scalar(value: str) -> str:
+    if re.search(r'[:#"\n]', value):
+        esc = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{esc}"'
+    return value
+
+
+def _arxiv_categories_frontmatter(entry: _ArxivEntry) -> str:
+    if not entry.categories and not entry.primary_category:
+        return ""
+    lines = ["---"]
+    if entry.primary_category:
+        lines.append(
+            f"arxiv_primary_category: {_yaml_scalar(entry.primary_category)}",
+        )
+    if entry.categories:
+        lines.append("arxiv_categories:")
+        for c in entry.categories:
+            lines.append(f"  - {_yaml_scalar(c)}")
+    lines.append("---")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _entry_to_markdown(
     entry: _ArxivEntry,
     *,
@@ -157,7 +200,9 @@ def _entry_to_markdown(
     stem = _entry_file_stem(entry)
     authors = ", ".join(entry.authors) if entry.authors else "(unknown)"
     url = _canonical_abs_url(entry.id_url)
+    fm = _arxiv_categories_frontmatter(entry)
     body = (
+        f"{fm}"
         f"# {entry.title}\n\n"
         f"**arXiv:** `{stem}`  \n"
         f"**URL:** {url}  \n"
@@ -210,6 +255,33 @@ def fetch_arxiv_entries(
                 all_entries.append(e)
 
     return all_entries
+
+
+# id_list 1 リクエストあたりの件数（URL・応答サイズのバランス）
+_ARXIV_ID_LIST_BATCH = 40
+
+
+def fetch_primary_categories_for_stems(stems: list[str]) -> dict[str, str | None]:
+    """ファイル名 stem（例 `1709.06342v4`）→ Atom の主カテゴリ。失敗時はキーなしまたは None。"""
+    out: dict[str, str | None] = {}
+    unique = list(dict.fromkeys(s.strip() for s in stems if s.strip()))
+    if not unique:
+        return out
+    for i in range(0, len(unique), _ARXIV_ID_LIST_BATCH):
+        batch = unique[i : i + _ARXIV_ID_LIST_BATCH]
+        try:
+            entries = fetch_arxiv_entries(
+                arxiv_ids=batch,
+                search_query=None,
+                max_results=max(len(batch), 1),
+            )
+        except Exception as e:
+            logger.warning("arXiv batch category fetch failed: %s", e)
+            continue
+        for e in entries:
+            stem = _entry_file_stem(e)
+            out[stem] = e.primary_category
+    return out
 
 
 def entry_import_id(entry: _ArxivEntry) -> str:

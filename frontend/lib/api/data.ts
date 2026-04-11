@@ -120,10 +120,18 @@ export type FileEnrichmentResponse = {
   path: string;
   display_name: string;
   arxiv_id: string | null;
+  arxiv_primary_category: string | null;
+  arxiv_categories: string[];
   citation_count: number | null;
   summary: string | null;
   tldr: string | null;
   sources: string[];
+};
+
+export type ArxivPrimaryCategoryStats = {
+  items: { category: string; count: number }[];
+  uncategorized: number;
+  total_arxiv_files: number;
 };
 
 /** arXiv Atom を主に、引用数は OpenAlex から表示用メタを取得する。 */
@@ -133,4 +141,12 @@ export async function getFileEnrichment(
   const u = new URL(`${apiBase()}/api/data/files/enrichment`);
   u.searchParams.set("path", path);
   return fetchJson<FileEnrichmentResponse>(u.toString(), { method: "GET" });
+}
+
+/** `imports/arxiv/*.md` の主カテゴリ集計（フロントマター） */
+export async function getArxivPrimaryCategoryStats(): Promise<ArxivPrimaryCategoryStats> {
+  return fetchJson<ArxivPrimaryCategoryStats>(
+    `${apiBase()}/api/data/files/arxiv-primary-category-stats`,
+    { method: "GET" },
+  );
 }

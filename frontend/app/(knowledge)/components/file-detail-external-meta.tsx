@@ -77,7 +77,8 @@ export function FileDetailExternalMeta({
 
       <div className="flex flex-col gap-4">
         <p className="text-muted-foreground text-xs">
-          論文情報 — タイトル・要約は arXiv、引用数は OpenAlex（新形式 ID のみ）
+          論文情報 — タイトル・要約・カテゴリは arXiv Atom、引用数は OpenAlex（新形式
+          ID のみ）
         </p>
 
         {enrichError ? (
@@ -101,8 +102,27 @@ export function FileDetailExternalMeta({
         (enrich.tldr ||
           enrich.summary ||
           enrich.citation_count !== null ||
-          enrich.sources.length > 0) ? (
+          enrich.sources.length > 0 ||
+          (enrich.arxiv_categories?.length ?? 0) > 0) ? (
           <SeparatedResults>
+            {(enrich.arxiv_categories?.length ?? 0) > 0 ? (
+              <article>
+                <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
+                  arXiv カテゴリ
+                </p>
+                <p className="text-foreground mt-3 font-mono text-[14px] leading-relaxed">
+                  {enrich.arxiv_categories.join(", ")}
+                </p>
+                {enrich.arxiv_primary_category ? (
+                  <p className="text-muted-foreground mt-2 font-sans text-xs">
+                    主カテゴリ:{" "}
+                    <span className="font-mono text-foreground">
+                      {enrich.arxiv_primary_category}
+                    </span>
+                  </p>
+                ) : null}
+              </article>
+            ) : null}
             {enrich.tldr ? (
               <article>
                 <p className="text-muted-foreground font-mono text-[11px] tracking-tight">

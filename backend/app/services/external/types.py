@@ -13,3 +13,5 @@ class PaperEnrichment:
     summary: str | None
     tldr: str | None
     sources: list[str]
+    arxiv_primary_category: str | None
+    arxiv_categories: tuple[str, ...]

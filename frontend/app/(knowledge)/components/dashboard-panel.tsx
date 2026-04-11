@@ -5,8 +5,8 @@ import Link from "next/link";
 import { LayoutDashboard, RefreshCw } from "lucide-react";
 import { Pie, PieChart } from "recharts";
 
-import type { DataFileInfo } from "@/lib/api/data";
-import { getDataFiles } from "@/lib/api/data";
+import type { ArxivPrimaryCategoryStats, DataFileInfo } from "@/lib/api/data";
+import { getArxivPrimaryCategoryStats, getDataFiles } from "@/lib/api/data";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,17 +20,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import {
-  aggregateDataFilesForPie,
-  countUploadAndArxiv,
-} from "@/lib/data-file-category";
-
-const pieChartConfig = {
-  imports_arxiv: { label: "arXiv 取り込み", color: "var(--chart-1)" },
-  imports_other: { label: "その他の取り込み", color: "var(--chart-2)" },
-  uploads: { label: "アップロード", color: "var(--chart-3)" },
-  other: { label: "ルート／その他", color: "var(--chart-4)" },
-} satisfies ChartConfig;
+import { countUploadAndArxiv } from "@/lib/data-file-category";
 
 type DashboardPanelProps = {
   onRefreshStats: () => void | Promise<void>;
@@ -39,6 +29,9 @@ type DashboardPanelProps = {
 /** `/` — 取り込み資料の概要と分類 */
 export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
   const [files, setFiles] = useState<DataFileInfo[] | null>(null);
+  const [arxivStats, setArxivStats] = useState<ArxivPrimaryCategoryStats | null>(
+    null,
+  );
   const [filesLoading, setFilesLoading] = useState(true);
 
   const loadFiles = useCallback(async () => {
@@ -47,6 +40,11 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
       setFiles(await getDataFiles(2000));
     } catch {
       setFiles(null);
+    }
+    try {
+      setArxivStats(await getArxivPrimaryCategoryStats());
+    } catch {
+      setArxivStats(null);
     } finally {
       setFilesLoading(false);
     }
@@ -66,10 +64,31 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
     return [...files].sort((a, b) => a.path.localeCompare(b.path));
   }, [files]);
 
-  const pieData = useMemo(
-    () => (files?.length ? aggregateDataFilesForPie(files) : []),
-    [files],
-  );
+  const arxivCategoryPieData = useMemo(() => {
+    if (!arxivStats || arxivStats.total_arxiv_files === 0) return [];
+    const slices: { name: string; count: number; fill: string }[] =
+      arxivStats.items.map((item, i) => ({
+        name: item.category,
+        count: item.count,
+        fill: `hsl(${(i * 41) % 360} 65% 48%)`,
+      }));
+    if (arxivStats.uncategorized > 0) {
+      slices.push({
+        name: "（カテゴリ未記録）",
+        count: arxivStats.uncategorized,
+        fill: "hsl(220 8% 46%)",
+      });
+    }
+    return slices;
+  }, [arxivStats]);
+
+  const arxivCategoryChartConfig = useMemo(() => {
+    const c: ChartConfig = {};
+    arxivCategoryPieData.forEach((slice, i) => {
+      c[`ac_${i}`] = { label: slice.name, color: slice.fill };
+    });
+    return c;
+  }, [arxivCategoryPieData]);
 
   const { upload, arxiv } = useMemo(
     () => (files?.length ? countUploadAndArxiv(files) : { upload: 0, arxiv: 0 }),
@@ -90,7 +109,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
                   ダッシュボード
                 </h1>
                 <p className="text-muted-foreground text-sm">
-                  取り込んだファイル数と保存パス別の内訳
+                  取り込んだファイル数と arXiv 主カテゴリの内訳
                 </p>
               </div>
             </div>
@@ -144,17 +163,31 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
             <Card className="rounded-xl border-border/80">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">分類</CardTitle>
+                <p className="text-muted-foreground text-xs font-normal leading-snug">
+                  arXiv 主カテゴリ（ファイル名の ID で Atom API、または Markdown
+                  先頭の YAML）。
+                </p>
               </CardHeader>
               <CardContent>
-                {pieData.length === 0 ? (
+                {filesLoading ? (
                   <p className="text-muted-foreground py-8 text-center text-sm">
-                    {filesLoading
-                      ? "読み込み中…"
-                      : "ファイルがありません。資料を追加してください。"}
+                    読み込み中…
+                  </p>
+                ) : arxivStats === null ? (
+                  <p className="text-destructive py-8 text-center text-sm">
+                    カテゴリ集計を取得できませんでした。
+                  </p>
+                ) : arxivStats.total_arxiv_files === 0 ? (
+                  <p className="text-muted-foreground py-8 text-center text-sm">
+                    arXiv 取り込み（imports/arxiv/）のファイルはまだありません。
+                  </p>
+                ) : arxivCategoryPieData.length === 0 ? (
+                  <p className="text-muted-foreground py-8 text-center text-sm">
+                    表示できるカテゴリがありません。
                   </p>
                 ) : (
                   <ChartContainer
-                    config={pieChartConfig}
+                    config={arxivCategoryChartConfig}
                     className="mx-auto aspect-square max-h-[260px] w-full"
                   >
                     <PieChart>
@@ -165,7 +198,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
                         }
                       />
                       <Pie
-                        data={pieData}
+                        data={arxivCategoryPieData}
                         dataKey="count"
                         nameKey="name"
                         innerRadius={52}

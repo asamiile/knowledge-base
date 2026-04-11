@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.services.external.arxiv_atom import fetch_title_and_summary
+from app.services.external.arxiv_atom import fetch_arxiv_paper_meta
 from app.services.external.arxiv_import_path import (
     arxiv_import_stem,
     is_modern_arxiv_stem,
@@ -31,10 +31,12 @@ def enrichment_for_data_relative_path(rel_path: str) -> PaperEnrichment:
             summary=None,
             tldr=None,
             sources=[],
+            arxiv_primary_category=None,
+            arxiv_categories=(),
         )
 
     sources: list[str] = []
-    title, summ = fetch_title_and_summary(stem)
+    title, summ, primary_cat, cats = fetch_arxiv_paper_meta(stem)
     display_name = (
         title.strip()
         if isinstance(title, str) and title.strip()
@@ -60,4 +62,6 @@ def enrichment_for_data_relative_path(rel_path: str) -> PaperEnrichment:
         summary=summary,
         tldr=None,
         sources=sources,
+        arxiv_primary_category=primary_cat,
+        arxiv_categories=cats,
     )

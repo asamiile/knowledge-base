@@ -15,15 +15,22 @@ def test_enrichment_non_arxiv_uses_basename() -> None:
     assert e.summary is None
     assert e.tldr is None
     assert e.sources == []
+    assert e.arxiv_primary_category is None
+    assert e.arxiv_categories == ()
 
 
 @patch("app.services.external.enrichment.fetch_work_for_arxiv_base")
-@patch("app.services.external.enrichment.fetch_title_and_summary")
+@patch("app.services.external.enrichment.fetch_arxiv_paper_meta")
 def test_enrichment_uses_arxiv_for_title_summary_openalex_for_citations(
     mock_atom: object,
     mock_oa: object,
 ) -> None:
-    mock_atom.return_value = ("From ArXiv Title", "From ArXiv abstract.")
+    mock_atom.return_value = (
+        "From ArXiv Title",
+        "From ArXiv abstract.",
+        "cs.LG",
+        ("cs.LG", "stat.ML"),
+    )
     mock_oa.return_value = {"cited_by_count": 7}
 
     e = enrichment_for_data_relative_path("imports/arxiv/1709.06342v4.md")
@@ -32,15 +39,22 @@ def test_enrichment_uses_arxiv_for_title_summary_openalex_for_citations(
     assert e.citation_count == 7
     assert e.tldr is None
     assert e.sources == ["arxiv", "openalex"]
+    assert e.arxiv_primary_category == "cs.LG"
+    assert e.arxiv_categories == ("cs.LG", "stat.ML")
 
 
 @patch("app.services.external.enrichment.fetch_work_for_arxiv_base")
-@patch("app.services.external.enrichment.fetch_title_and_summary")
+@patch("app.services.external.enrichment.fetch_arxiv_paper_meta")
 def test_enrichment_arxiv_only_when_openalex_missing(
     mock_atom: object,
     mock_oa: object,
 ) -> None:
-    mock_atom.return_value = ("Atom Title", "Atom abstract here.")
+    mock_atom.return_value = (
+        "Atom Title",
+        "Atom abstract here.",
+        "eess.IV",
+        ("eess.IV",),
+    )
     mock_oa.return_value = None
 
     e = enrichment_for_data_relative_path("imports/arxiv/9999.99999v1.md")
@@ -48,3 +62,4 @@ def test_enrichment_arxiv_only_when_openalex_missing(
     assert e.summary and "Atom abstract" in e.summary
     assert e.citation_count is None
     assert e.sources == ["arxiv"]
+    assert e.arxiv_primary_category == "eess.IV"

@@ -9,12 +9,15 @@ from sqlalchemy.orm import Session
 from app.core.settings import get_data_dir
 from app.db import get_db
 from app.schemas.ingest_api import (
+    ArxivPrimaryCategoryCount,
+    ArxivPrimaryCategoryStatsResponse,
     DataFileInfo,
     DataFilesResponse,
     DataReindexResponse,
     DataUploadResponse,
     FileEnrichmentResponse,
 )
+from app.services.arxiv_markdown_meta import aggregate_arxiv_primary_category_counts
 from app.services.data_dir_listing import list_data_dir_files
 from app.services.external import enrichment_for_data_relative_path
 from app.services.embeddings import build_embedding_model
@@ -40,10 +43,27 @@ def file_enrichment(path: str) -> FileEnrichmentResponse:
         path=rel,
         display_name=enr.display_name,
         arxiv_id=enr.arxiv_id,
+        arxiv_primary_category=enr.arxiv_primary_category,
+        arxiv_categories=list(enr.arxiv_categories),
         citation_count=enr.citation_count,
         summary=enr.summary,
         tldr=enr.tldr,
         sources=enr.sources,
+    )
+
+
+@router.get(
+    "/files/arxiv-primary-category-stats",
+    response_model=ArxivPrimaryCategoryStatsResponse,
+)
+def arxiv_primary_category_stats() -> ArxivPrimaryCategoryStatsResponse:
+    """`imports/arxiv/*.md` の YAML 主カテゴリを集計（新規取り込み分にフロントマターあり）。"""
+    data_dir = get_data_dir().resolve()
+    rows, uncategorized, total = aggregate_arxiv_primary_category_counts(data_dir)
+    return ArxivPrimaryCategoryStatsResponse(
+        items=[ArxivPrimaryCategoryCount(category=k, count=v) for k, v in rows],
+        uncategorized=uncategorized,
+        total_arxiv_files=total,
     )
 
 
