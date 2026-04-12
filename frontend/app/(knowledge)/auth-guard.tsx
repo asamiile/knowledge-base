@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -16,14 +16,15 @@ export function KnowledgeAuthGuard({
 
   useEffect(() => {
     if (!authEnabledInBrowser()) {
-      setReady(true);
       return;
     }
     if (!getAccessToken()) {
       router.replace("/login");
       return;
     }
-    setReady(true);
+    startTransition(() => {
+      setReady(true);
+    });
   }, [router]);
 
   if (!ready) {
