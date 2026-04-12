@@ -34,7 +34,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
-from app.models.tables import Document, QuestionHistory, RawData, SavedSearch, SavedSearchRunLog
+from app.models.tables import (
+    Document,
+    QuestionHistory,
+    RawData,
+    SavedSearch,
+    SavedSearchRunLog,
+    User,
+)
 
 _DEV_SEED_URL = "https://knowledge-base.local/dev-seed#v1"
 
@@ -257,6 +264,31 @@ def _seed_question_history(db: Session) -> None:
         db.add(QuestionHistory(question=q, response=resp))
 
 
+def _seed_admin_user(db: Session) -> None:
+    """ADMIN_EMAIL と ADMIN_PASSWORD があるとき、未登録なら users に1件追加。平文は .env のみ。"""
+    email = (os.environ.get("ADMIN_EMAIL") or "").strip().lower()
+    password = os.environ.get("ADMIN_PASSWORD") or ""
+    if not email or not password:
+        return
+    from app.core.auth import hash_password
+
+    exists = db.scalar(select(func.count()).select_from(User).where(User.email == email))
+    if int(exists or 0) > 0:
+        return
+    db.add(
+        User(
+            email=email,
+            hashed_password=hash_password(password),
+            is_active=True,
+        )
+    )
+    print(
+        f"seed_dev: ログイン用ユーザーを作成しました（{email}）。"
+        " パスワードは運用でユーザーに安全に伝達してください。",
+        file=sys.stderr,
+    )
+
+
 def seed_dev(db: Session) -> None:
     """開発 DB にサンプル行を投入・更新する。"""
     _seed_documents(db)
@@ -264,6 +296,7 @@ def seed_dev(db: Session) -> None:
     _seed_saved_searches(db)
     _seed_run_logs(db)
     _seed_question_history(db)
+    _seed_admin_user(db)
 
 
 def main() -> None:
@@ -276,7 +309,7 @@ def main() -> None:
         seed_dev(session)
         session.commit()
         print(
-            "seed_dev: OK (documents, raw_data, saved_searches, run_logs, question_history)",
+            "seed_dev: OK (documents, raw_data, saved_searches, run_logs, question_history, users?)",
         )
     except Exception:
         session.rollback()

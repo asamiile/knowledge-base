@@ -13,7 +13,9 @@ from fastapi.openapi.utils import get_openapi
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api.deps_auth import require_auth
 from app.api.routes_analyze import router as analyze_router
+from app.api.routes_auth import router as auth_router
 from app.api.routes_data import router as data_router
 from app.api.routes_imports import router as imports_router
 from app.api.routes_knowledge import router as knowledge_router
@@ -62,10 +64,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(analyze_router)
-app.include_router(data_router)
-app.include_router(imports_router)
-app.include_router(knowledge_router)
+app.include_router(auth_router)
+app.include_router(analyze_router, dependencies=[Depends(require_auth)])
+app.include_router(data_router, dependencies=[Depends(require_auth)])
+app.include_router(imports_router, dependencies=[Depends(require_auth)])
+app.include_router(knowledge_router, dependencies=[Depends(require_auth)])
 
 
 @app.get("/")

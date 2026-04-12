@@ -4,6 +4,7 @@ from app.models.tables import (
     RawData,
     SavedSearch,
     SavedSearchRunLog,
+    User,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "RawData",
     "SavedSearch",
     "SavedSearchRunLog",
+    "User",
 ]

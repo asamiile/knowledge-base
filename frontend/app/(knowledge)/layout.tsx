@@ -1,3 +1,4 @@
+import { KnowledgeAuthGuard } from "./auth-guard";
 import { KnowledgeStudioProvider } from "./knowledge-studio-context";
 
 export default function KnowledgeLayout({
@@ -7,7 +8,9 @@ export default function KnowledgeLayout({
 }>) {
   return (
     <div className="bg-background flex h-full min-h-0 flex-1 flex-col">
-      <KnowledgeStudioProvider>{children}</KnowledgeStudioProvider>
+      <KnowledgeAuthGuard>
+        <KnowledgeStudioProvider>{children}</KnowledgeStudioProvider>
+      </KnowledgeAuthGuard>
     </div>
   );
 }
