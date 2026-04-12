@@ -1,22 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import {
   type ArxivPreviewEntry,
-  type DataFileInfo,
-  getDataFiles,
   postArxivImport,
   postArxivPreview,
   postReindex,
   postUpload,
 } from "@/lib/api/data";
 import { splitArxivIdsInput } from "@/lib/arxiv-input";
-import {
-  getAutoReindexAfterImport,
-  setAutoReindexAfterImport as persistAutoReindex,
-} from "@/lib/preferences";
 
 import type { StudioShell } from "./use-studio-shell";
 
@@ -60,33 +54,6 @@ export function useAddSource(
     null,
   );
 
-  const [pendingReindex, setPendingReindex] = useState(false);
-  const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
-  const [autoReindexAfterImport, setAutoReindexAfterImportState] =
-    useState(false);
-  const [sourceFiles, setSourceFiles] = useState<DataFileInfo[] | null>(null);
-
-  useEffect(() => {
-    setAutoReindexAfterImportState(getAutoReindexAfterImport());
-  }, []);
-
-  const refreshSourceFiles = useCallback(async () => {
-    try {
-      setSourceFiles(await getDataFiles(2000));
-    } catch {
-      setSourceFiles(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshSourceFiles();
-  }, [refreshSourceFiles]);
-
-  const setAutoReindexAfterImport = useCallback((v: boolean) => {
-    setAutoReindexAfterImportState(v);
-    persistAutoReindex(v);
-  }, []);
-
   const clearArxivPreview = useCallback(() => {
     setArxivPreviewEntries(null);
     setArxivPreviewSelectedIds([]);
@@ -98,29 +65,20 @@ export function useAddSource(
     setBusy("reindex");
     try {
       const res = await postReindex();
-      setPendingReindex(false);
-      setReindexDialogOpen(false);
       setInfo(
         `Index updated: chunks ${res.document_chunks}, raw_data ${res.raw_data_rows}`,
       );
       void refreshStats();
-      await refreshSourceFiles();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
-  }, [refreshSourceFiles, refreshStats, setBusy, setError, setInfo]);
+  }, [refreshStats, setBusy, setError, setInfo]);
 
   const afterNewFilesOnDisk = useCallback(async () => {
-    await refreshSourceFiles();
-    if (getAutoReindexAfterImport()) {
-      await runReindexNow();
-    } else {
-      setPendingReindex(true);
-      setReindexDialogOpen(true);
-    }
-  }, [refreshSourceFiles, runReindexNow]);
+    await runReindexNow();
+  }, [runReindexNow]);
 
   const toggleArxivPreviewSelected = useCallback((arxivId: string) => {
     setArxivPreviewSelectedIds((prev) =>
@@ -357,10 +315,6 @@ export function useAddSource(
     await runReindexNow();
   }, [runReindexNow]);
 
-  const onCancelReindexDialog = useCallback(() => {
-    setReindexDialogOpen(false);
-  }, []);
-
   return {
     fileInputRef,
     onPickUploadFile,
@@ -386,15 +340,6 @@ export function useAddSource(
     setArxivPreviewAllSelected,
     confirmArxivImportFromPreview,
     clearArxivPreview,
-    pendingReindex,
     onReindexClick,
-    reindexDialogOpen,
-    setReindexDialogOpen,
-    onConfirmReindexDialog: runReindexNow,
-    onCancelReindexDialog,
-    autoReindexAfterImport,
-    setAutoReindexAfterImport,
-    sourceFiles,
-    refreshSourceFiles,
   };
 }

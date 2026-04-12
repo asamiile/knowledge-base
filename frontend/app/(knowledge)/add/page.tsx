@@ -33,15 +33,7 @@ export default function AddSourcesPage() {
     setArxivPreviewAllSelected,
     confirmArxivImportFromPreview,
     clearArxivPreview,
-    pendingReindex,
     onReindexClick,
-    reindexDialogOpen,
-    onConfirmReindexDialog,
-    onCancelReindexDialog,
-    autoReindexAfterImport,
-    setAutoReindexAfterImport,
-    sourceFiles,
-    refreshSourceFiles,
   } = useKnowledgeStudio();
 
   return (
@@ -73,15 +65,7 @@ export default function AddSourcesPage() {
       setArxivPreviewAllSelected={setArxivPreviewAllSelected}
       confirmArxivImportFromPreview={confirmArxivImportFromPreview}
       clearArxivPreview={clearArxivPreview}
-      pendingReindex={pendingReindex}
       onReindexClick={onReindexClick}
-      reindexDialogOpen={reindexDialogOpen}
-      onConfirmReindexDialog={onConfirmReindexDialog}
-      onCancelReindexDialog={onCancelReindexDialog}
-      autoReindexAfterImport={autoReindexAfterImport}
-      setAutoReindexAfterImport={setAutoReindexAfterImport}
-      sourceFiles={sourceFiles}
-      refreshSourceFiles={refreshSourceFiles}
     />
   );
 }

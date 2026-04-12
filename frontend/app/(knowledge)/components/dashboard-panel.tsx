@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import { Pie, PieChart } from "recharts";
 
@@ -59,11 +58,6 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
     void onRefreshStats();
     void loadFiles();
   }, [loadFiles, onRefreshStats]);
-
-  const sortedFiles = useMemo(() => {
-    if (!files?.length) return [];
-    return [...files].sort((a, b) => a.path.localeCompare(b.path));
-  }, [files]);
 
   const arxivCategoryPieData = useMemo(() => {
     if (!arxivStats || arxivStats.total_arxiv_files === 0) return [];
@@ -200,40 +194,6 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
               </CardContent>
             </Card>
           </div>
-
-          <Card className="rounded-xl border-border/80">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">ファイル一覧</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filesLoading ? (
-                <p className="text-muted-foreground text-sm">一覧を読み込み中…</p>
-              ) : sortedFiles.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  ファイルはまだありません。
-                </p>
-              ) : (
-                <ul className="border-border bg-muted/20 max-h-[min(50vh,360px)] overflow-y-auto rounded-lg border text-sm">
-                  {sortedFiles.map((f) => (
-                    <li
-                      key={f.path}
-                      className="border-border/60 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 border-b px-3 py-2 last:border-b-0"
-                    >
-                      <Link
-                        href={`/file?path=${encodeURIComponent(f.path)}`}
-                        className="text-primary min-w-0 flex-1 break-all font-mono text-xs underline-offset-2 hover:underline"
-                      >
-                        {f.path}
-                      </Link>
-                      <span className="text-muted-foreground shrink-0 tabular-nums text-xs">
-                        {f.size_bytes.toLocaleString()} B
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
