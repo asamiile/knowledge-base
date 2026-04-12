@@ -16,6 +16,9 @@ _repo_root = Path(__file__).resolve().parents[2]
 # STEP 3: backend/data/（サンプル Markdown・DATA_DIR の既定に合わせる）
 os.environ.setdefault("DATA_DIR", str(_repo_root / "backend" / "data"))
 
+# ローカル backend/.env で AUTH_ENABLED=true でも、既定テストは認証オフ（test_auth は monkeypatch で有効化）
+os.environ["AUTH_ENABLED"] = "false"
+
 
 @pytest.fixture
 def client() -> TestClient:

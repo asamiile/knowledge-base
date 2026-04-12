@@ -13,6 +13,11 @@ from fastapi.openapi.utils import get_openapi
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.config import (
+    cors_allow_credentials,
+    get_cors_allow_origins,
+    is_production_environment,
+)
 from app.api.deps_auth import require_auth
 from app.api.routes_analyze import router as analyze_router
 from app.api.routes_auth import router as auth_router
@@ -28,10 +33,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_prod = is_production_environment()
 app = FastAPI(
     title="knowledge-base API",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url=None if _prod else "/docs",
+    redoc_url=None if _prod else "/redoc",
+    openapi_url=None if _prod else "/openapi.json",
 )
 
 
@@ -58,8 +67,8 @@ app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=get_cors_allow_origins(),
+    allow_credentials=cors_allow_credentials(),
     allow_methods=["*"],
     allow_headers=["*"],
 )

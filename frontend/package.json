@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 -p 3000 --webpack",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0 -p 3000",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {

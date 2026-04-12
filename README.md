@@ -51,9 +51,14 @@ curl -s -X POST http://localhost:8000/api/analyze \
 
 ### Seedの投入
 
-```bach
+```bash
 docker compose exec backend python -m app.db.seed_dev
 ```
+
+### 本番デプロイ
+
+- 手順・チェックリスト: [docs/PRODUCTION.md](docs/PRODUCTION.md)
+- 本番用 Compose（DB・backend・frontend の例）: `docker-compose.prod.yml`
 
 ### pytestの実行
 
