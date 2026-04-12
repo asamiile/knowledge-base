@@ -1,17 +1,27 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { ArrowUp, Loader2, SlidersHorizontal } from "lucide-react";
-import type {
-  Dispatch,
-  KeyboardEvent as ReactKeyboardEvent,
-  RefObject,
-  SetStateAction,
+import {
+  ArrowUp,
+  Loader2,
+  RefreshCw,
+  SlidersHorizontal,
+} from "lucide-react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type Dispatch,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  type SetStateAction,
 } from "react";
 
 import type { AnalyzeResponse } from "@/lib/api/analyze";
 import type { QuestionHistoryItem } from "@/lib/api/question-history";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +33,6 @@ export type AskAnalyzePanelProps = {
   error: string | null;
   info: string | null;
   result: AnalyzeResponse | null;
-  statsRows: { label: string; value: string }[];
   question: string;
   setQuestion: Dispatch<SetStateAction<string>>;
   onAskQuestionCompositionStart: () => void;
@@ -42,15 +51,42 @@ export type AskAnalyzePanelProps = {
   submitAnalyze: () => void;
   questionHistory: QuestionHistoryItem[];
   refreshQuestionHistory: () => void | Promise<void>;
-  applyQuestionHistoryItem: (item: QuestionHistoryItem) => void;
 };
+
+function QuestionAnswerPair({
+  questionText,
+  response,
+  questionMeta,
+}: {
+  questionText: string;
+  response: AnalyzeResponse;
+  questionMeta?: ReactNode;
+}) {
+  return (
+    <div className="space-y-4">
+      <Card size="sm">
+        <CardContent className="space-y-2 py-4">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+            {questionText}
+          </p>
+          {questionMeta ? (
+            <div className="text-muted-foreground flex flex-wrap items-center gap-1 text-[11px] tabular-nums">
+              {questionMeta}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+      <AskAnalyzeResult result={response} />
+    </div>
+  );
+}
+
 
 /** `/ask` — 質問（RAG 分析）のスクロール領域＋下部コンポーザー */
 export function AskAnalyzePanel({
   error,
   info,
   result,
-  statsRows,
   question,
   setQuestion,
   onAskQuestionCompositionStart,
@@ -67,71 +103,90 @@ export function AskAnalyzePanel({
   submitAnalyze,
   questionHistory,
   refreshQuestionHistory,
-  applyQuestionHistoryItem,
 }: AskAnalyzePanelProps) {
+  const pendingLiveResult = useMemo(() => {
+    if (!result) return null;
+    const top = questionHistory[0];
+    if (!top) return result;
+    return JSON.stringify(result) === JSON.stringify(top.response)
+      ? null
+      : result;
+  }, [result, questionHistory]);
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [questionHistory, pendingLiveResult]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto max-w-3xl space-y-4 pb-10">
+      <div
+        ref={scrollAreaRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
+        <div className="mx-auto max-w-3xl space-y-8 pb-10">
           <StudioAlerts error={error} info={info} />
 
-          {questionHistory.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-foreground text-sm font-medium">質問履歴</p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground h-8 rounded-lg text-xs"
-                  disabled={busy !== null}
-                  onClick={() => void refreshQuestionHistory()}
-                >
-                  再取得
-                </Button>
-              </div>
-              <ul className="border-border bg-muted/20 max-h-40 space-y-1 overflow-y-auto rounded-xl border p-2 text-sm">
-                {questionHistory.map((h) => (
-                  <li key={h.id}>
-                    <button
-                      type="button"
-                      disabled={busy !== null}
-                      className="hover:bg-muted/80 w-full rounded-lg px-2 py-1.5 text-left transition-colors disabled:opacity-50"
-                      onClick={() => applyQuestionHistoryItem(h)}
-                    >
-                      <span className="line-clamp-2">{h.question}</span>
-                      <span className="text-muted-foreground mt-0.5 block text-[11px] tabular-nums">
-                        {new Date(h.created_at).toLocaleString()}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {pendingLiveResult && (
+            <QuestionAnswerPair
+              questionText={question.trim() || "—"}
+              response={pendingLiveResult}
+            />
           )}
 
-          {result && (
-            <AskAnalyzeResult result={result} statsRows={statsRows} />
-          )}
+          {questionHistory.map((h, i) => (
+            <QuestionAnswerPair
+              key={h.id}
+              questionText={h.question}
+              response={h.response}
+              questionMeta={
+                <div className="flex items-center gap-0.5">
+                  <time
+                    className="text-muted-foreground text-[11px] tabular-nums"
+                    dateTime={h.created_at}
+                  >
+                    {new Date(h.created_at).toLocaleString()}
+                  </time>
+                  {i === 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground size-7 shrink-0 rounded-md"
+                      disabled={busy !== null}
+                      aria-label="履歴を再取得"
+                      onClick={() => void refreshQuestionHistory()}
+                    >
+                      <RefreshCw className="size-3.5" aria-hidden />
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+          ))}
         </div>
       </div>
 
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 shrink-0 pt-5 backdrop-blur md:pt-6">
         <div className="mx-auto max-w-3xl">
-          <div className="border-border/80 bg-muted/40 dark:bg-muted/25 flex flex-col rounded-[1.75rem] border shadow-sm">
-            <Textarea
-              placeholder="知識ベースに質問…"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onCompositionStart={onAskQuestionCompositionStart}
-              onCompositionEnd={onAskQuestionCompositionEnd}
-              onKeyDown={onAskQuestionTextareaKeyDown}
-              rows={4}
-              disabled={busy !== null}
-              className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-4 pt-3.5 pb-2 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm"
-            />
-            <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-0.5">
-              <div className="shrink-0">
+          <Card size="sm" className="shadow-sm">
+            <CardContent className="space-y-2 py-4">
+              <Textarea
+                placeholder="知識ベースに質問…"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onCompositionStart={onAskQuestionCompositionStart}
+                onCompositionEnd={onAskQuestionCompositionEnd}
+                onKeyDown={onAskQuestionTextareaKeyDown}
+                rows={4}
+                disabled={busy !== null}
+                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 pt-1 pb-1 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm"
+              />
+              <div className="flex items-center justify-between gap-2 pb-0.5">
+                <div className="shrink-0">
                 <Button
                   ref={askOptionsTriggerRef}
                   type="button"
@@ -190,8 +245,8 @@ export function AskAnalyzePanel({
                     </div>,
                     document.body,
                   )}
-              </div>
-              <Button
+                </div>
+                <Button
                 type="button"
                 size="icon-lg"
                 className="size-10 shrink-0 rounded-full"
@@ -206,7 +261,8 @@ export function AskAnalyzePanel({
                 )}
               </Button>
             </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

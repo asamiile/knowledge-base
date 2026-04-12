@@ -9,7 +9,6 @@ export default function AskPage() {
     error,
     info,
     result,
-    statsRows,
     question,
     setQuestion,
     onAskQuestionCompositionStart,
@@ -26,7 +25,6 @@ export default function AskPage() {
     submitAnalyze,
     questionHistory,
     refreshQuestionHistory,
-    applyQuestionHistoryItem,
   } = useKnowledgeStudio();
 
   return (
@@ -34,7 +32,6 @@ export default function AskPage() {
       error={error}
       info={info}
       result={result}
-      statsRows={statsRows}
       question={question}
       setQuestion={setQuestion}
       onAskQuestionCompositionStart={onAskQuestionCompositionStart}
@@ -51,7 +48,6 @@ export default function AskPage() {
       submitAnalyze={submitAnalyze}
       questionHistory={questionHistory}
       refreshQuestionHistory={refreshQuestionHistory}
-      applyQuestionHistoryItem={applyQuestionHistoryItem}
     />
   );
 }

@@ -95,7 +95,6 @@ export function useKnowledgeStudioState() {
     topK: ask.topK,
     setTopK: ask.setTopK,
     result: ask.result,
-    statsRows: ask.statsRows,
     askOptionsOpen: ask.askOptionsOpen,
     setAskOptionsOpen: ask.setAskOptionsOpen,
     askOptionsTriggerRef: ask.askOptionsTriggerRef,
@@ -104,7 +103,6 @@ export function useKnowledgeStudioState() {
     submitAnalyze: ask.submitAnalyze,
     questionHistory: ask.questionHistory,
     refreshQuestionHistory: ask.refreshQuestionHistory,
-    applyQuestionHistoryItem: ask.applyQuestionHistoryItem,
   };
 }
 
