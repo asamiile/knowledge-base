@@ -3,11 +3,14 @@
 # - DB: 永続ボリューム pgdata
 # - アップロード・DATA_DIR: 永続ボリューム knowledge_data → コンテナ内 /app/data（uploads/ 含む）
 # - バックエンド: ソースバインドなし（イメージ内の app のみ）。コード変更後は再ビルドが必要。
+# - フロント: `frontend/Dockerfile.prod` で next build / next start（開発用 CMD ではない）
 #
-# 起動例:
+# 起動例（リポジトリルートで）:
+#   export NEXT_PUBLIC_API_URL=http://localhost:8000   # ブラウザが API に辿り着く URL（必ず実環境に合わせる）
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# backend/.env に GOOGLE_API_KEY 等を用意する（無い場合は backend/.env.example を参考にコピー）。
+# backend/.env に GOOGLE_API_KEY・本番用 DB パスワード・AUTH_* 等を用意する。
+# 詳細は docs/PRODUCTION.md を参照。
 
 services:
   db:
@@ -37,13 +40,24 @@ services:
     environment:
       DATABASE_URL: postgresql://knowledge:knowledge@db:5432/knowledge
       DATA_DIR: /app/data
-      # seed_dev 等の本番誤実行防止（app.db.seed_dev が参照）
       ENVIRONMENT: production
     volumes:
       - knowledge_data:/app/data
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_AUTH_ENABLED: ${NEXT_PUBLIC_AUTH_ENABLED:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
