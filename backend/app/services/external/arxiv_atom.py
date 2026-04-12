@@ -6,6 +6,10 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
+
+import httpx
+
 from app.services.source_import.arxiv import fetch_arxiv_entries
 
 from app.services.external.textutil import truncate_summary
@@ -15,11 +19,14 @@ def fetch_arxiv_paper_meta(
     arxiv_id_for_api: str,
 ) -> tuple[str | None, str | None, str | None, tuple[str, ...]]:
     """タイトル・要約・主カテゴリ・全カテゴリ。取得失敗時はすべて None / 空タプル。"""
-    entries = fetch_arxiv_entries(
-        arxiv_ids=[arxiv_id_for_api],
-        search_query=None,
-        max_results=1,
-    )
+    try:
+        entries = fetch_arxiv_entries(
+            arxiv_ids=[arxiv_id_for_api],
+            search_query=None,
+            max_results=1,
+        )
+    except (httpx.HTTPError, ET.ParseError):
+        return None, None, None, ()
     if not entries:
         return None, None, None, ()
     e = entries[0]

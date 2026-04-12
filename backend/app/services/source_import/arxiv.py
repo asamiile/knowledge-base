@@ -313,6 +313,8 @@ def fetch_arxiv_entries(
     if ids:
         try:
             text = _arxiv_get({"id_list": ",".join(ids)})
+        except httpx.HTTPError:
+            raise
         except Exception as e:
             logger.warning("arXiv id_list 取得に失敗: %s", e)
             text = ""
@@ -333,6 +335,8 @@ def fetch_arxiv_entries(
                     "max_results": max_results,
                 }
             )
+        except httpx.HTTPError:
+            raise
         except Exception as e:
             logger.warning("arXiv search_query 取得に失敗: %s", e)
             text = ""
