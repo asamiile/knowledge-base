@@ -23,6 +23,10 @@ class AnalyzeRequest(BaseModel):
         le=20,
         description="ベクトル検索の件数。省略時は環境変数 RAG_TOP_K",
     )
+    save_question_history: bool = Field(
+        default=True,
+        description="true のとき成功応答を question_history に保存する",
+    )
 
 
 class AnalyzeResponse(BaseModel):

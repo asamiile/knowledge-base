@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import {
   FolderInput,
+  LayoutDashboard,
   MessageSquareText,
   RefreshCw,
   Search,
@@ -65,6 +66,19 @@ export function SiteSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="gap-2 group-data-[collapsible=icon]:gap-2 p-2">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={activeSection === "dashboard"}
+              tooltip="ダッシュボード"
+              disabled={navDisabled("dashboard")}
+              onClick={() => onSectionChange("dashboard")}
+            >
+              <LayoutDashboard />
+              <span className="group-data-[collapsible=icon]:sr-only">
+                ダッシュボード
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={activeSection === "ask"}

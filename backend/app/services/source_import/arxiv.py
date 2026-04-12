@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -16,11 +17,17 @@ import httpx
 ARXIV_API = "https://export.arxiv.org/api/query"
 USER_AGENT = "knowledge-base/0.1 (local-dev; https://arxiv.org/help/api)"
 _ATOM = "{http://www.w3.org/2005/Atom}"
+_ARXIV_ATOM = "{http://arxiv.org/schemas/atom}"
 _MAX_PDF_BYTES = 35 * 1024 * 1024
 # 連続 PDF GET の間隔（負荷配慮・秒）
 _PDF_FETCH_INTERVAL_SEC = 2.0
+# export.arxiv.org Atom API は短時間に集中すると 429 になりやすいため、呼び出し間に空ける
+_ARXIV_API_MIN_INTERVAL_SEC = 3.2
+_ARXIV_API_MAX_ATTEMPTS = 6
 
 logger = logging.getLogger(__name__)
+_arxiv_api_lock = threading.Lock()
+_last_arxiv_api_request_monotonic: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -29,6 +36,8 @@ class _ArxivEntry:
     title: str
     summary: str
     authors: list[str]
+    primary_category: str | None
+    categories: tuple[str, ...]
 
 
 def _normalize_arxiv_ids(raw: list[str]) -> list[str]:
@@ -65,14 +74,86 @@ def _arxiv_api_search_query(user_q: str) -> str:
 
 
 def _arxiv_get(params: dict[str, str | int]) -> str:
-    with httpx.Client(timeout=45.0, follow_redirects=True) as client:
-        r = client.get(
-            ARXIV_API,
-            params=params,
-            headers={"User-Agent": USER_AGENT},
-        )
-        r.raise_for_status()
-        return r.text
+    """Atom API GET。429 / タイムアウト時は指数バックオフで再試行。全プロセスで呼び出し間隔を空ける。"""
+    global _last_arxiv_api_request_monotonic
+    last_exc: BaseException | None = None
+    with _arxiv_api_lock:
+        for attempt in range(_ARXIV_API_MAX_ATTEMPTS):
+            gap = _ARXIV_API_MIN_INTERVAL_SEC - (
+                time.monotonic() - _last_arxiv_api_request_monotonic
+            )
+            if gap > 0:
+                time.sleep(gap)
+            r: httpx.Response | None = None
+            try:
+                with httpx.Client(
+                    timeout=httpx.Timeout(60.0, connect=20.0),
+                    follow_redirects=True,
+                ) as client:
+                    r = client.get(
+                        ARXIV_API,
+                        params=params,
+                        headers={"User-Agent": USER_AGENT},
+                    )
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                last_exc = e
+                _last_arxiv_api_request_monotonic = time.monotonic()
+                logger.warning(
+                    "arXiv API 接続エラー (%s/%s): %s",
+                    attempt + 1,
+                    _ARXIV_API_MAX_ATTEMPTS,
+                    e,
+                )
+                time.sleep(min(25.0, 2.5 * (attempt + 1)))
+                continue
+
+            _last_arxiv_api_request_monotonic = time.monotonic()
+            assert r is not None
+
+            if r.status_code == 429:
+                last_exc = httpx.HTTPStatusError(
+                    f"429 for {r.request.url!r}",
+                    request=r.request,
+                    response=r,
+                )
+                ra = (r.headers.get("Retry-After") or "").strip().split(",")[0]
+                try:
+                    delay = float(ra)
+                except ValueError:
+                    delay = min(90.0, 6.0 * (attempt + 1))
+                delay = max(_ARXIV_API_MIN_INTERVAL_SEC, delay)
+                logger.warning(
+                    "arXiv API 429; %.1f 秒待って再試行 (%s/%s)",
+                    delay,
+                    attempt + 1,
+                    _ARXIV_API_MAX_ATTEMPTS,
+                )
+                time.sleep(delay)
+                continue
+
+            if r.status_code in (502, 503):
+                last_exc = httpx.HTTPStatusError(
+                    f"{r.status_code} for {r.request.url!r}",
+                    request=r.request,
+                    response=r,
+                )
+                time.sleep(min(20.0, 3.0 * (attempt + 1)))
+                continue
+
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                last_exc = e
+                logger.warning("arXiv API HTTP %s: %s", r.status_code, r.text[:200])
+                if attempt < _ARXIV_API_MAX_ATTEMPTS - 1:
+                    time.sleep(min(15.0, 2.0 * (attempt + 1)))
+                    continue
+                raise
+            return r.text
+
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("arXiv API: 再試行上限")
 
 
 def fetch_arxiv_pdf_bytes(
@@ -120,12 +201,28 @@ def _parse_atom_entries(xml_text: str) -> list[_ArxivEntry]:
             name_el = au.find(f"{_ATOM}name")
             if name_el is not None and name_el.text:
                 authors.append(name_el.text.strip())
+        pc_el = el.find(f"{_ARXIV_ATOM}primary_category")
+        primary = (
+            (pc_el.get("term") or "").strip() or None if pc_el is not None else None
+        )
+        terms: list[str] = []
+        for cat in el.findall(f"{_ATOM}category"):
+            t = (cat.get("term") or "").strip()
+            if t and t not in terms:
+                terms.append(t)
+        if primary:
+            terms = [primary] + [x for x in terms if x != primary]
+        elif terms:
+            primary = terms[0]
+        categories = tuple(terms)
         entries.append(
             _ArxivEntry(
                 id_url=id_el.text.strip(),
                 title=title or "(no title)",
                 summary=summary,
                 authors=authors,
+                primary_category=primary,
+                categories=categories,
             )
         )
     return entries
@@ -148,6 +245,30 @@ def _canonical_abs_url(id_url: str) -> str:
     return f"https://arxiv.org/abs/{u.lstrip('/')}"
 
 
+def _yaml_scalar(value: str) -> str:
+    if re.search(r'[:#"\n]', value):
+        esc = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{esc}"'
+    return value
+
+
+def _arxiv_categories_frontmatter(entry: _ArxivEntry) -> str:
+    if not entry.categories and not entry.primary_category:
+        return ""
+    lines = ["---"]
+    if entry.primary_category:
+        lines.append(
+            f"arxiv_primary_category: {_yaml_scalar(entry.primary_category)}",
+        )
+    if entry.categories:
+        lines.append("arxiv_categories:")
+        for c in entry.categories:
+            lines.append(f"  - {_yaml_scalar(c)}")
+    lines.append("---")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _entry_to_markdown(
     entry: _ArxivEntry,
     *,
@@ -157,7 +278,9 @@ def _entry_to_markdown(
     stem = _entry_file_stem(entry)
     authors = ", ".join(entry.authors) if entry.authors else "(unknown)"
     url = _canonical_abs_url(entry.id_url)
+    fm = _arxiv_categories_frontmatter(entry)
     body = (
+        f"{fm}"
         f"# {entry.title}\n\n"
         f"**arXiv:** `{stem}`  \n"
         f"**URL:** {url}  \n"
@@ -188,28 +311,69 @@ def fetch_arxiv_entries(
     all_entries: list[_ArxivEntry] = []
 
     if ids:
-        text = _arxiv_get({"id_list": ",".join(ids)})
-        for e in _parse_atom_entries(text):
-            if e.id_url not in seen_urls:
-                seen_urls.add(e.id_url)
-                all_entries.append(e)
+        try:
+            text = _arxiv_get({"id_list": ",".join(ids)})
+        except httpx.HTTPError:
+            raise
+        except Exception as e:
+            logger.warning("arXiv id_list 取得に失敗: %s", e)
+            text = ""
+        if text:
+            for e in _parse_atom_entries(text):
+                if e.id_url not in seen_urls:
+                    seen_urls.add(e.id_url)
+                    all_entries.append(e)
 
     q = (search_query or "").strip()
     if q:
         sq = _arxiv_api_search_query(q)
-        text = _arxiv_get(
-            {
-                "search_query": sq,
-                "start": 0,
-                "max_results": max_results,
-            }
-        )
-        for e in _parse_atom_entries(text):
-            if e.id_url not in seen_urls:
-                seen_urls.add(e.id_url)
-                all_entries.append(e)
+        try:
+            text = _arxiv_get(
+                {
+                    "search_query": sq,
+                    "start": 0,
+                    "max_results": max_results,
+                }
+            )
+        except httpx.HTTPError:
+            raise
+        except Exception as e:
+            logger.warning("arXiv search_query 取得に失敗: %s", e)
+            text = ""
+        if text:
+            for e in _parse_atom_entries(text):
+                if e.id_url not in seen_urls:
+                    seen_urls.add(e.id_url)
+                    all_entries.append(e)
 
     return all_entries
+
+
+# id_list 1 リクエストあたりの件数（長すぎると 429・タイムアウトしやすい）
+_ARXIV_ID_LIST_BATCH = 12
+
+
+def fetch_primary_categories_for_stems(stems: list[str]) -> dict[str, str | None]:
+    """ファイル名 stem（例 `1709.06342v4`）→ Atom の主カテゴリ。失敗時はキーなしまたは None。"""
+    out: dict[str, str | None] = {}
+    unique = list(dict.fromkeys(s.strip() for s in stems if s.strip()))
+    if not unique:
+        return out
+    for i in range(0, len(unique), _ARXIV_ID_LIST_BATCH):
+        batch = unique[i : i + _ARXIV_ID_LIST_BATCH]
+        try:
+            entries = fetch_arxiv_entries(
+                arxiv_ids=batch,
+                search_query=None,
+                max_results=max(len(batch), 1),
+            )
+        except Exception as e:
+            logger.warning("arXiv batch category fetch failed: %s", e)
+            continue
+        for e in entries:
+            stem = _entry_file_stem(e)
+            out[stem] = e.primary_category
+    return out
 
 
 def entry_import_id(entry: _ArxivEntry) -> str:

@@ -1,4 +1,6 @@
-"""ベクトル索引用: `DATA_DIR` 内ファイルの列挙とプレーンテキスト抽出。"""
+"""
+ベクトル索引用: `DATA_DIR` 内ファイルの列挙とプレーンテキスト抽出。
+"""
 
 from __future__ import annotations
 

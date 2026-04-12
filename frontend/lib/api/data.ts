@@ -73,3 +73,80 @@ export async function postReindex(): Promise<ReindexResponse> {
     method: "POST",
   });
 }
+
+export type DataFileInfo = {
+  path: string;
+  size_bytes: number;
+  modified_at: string;
+};
+
+export async function getDataFiles(limit = 2000): Promise<DataFileInfo[]> {
+  const u = new URL(`${apiBase()}/api/data/files`);
+  u.searchParams.set("limit", String(limit));
+  const data = await fetchJson<{ files: DataFileInfo[] }>(u.toString(), {
+    method: "GET",
+  });
+  return data.files;
+}
+
+/** 相対パスで 1 ファイルのメタを取得。存在しなければ null。 */
+export async function getDataFileLookup(
+  path: string,
+): Promise<DataFileInfo | null> {
+  const u = new URL(`${apiBase()}/api/data/files/lookup`);
+  u.searchParams.set("path", path);
+  const r = await fetch(u.toString(), { method: "GET" });
+  if (r.status === 404) {
+    return null;
+  }
+  const text = await r.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`API error ${r.status}: ${text.slice(0, 500)}`);
+  }
+  if (!r.ok) {
+    const detail =
+      typeof data === "object" && data && "detail" in data
+        ? JSON.stringify((data as { detail: unknown }).detail)
+        : text;
+    throw new Error(`${r.status} ${detail}`);
+  }
+  return data as DataFileInfo;
+}
+
+export type FileEnrichmentResponse = {
+  path: string;
+  display_name: string;
+  arxiv_id: string | null;
+  arxiv_primary_category: string | null;
+  arxiv_categories: string[];
+  citation_count: number | null;
+  summary: string | null;
+  tldr: string | null;
+  sources: string[];
+};
+
+export type ArxivPrimaryCategoryStats = {
+  items: { category: string; count: number }[];
+  uncategorized: number;
+  total_arxiv_files: number;
+};
+
+/** arXiv Atom を主に、引用数は OpenAlex から表示用メタを取得する。 */
+export async function getFileEnrichment(
+  path: string,
+): Promise<FileEnrichmentResponse> {
+  const u = new URL(`${apiBase()}/api/data/files/enrichment`);
+  u.searchParams.set("path", path);
+  return fetchJson<FileEnrichmentResponse>(u.toString(), { method: "GET" });
+}
+
+/** `imports/arxiv/*.md` の主カテゴリ集計（フロントマター） */
+export async function getArxivPrimaryCategoryStats(): Promise<ArxivPrimaryCategoryStats> {
+  return fetchJson<ArxivPrimaryCategoryStats>(
+    `${apiBase()}/api/data/files/arxiv-primary-category-stats`,
+    { method: "GET" },
+  );
+}

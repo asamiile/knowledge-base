@@ -10,12 +10,19 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.db import get_db
-from app.models.tables import Document, RawData, SavedSearch, SavedSearchRunLog
+from app.models.tables import (
+    Document,
+    QuestionHistory,
+    RawData,
+    SavedSearch,
+    SavedSearchRunLog,
+)
 from app.schemas.knowledge_search import (
     MaterialSearchHit,
     MaterialSearchRequest,
     MaterialSearchResponse,
 )
+from app.schemas.question_history import QuestionHistoryRead
 from app.schemas.saved_search import (
     SavedSearchCreate,
     SavedSearchPatch,
@@ -53,6 +60,21 @@ def _validate_saved_row_or_400(*, search_target: str, query: str, arxiv_ids: lis
             status_code=400,
             detail="arxiv search requires non-empty arxiv_ids and/or query",
         )
+
+
+@router.get("/question-history", response_model=list[QuestionHistoryRead])
+def list_question_history(
+    db: Session = Depends(get_db),
+    limit: int = 50,
+) -> list[QuestionHistoryRead]:
+    """質問と Analyze 応答の履歴（新しい順）。"""
+    lim = max(1, min(limit, 100))
+    rows = db.scalars(
+        select(QuestionHistory)
+        .order_by(QuestionHistory.created_at.desc())
+        .limit(lim),
+    ).all()
+    return [QuestionHistoryRead.model_validate(r) for r in rows]
 
 
 @router.get("/stats")
@@ -97,8 +119,9 @@ def knowledge_material_search(
             document_id=rid,
             text=text if len(text) <= _MAX_HIT_TEXT else text[:_MAX_HIT_TEXT] + "…",
             distance=dist,
+            source_path=spath,
         )
-        for rid, text, dist in rows
+        for rid, text, dist, spath in rows
     ]
     return MaterialSearchResponse(hits=hits)
 

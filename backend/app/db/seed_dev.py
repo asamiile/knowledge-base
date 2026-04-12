@@ -34,7 +34,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
-from app.models.tables import Document, RawData, SavedSearch, SavedSearchRunLog
+from app.models.tables import Document, QuestionHistory, RawData, SavedSearch, SavedSearchRunLog
 
 _DEV_SEED_URL = "https://knowledge-base.local/dev-seed#v1"
 
@@ -106,11 +106,13 @@ def _seed_documents(db: Session) -> None:
         select(func.count()).select_from(Document).where(Document.text.like(f"{_DOC_PREFIX}%")),
     )
     n_existing = int(n_existing or 0)
+    seed_source = "dev-seed/sample.md"
     for i in range(n_existing, len(_DOC_SAMPLES)):
         db.add(
             Document(
                 text=_DOC_SAMPLES[i],
                 embedding=_unit_embedding(dim, i),
+                source_path=seed_source,
             )
         )
 
@@ -215,12 +217,53 @@ def _seed_run_logs(db: Session) -> None:
     )
 
 
+def _seed_question_history(db: Session) -> None:
+    n = int(
+        db.scalar(
+            select(func.count()).select_from(QuestionHistory).where(
+                QuestionHistory.question.like("[DEV-SEED] %"),
+            ),
+        )
+        or 0,
+    )
+    if n >= 2:
+        return
+    samples: list[tuple[str, dict]] = [
+        (
+            "[DEV-SEED] 質問履歴の表示確認（1）",
+            {
+                "answer": "seed による固定回答です。質問画面の履歴リストで確認できます。",
+                "key_points": ["seed サンプル", "GET /api/knowledge/question-history"],
+                "citations": [],
+            },
+        ),
+        (
+            "[DEV-SEED] 質問履歴の表示確認（2）",
+            {
+                "answer": "別のサンプル応答です。",
+                "key_points": ["JSONB の response", "citations は空でも可"],
+                "citations": [],
+            },
+        ),
+    ]
+    for q, resp in samples:
+        exists = db.scalar(
+            select(func.count()).select_from(QuestionHistory).where(
+                QuestionHistory.question == q,
+            ),
+        )
+        if int(exists or 0) > 0:
+            continue
+        db.add(QuestionHistory(question=q, response=resp))
+
+
 def seed_dev(db: Session) -> None:
     """開発 DB にサンプル行を投入・更新する。"""
     _seed_documents(db)
     _seed_raw_data(db)
     _seed_saved_searches(db)
     _seed_run_logs(db)
+    _seed_question_history(db)
 
 
 def main() -> None:
@@ -232,7 +275,9 @@ def main() -> None:
     try:
         seed_dev(session)
         session.commit()
-        print("seed_dev: OK (documents with [DEV-SEED], raw_data, saved_searches, run_logs)")
+        print(
+            "seed_dev: OK (documents, raw_data, saved_searches, run_logs, question_history)",
+        )
     except Exception:
         session.rollback()
         raise

@@ -1,5 +1,6 @@
 """DATA_DIR へのファイルアップロード・再取り込み。"""
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -7,12 +8,95 @@ from sqlalchemy.orm import Session
 
 from app.core.settings import get_data_dir
 from app.db import get_db
-from app.schemas.ingest_api import DataReindexResponse, DataUploadResponse
+from app.schemas.ingest_api import (
+    ArxivPrimaryCategoryCount,
+    ArxivPrimaryCategoryStatsResponse,
+    DataFileInfo,
+    DataFilesResponse,
+    DataReindexResponse,
+    DataUploadResponse,
+    FileEnrichmentResponse,
+)
+from app.services.arxiv_markdown_meta import aggregate_arxiv_primary_category_counts
+from app.services.data_dir_listing import list_data_dir_files
+from app.services.external import enrichment_for_data_relative_path
 from app.services.embeddings import build_embedding_model
 from app.services.extract.pdf_upload import write_pdf_extracted_markdown
 from app.services.ingest import ingest_data_directory
 
 router = APIRouter(prefix="/api/data", tags=["data"])
+
+
+def _safe_relative_data_path(path: str) -> str:
+    raw = (path or "").strip().replace("\\", "/").lstrip("/")
+    if not raw or ".." in raw.split("/"):
+        raise HTTPException(status_code=400, detail="不正な path です。")
+    return raw
+
+
+@router.get("/files/enrichment", response_model=FileEnrichmentResponse)
+def file_enrichment(path: str) -> FileEnrichmentResponse:
+    """arXiv Atom を主に、引用数のみ OpenAlex で表示用メタを組み立てる。"""
+    rel = _safe_relative_data_path(path)
+    enr = enrichment_for_data_relative_path(rel)
+    return FileEnrichmentResponse(
+        path=rel,
+        display_name=enr.display_name,
+        arxiv_id=enr.arxiv_id,
+        arxiv_primary_category=enr.arxiv_primary_category,
+        arxiv_categories=list(enr.arxiv_categories),
+        citation_count=enr.citation_count,
+        summary=enr.summary,
+        tldr=enr.tldr,
+        sources=enr.sources,
+    )
+
+
+@router.get(
+    "/files/arxiv-primary-category-stats",
+    response_model=ArxivPrimaryCategoryStatsResponse,
+)
+def arxiv_primary_category_stats() -> ArxivPrimaryCategoryStatsResponse:
+    """`imports/arxiv/*.md` の YAML 主カテゴリを集計（新規取り込み分にフロントマターあり）。"""
+    data_dir = get_data_dir().resolve()
+    rows, uncategorized, total = aggregate_arxiv_primary_category_counts(data_dir)
+    return ArxivPrimaryCategoryStatsResponse(
+        items=[ArxivPrimaryCategoryCount(category=k, count=v) for k, v in rows],
+        uncategorized=uncategorized,
+        total_arxiv_files=total,
+    )
+
+
+@router.get("/files/lookup", response_model=DataFileInfo)
+def lookup_data_file(path: str) -> DataFileInfo:
+    """`DATA_DIR` から相対パスで 1 ファイルのメタを返す（一覧の件数上限に依存しない）。"""
+    rel = _safe_relative_data_path(path)
+    data_dir = get_data_dir().resolve()
+    target = (data_dir / rel).resolve()
+    try:
+        rel_resolved = target.relative_to(data_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="不正な path です。") from None
+    if any(part.startswith(".") for part in rel_resolved.parts):
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
+    st = target.stat()
+    mtime = datetime.fromtimestamp(st.st_mtime, tz=UTC)
+    posix = str(rel_resolved).replace("\\", "/")
+    return DataFileInfo(path=posix, size_bytes=st.st_size, modified_at=mtime)
+
+
+@router.get("/files", response_model=DataFilesResponse)
+def list_data_dir_files_endpoint(limit: int = 2000) -> DataFilesResponse:
+    """`DATA_DIR` 配下のファイル一覧（`.` で始まるパス成分は除外）。"""
+    lim = max(1, min(limit, 5000))
+    data_dir = get_data_dir().resolve()
+    rows = list_data_dir_files(data_dir, limit=lim)
+    return DataFilesResponse(
+        files=[DataFileInfo(path=p, size_bytes=s, modified_at=m) for p, s, m in rows],
+    )
+
 
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 _ALLOWED = {".md", ".txt", ".json", ".pdf"}

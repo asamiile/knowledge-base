@@ -13,6 +13,8 @@ export type MaterialSearchHit = {
   document_id: number;
   text: string;
   distance: number;
+  /** DATA_DIR 相対パス。あるとき `/file?path=`へリンク可能 */
+  source_path?: string | null;
 };
 
 export type MaterialSearchResponse = { hits: MaterialSearchHit[] };

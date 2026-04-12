@@ -6,7 +6,10 @@ from fastapi.testclient import TestClient
 
 
 def test_material_search_mocked(client: TestClient, clean_documents: None) -> None:
-    fake_rows = [(1, "hello chunk", 0.12), (2, "world", 0.34)]
+    fake_rows = [
+        (1, "hello chunk", 0.12, "imports/arxiv/a.md"),
+        (2, "world", 0.34, None),
+    ]
     with (
         patch(
             "app.api.routes_knowledge.build_embedding_model",
@@ -27,6 +30,8 @@ def test_material_search_mocked(client: TestClient, clean_documents: None) -> No
     assert body["hits"][0]["document_id"] == 1
     assert body["hits"][0]["distance"] == 0.12
     assert "hello" in body["hits"][0]["text"]
+    assert body["hits"][0]["source_path"] == "imports/arxiv/a.md"
+    assert body["hits"][1]["source_path"] is None
 
 
 def test_material_search_validation(client: TestClient) -> None:

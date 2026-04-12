@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -12,6 +11,10 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import type { AnalyzeResponse } from "@/lib/api/analyze";
 import { postAnalyze } from "@/lib/api/analyze";
+import {
+  type QuestionHistoryItem,
+  getQuestionHistory,
+} from "@/lib/api/question-history";
 
 import type { StudioShell } from "./use-studio-shell";
 
@@ -22,7 +25,6 @@ export function useAskAnalyze(shell: StudioShell) {
   const [question, setQuestion] = useState("");
   const [topK, setTopK] = useState(5);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
-  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [askOptionsOpen, setAskOptionsOpen] = useState(false);
   const askOptionsTriggerRef = useRef<HTMLButtonElement>(null);
   const askOptionsPanelRef = useRef<HTMLDivElement>(null);
@@ -30,18 +32,21 @@ export function useAskAnalyze(shell: StudioShell) {
     left: number;
     bottom: number;
   } | null>(null);
+  const [questionHistory, setQuestionHistory] = useState<QuestionHistoryItem[]>(
+    [],
+  );
 
-  const statsRows = useMemo(() => {
-    if (!result) return [];
-    return [
-      { label: "top_k（リクエスト）", value: String(topK) },
-      { label: "citations 数", value: String(result.citations.length) },
-      { label: "key_points 数", value: String(result.key_points.length) },
-      ...(latencyMs != null
-        ? [{ label: "レイテンシ（ms）", value: String(latencyMs) }]
-        : []),
-    ];
-  }, [result, topK, latencyMs]);
+  const refreshQuestionHistory = useCallback(async () => {
+    try {
+      setQuestionHistory(await getQuestionHistory(50));
+    } catch {
+      setQuestionHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshQuestionHistory();
+  }, [refreshQuestionHistory]);
 
   useLayoutEffect(() => {
     if (!askOptionsOpen) {
@@ -96,22 +101,21 @@ export function useAskAnalyze(shell: StudioShell) {
     setInfo(null);
     setBusy("analyze");
     setResult(null);
-    setLatencyMs(null);
-    const t0 = performance.now();
     try {
       const data = await postAnalyze({
         question: question.trim(),
         reindex_sources: false,
         top_k: topK,
+        save_question_history: true,
       });
       setResult(data);
-      setLatencyMs(Math.round(performance.now() - t0));
+      void refreshQuestionHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
-  }, [question, topK, setBusy, setError, setInfo]);
+  }, [question, topK, refreshQuestionHistory, setBusy, setError, setInfo]);
 
   const submitAnalyze = useCallback(() => {
     if (busy !== null || !question.trim()) return;
@@ -145,7 +149,6 @@ export function useAskAnalyze(shell: StudioShell) {
     topK,
     setTopK,
     result,
-    statsRows,
     askOptionsOpen,
     setAskOptionsOpen,
     askOptionsTriggerRef,
@@ -155,5 +158,7 @@ export function useAskAnalyze(shell: StudioShell) {
     onAskQuestionCompositionEnd,
     onAskQuestionTextareaKeyDown,
     submitAnalyze,
+    questionHistory,
+    refreshQuestionHistory,
   };
 }

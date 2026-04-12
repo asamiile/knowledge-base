@@ -16,6 +16,15 @@ import type { StudioShell } from "./use-studio-shell";
 
 const UPLOAD_PREVIEW_CHAR_LIMIT = 48_000;
 
+const ALLOWED_EXT = new Set([".md", ".txt", ".json", ".pdf"]);
+
+function allowedUploadFile(f: File): boolean {
+  const n = f.name.toLowerCase();
+  const i = n.lastIndexOf(".");
+  if (i < 0) return false;
+  return ALLOWED_EXT.has(n.slice(i));
+}
+
 export function useAddSource(
   shell: StudioShell,
   refreshStats: () => void | Promise<void>,
@@ -41,13 +50,35 @@ export function useAddSource(
     preview: string;
     truncated: boolean;
   } | null>(null);
-
-  const [pendingReindex, setPendingReindex] = useState(false);
+  const [pendingBatchFiles, setPendingBatchFiles] = useState<File[] | null>(
+    null,
+  );
 
   const clearArxivPreview = useCallback(() => {
     setArxivPreviewEntries(null);
     setArxivPreviewSelectedIds([]);
   }, []);
+
+  const runReindexNow = useCallback(async () => {
+    setError(null);
+    setInfo(null);
+    setBusy("reindex");
+    try {
+      const res = await postReindex();
+      setInfo(
+        `Index updated: chunks ${res.document_chunks}, raw_data ${res.raw_data_rows}`,
+      );
+      void refreshStats();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }, [refreshStats, setBusy, setError, setInfo]);
+
+  const afterNewFilesOnDisk = useCallback(async () => {
+    await runReindexNow();
+  }, [runReindexNow]);
 
   const toggleArxivPreviewSelected = useCallback((arxivId: string) => {
     setArxivPreviewSelectedIds((prev) =>
@@ -138,10 +169,10 @@ export function useAddSource(
       setInfo(
         `取得: ${res.entry_count} 件 → ${res.written.join(", ") || "(ファイルなし)"}`,
       );
-      if (res.written.length > 0) {
-        setPendingReindex(true);
-      }
       clearArxivPreview();
+      if (res.written.length > 0) {
+        await afterNewFilesOnDisk();
+      }
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -150,6 +181,7 @@ export function useAddSource(
       setBusy(null);
     }
   }, [
+    afterNewFilesOnDisk,
     arxivImportIncludeFullText,
     arxivMax,
     arxivPreviewSelectedIds,
@@ -161,11 +193,23 @@ export function useAddSource(
 
   const onPickUploadFile = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
-      const f = e.target.files?.[0];
+      const list = e.target.files;
       e.target.value = "";
-      if (!f) return;
+      if (!list?.length) return;
+      const files = Array.from(list).filter(allowedUploadFile);
+      if (files.length === 0) {
+        setError(".md / .txt / .json / .pdf のファイルを選んでください。");
+        return;
+      }
       setError(null);
       setInfo(null);
+      setPendingBatchFiles(null);
+      if (files.length > 1) {
+        setPendingUpload(null);
+        setPendingBatchFiles(files);
+        return;
+      }
+      const f = files[0]!;
       try {
         const text = await f.text();
         const truncated = text.length > UPLOAD_PREVIEW_CHAR_LIMIT;
@@ -180,8 +224,43 @@ export function useAddSource(
     [setError, setInfo],
   );
 
+  const onUploadFilesDropped = useCallback(
+    (files: File[]) => {
+      const ok = files.filter(allowedUploadFile);
+      if (ok.length === 0) {
+        setError(".md / .txt / .json / .pdf のファイルをドロップしてください。");
+        return;
+      }
+      setError(null);
+      setInfo(null);
+      setPendingUpload(null);
+      if (ok.length === 1) {
+        void (async () => {
+          try {
+            const f = ok[0]!;
+            const text = await f.text();
+            const truncated = text.length > UPLOAD_PREVIEW_CHAR_LIMIT;
+            const preview = truncated
+              ? text.slice(0, UPLOAD_PREVIEW_CHAR_LIMIT)
+              : text;
+            setPendingUpload({ file: f, preview, truncated });
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+          }
+        })();
+      } else {
+        setPendingBatchFiles(ok);
+      }
+    },
+    [setError, setInfo],
+  );
+
   const cancelPendingUpload = useCallback(() => {
     setPendingUpload(null);
+  }, []);
+
+  const cancelPendingBatch = useCallback(() => {
+    setPendingBatchFiles(null);
   }, []);
 
   const confirmPendingUpload = useCallback(async () => {
@@ -194,7 +273,7 @@ export function useAddSource(
       setInfo(`保存: ${res.path}（${res.size_bytes} bytes）`);
       setPendingUpload(null);
       if (res.path) {
-        setPendingReindex(true);
+        await afterNewFilesOnDisk();
       }
       return true;
     } catch (err) {
@@ -203,32 +282,49 @@ export function useAddSource(
     } finally {
       setBusy(null);
     }
-  }, [pendingUpload, setBusy, setError, setInfo]);
+  }, [afterNewFilesOnDisk, pendingUpload, setBusy, setError, setInfo]);
 
-  const onReindexClick = useCallback(async () => {
+  const confirmPendingBatch = useCallback(async () => {
+    if (!pendingBatchFiles?.length) return false;
     setError(null);
     setInfo(null);
-    setBusy("reindex");
+    setBusy("upload");
+    const paths: string[] = [];
     try {
-      const res = await postReindex();
-      setPendingReindex(false);
+      for (const file of pendingBatchFiles) {
+        const res = await postUpload(file);
+        paths.push(res.path);
+      }
+      setPendingBatchFiles(null);
       setInfo(
-        `インデックス更新: チャンク ${res.document_chunks} 件・raw_data ${res.raw_data_rows} 行`,
+        `${paths.length} 件を保存しました（${paths.slice(0, 2).join(", ")}${paths.length > 2 ? "…" : ""}）`,
       );
-      void refreshStats();
+      if (paths.length > 0) {
+        await afterNewFilesOnDisk();
+      }
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       setBusy(null);
     }
-  }, [refreshStats, setBusy, setError, setInfo]);
+  }, [afterNewFilesOnDisk, pendingBatchFiles, setBusy, setError, setInfo]);
+
+  const onReindexClick = useCallback(async () => {
+    await runReindexNow();
+  }, [runReindexNow]);
 
   return {
     fileInputRef,
     onPickUploadFile,
+    onUploadFilesDropped,
     pendingUpload,
+    pendingBatchFiles,
     cancelPendingUpload,
+    cancelPendingBatch,
     confirmPendingUpload,
+    confirmPendingBatch,
     searchArxivIds,
     setSearchArxivIds,
     arxivSearch,
@@ -244,7 +340,6 @@ export function useAddSource(
     setArxivPreviewAllSelected,
     confirmArxivImportFromPreview,
     clearArxivPreview,
-    pendingReindex,
     onReindexClick,
   };
 }

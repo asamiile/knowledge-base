@@ -19,6 +19,7 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    source_path: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     # gemini-embedding-001 等、EmbedContentConfig(output_dimensionality=768) と一致
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(768),
@@ -34,6 +35,22 @@ class RawData(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(String(1024), nullable=False)
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
+
+class QuestionHistory(Base):
+    """質問と Analyze 応答のスナップショット（スタジオ履歴）。"""
+
+    __tablename__ = "question_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class SavedSearch(Base):

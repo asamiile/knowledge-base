@@ -8,7 +8,11 @@ import type { ArxivPreviewEntry } from "@/lib/api/data";
 import { Button } from "@/components/ui/button";
 
 import { AddSourceArxivPreviewCard } from "./add-source-arxiv-preview-card";
-import { AddSourceFilePreviewCard, type AddSourcePendingUpload } from "./add-source-file-preview-card";
+import { AddSourceBatchPreviewCard } from "./add-source-batch-preview-card";
+import {
+  AddSourceFilePreviewCard,
+  type AddSourcePendingUpload,
+} from "./add-source-file-preview-card";
 import { AddSourceTabs, type AddSourceMainTab } from "./add-source-tabs";
 import { StudioAlerts } from "./studio-alerts";
 
@@ -18,9 +22,13 @@ export type AddSourcesPanelProps = {
   busy: string | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onPickUploadFile: (e: ChangeEvent<HTMLInputElement>) => void;
+  onUploadFilesDropped: (files: File[]) => void;
   pendingUpload: AddSourcePendingUpload | null;
+  pendingBatchFiles: File[] | null;
   cancelPendingUpload: () => void;
+  cancelPendingBatch: () => void;
   confirmPendingUpload: () => void | Promise<boolean>;
+  confirmPendingBatch: () => void | Promise<boolean>;
   searchArxivIds: string;
   setSearchArxivIds: Dispatch<SetStateAction<string>>;
   arxivSearch: string;
@@ -38,7 +46,6 @@ export type AddSourcesPanelProps = {
   setArxivPreviewAllSelected: (selected: boolean) => void;
   confirmArxivImportFromPreview: () => void | Promise<boolean>;
   clearArxivPreview: () => void;
-  pendingReindex: boolean;
   onReindexClick: () => void | Promise<void>;
 };
 
@@ -49,9 +56,13 @@ export function AddSourcesPanel({
   busy,
   fileInputRef,
   onPickUploadFile,
+  onUploadFilesDropped,
   pendingUpload,
+  pendingBatchFiles,
   cancelPendingUpload,
+  cancelPendingBatch,
   confirmPendingUpload,
+  confirmPendingBatch,
   searchArxivIds,
   setSearchArxivIds,
   arxivSearch,
@@ -67,7 +78,6 @@ export function AddSourcesPanel({
   setArxivPreviewAllSelected,
   confirmArxivImportFromPreview,
   clearArxivPreview,
-  pendingReindex,
   onReindexClick,
 }: AddSourcesPanelProps) {
   const [addSourceMainTab, setAddSourceMainTab] =
@@ -81,13 +91,14 @@ export function AddSourcesPanel({
         if (prev === next) return prev;
         if (next === "arxiv") {
           cancelPendingUpload();
+          cancelPendingBatch();
         } else {
           clearArxivPreview();
         }
         return next;
       });
     },
-    [cancelPendingUpload, clearArxivPreview],
+    [cancelPendingBatch, cancelPendingUpload, clearArxivPreview],
   );
 
   const busyUpload = busy === "upload";
@@ -116,7 +127,18 @@ export function AddSourcesPanel({
           arxivMax={arxivMax}
           setArxivMax={setArxivMax}
           fetchArxivPreviewFromAddPage={fetchArxivPreviewFromAddPage}
+          onUploadFilesDropped={onUploadFilesDropped}
         />
+
+        {addSourceMainTab === "upload" && pendingBatchFiles && (
+          <AddSourceBatchPreviewCard
+            files={pendingBatchFiles}
+            disabled={busyAny}
+            uploadBusy={busyUpload}
+            onCancel={() => cancelPendingBatch()}
+            onConfirm={() => void confirmPendingBatch()}
+          />
+        )}
 
         {addSourceMainTab === "upload" && pendingUpload && (
           <AddSourceFilePreviewCard
@@ -146,14 +168,10 @@ export function AddSourcesPanel({
           )}
 
         <Button
-          disabled={busyAny || !pendingReindex}
+          type="button"
+          disabled={busyAny}
           onClick={() => void onReindexClick()}
-          className="w-fit rounded-xl gap-2"
-          title={
-            !pendingReindex && busy === null
-              ? "ファイルのアップロードまたは arXiv 取り込み（ファイル保存）のあとに実行できます"
-              : undefined
-          }
+          className="w-fit gap-2 rounded-xl"
         >
           <Database className="size-4" />
           {busy === "reindex" ? "更新中…" : "インデックスを更新"}

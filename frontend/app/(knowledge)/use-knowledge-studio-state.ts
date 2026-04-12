@@ -48,8 +48,11 @@ export function useKnowledgeStudioState() {
     setArxivPreviewAllSelected: addSource.setArxivPreviewAllSelected,
     confirmArxivImportFromPreview: addSource.confirmArxivImportFromPreview,
     clearArxivPreview: addSource.clearArxivPreview,
-    pendingReindex: addSource.pendingReindex,
     onReindexClick: addSource.onReindexClick,
+    pendingBatchFiles: addSource.pendingBatchFiles,
+    cancelPendingBatch: addSource.cancelPendingBatch,
+    confirmPendingBatch: addSource.confirmPendingBatch,
+    onUploadFilesDropped: addSource.onUploadFilesDropped,
     materialSearchQuery: material.materialSearchQuery,
     setMaterialSearchQuery: material.setMaterialSearchQuery,
     materialSearchTopK: material.materialSearchTopK,
@@ -84,13 +87,14 @@ export function useKnowledgeStudioState() {
     topK: ask.topK,
     setTopK: ask.setTopK,
     result: ask.result,
-    statsRows: ask.statsRows,
     askOptionsOpen: ask.askOptionsOpen,
     setAskOptionsOpen: ask.setAskOptionsOpen,
     askOptionsTriggerRef: ask.askOptionsTriggerRef,
     askOptionsPanelRef: ask.askOptionsPanelRef,
     askOptionsCoords: ask.askOptionsCoords,
     submitAnalyze: ask.submitAnalyze,
+    questionHistory: ask.questionHistory,
+    refreshQuestionHistory: ask.refreshQuestionHistory,
   };
 }
 
