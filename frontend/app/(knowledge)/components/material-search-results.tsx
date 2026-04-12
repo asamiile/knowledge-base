@@ -1,8 +1,20 @@
 "use client";
 
+import Link from "next/link";
+
 import type { MaterialSearchHit } from "@/lib/api/knowledge";
 
 import { SeparatedResultsList } from "./separated-results";
+
+function chunkBodyText(h: MaterialSearchHit): string {
+  const p = h.source_path?.trim();
+  if (!p) return h.text;
+  const prefix = `[source:${p}]`;
+  if (h.text.startsWith(prefix)) {
+    return h.text.slice(prefix.length).replace(/^\s*\n?/, "");
+  }
+  return h.text;
+}
 
 type MaterialSearchResultsProps = {
   /** null のときは何も表示しない */
@@ -33,8 +45,18 @@ export function MaterialSearchResults({
               <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
                 id {h.document_id} · distance {h.distance.toFixed(4)}
               </p>
+              {h.source_path ? (
+                <p className="mt-2">
+                  <Link
+                    href={`/file?path=${encodeURIComponent(h.source_path)}`}
+                    className="text-primary inline-flex max-w-full items-center gap-1 break-all font-mono text-xs underline-offset-2 hover:underline"
+                  >
+                    {h.source_path}
+                  </Link>
+                </p>
+              ) : null}
               <div className="text-foreground mt-3 font-sans text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word">
-                {h.text}
+                {chunkBodyText(h)}
               </div>
             </article>
           )}

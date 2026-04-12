@@ -106,11 +106,13 @@ def _seed_documents(db: Session) -> None:
         select(func.count()).select_from(Document).where(Document.text.like(f"{_DOC_PREFIX}%")),
     )
     n_existing = int(n_existing or 0)
+    seed_source = "dev-seed/sample.md"
     for i in range(n_existing, len(_DOC_SAMPLES)):
         db.add(
             Document(
                 text=_DOC_SAMPLES[i],
                 embedding=_unit_embedding(dim, i),
+                source_path=seed_source,
             )
         )
 

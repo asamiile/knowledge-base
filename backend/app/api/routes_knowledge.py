@@ -119,8 +119,9 @@ def knowledge_material_search(
             document_id=rid,
             text=text if len(text) <= _MAX_HIT_TEXT else text[:_MAX_HIT_TEXT] + "…",
             distance=dist,
+            source_path=spath,
         )
-        for rid, text, dist in rows
+        for rid, text, dist, spath in rows
     ]
     return MaterialSearchResponse(hits=hits)
 

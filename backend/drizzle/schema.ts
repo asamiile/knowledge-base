@@ -11,6 +11,7 @@ import {
 export const documents = pgTable("documents", {
 	id: serial().primaryKey().notNull(),
 	text: text().notNull(),
+	sourcePath: varchar("source_path", { length: 2048 }),
 	embedding: vector({ dimensions: 768 }),
 });
 

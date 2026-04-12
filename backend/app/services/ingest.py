@@ -62,7 +62,8 @@ def ingest_data_directory(
         text = extract_text_for_vector_ingest(path)
         if not text.strip():
             continue
-        header = f"[source:{path.relative_to(data_dir)}]\n"
+        rel = path.relative_to(data_dir).as_posix()
+        header = f"[source:{rel}]\n"
         nodes = splitter.get_nodes_from_documents(
             [LIDocument(text=header + text)]
         )
@@ -71,7 +72,7 @@ def ingest_data_directory(
             continue
         embeddings = embed_model.get_text_embedding_batch(texts)
         for t, vec in zip(texts, embeddings, strict=True):
-            row = Document(text=t, embedding=vec)
+            row = Document(text=t, embedding=vec, source_path=rel)
             db.add(row)
             doc_chunks += 1
 

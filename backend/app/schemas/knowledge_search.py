@@ -12,6 +12,10 @@ class MaterialSearchHit(BaseModel):
     document_id: int
     text: str
     distance: float
+    source_path: str | None = Field(
+        default=None,
+        description="DATA_DIR 相対の取り込み元ファイルパス（/file へのリンク用）。",
+    )
 
 
 class MaterialSearchResponse(BaseModel):
