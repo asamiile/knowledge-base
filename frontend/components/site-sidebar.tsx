@@ -8,7 +8,6 @@ import {
   MessageSquareText,
   RefreshCw,
   Search,
-  Sparkles,
 } from "lucide-react";
 
 import { SidebarPeriodicRunLogs } from "@/components/sidebar-periodic-run-logs";
@@ -23,6 +22,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { KnowledgeSection } from "@/lib/knowledge-section";
 import type { KnowledgeStats } from "@/lib/api/knowledge";
@@ -49,19 +49,11 @@ export function SiteSidebar({
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div
-          className="flex items-start gap-2 px-2 py-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:items-center"
-          title="知識ベース"
-        >
-          <Sparkles className="size-4 shrink-0 text-sidebar-foreground" />
-          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:sr-only">
-            <p className="truncate text-sm leading-tight font-semibold">
-              知識ベース
-            </p>
-            <p className="text-muted-foreground truncate text-xs leading-tight">
-              ローカル RAG
-            </p>
-          </div>
+        <div className="flex items-center justify-start px-2 py-2 group-data-[collapsible=icon]:px-1">
+          <SidebarTrigger
+            className="-ml-0.5"
+            aria-label="サイドメニューを開閉"
+          />
         </div>
       </SidebarHeader>
       <SidebarContent>

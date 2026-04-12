@@ -21,14 +21,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    # Sync Python deps from mounted requirements.txt (avoids stale image missing e.g. PyJWT).
     command:
-      - uvicorn
-      - app.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
-      - --reload
+      - sh
+      - -c
+      - |
+        pip install --no-cache-dir -r requirements.txt
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       DATABASE_URL: postgresql://knowledge:knowledge@db:5432/knowledge
       DATA_DIR: /app/data

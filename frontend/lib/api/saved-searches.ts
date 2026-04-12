@@ -1,4 +1,4 @@
-import { apiBase, fetchJson } from "./api";
+import { apiBase, fetchJson, onUnauthorizedResponse, withAuth } from "./api";
 
 export type SavedSearchTarget = "knowledge" | "arxiv";
 
@@ -71,10 +71,12 @@ export async function patchSavedSearch(
 }
 
 export async function deleteSavedSearch(id: string): Promise<void> {
-  const r = await fetch(`${apiBase()}/api/knowledge/saved-searches/${id}`, {
-    method: "DELETE",
-  });
+  const r = await fetch(
+    `${apiBase()}/api/knowledge/saved-searches/${id}`,
+    withAuth({ method: "DELETE" }),
+  );
   if (!r.ok) {
+    onUnauthorizedResponse(r);
     const text = await r.text();
     let detail = text;
     try {

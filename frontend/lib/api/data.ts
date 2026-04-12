@@ -1,4 +1,4 @@
-import { apiBase, fetchJson } from "./api";
+import { apiBase, fetchJson, onUnauthorizedResponse, withAuth } from "./api";
 
 export type UploadResponse = {
   path: string;
@@ -9,9 +9,13 @@ export type UploadResponse = {
 export async function postUpload(file: File): Promise<UploadResponse> {
   const fd = new FormData();
   fd.append("file", file);
-  const r = await fetch(`${apiBase()}/api/data/upload`, { method: "POST", body: fd });
+  const r = await fetch(
+    `${apiBase()}/api/data/upload`,
+    withAuth({ method: "POST", body: fd }),
+  );
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
+    onUnauthorizedResponse(r);
     throw new Error(
       typeof data === "object" && data && "detail" in data
         ? JSON.stringify((data as { detail: unknown }).detail)
@@ -95,7 +99,7 @@ export async function getDataFileLookup(
 ): Promise<DataFileInfo | null> {
   const u = new URL(`${apiBase()}/api/data/files/lookup`);
   u.searchParams.set("path", path);
-  const r = await fetch(u.toString(), { method: "GET" });
+  const r = await fetch(u.toString(), withAuth({ method: "GET" }));
   if (r.status === 404) {
     return null;
   }
@@ -104,9 +108,11 @@ export async function getDataFileLookup(
   try {
     data = JSON.parse(text);
   } catch {
+    onUnauthorizedResponse(r);
     throw new Error(`API error ${r.status}: ${text.slice(0, 500)}`);
   }
   if (!r.ok) {
+    onUnauthorizedResponse(r);
     const detail =
       typeof data === "object" && data && "detail" in data
         ? JSON.stringify((data as { detail: unknown }).detail)

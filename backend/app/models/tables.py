@@ -12,6 +12,26 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
+class User(Base):
+    """手動登録のみ（公開サインアップなし）。パスワードは bcrypt ハッシュを保持。"""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
 class Document(Base):
     """論文などのテキスト断片と埋め込みベクトル。"""
 
