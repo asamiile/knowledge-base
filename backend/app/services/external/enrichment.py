@@ -43,7 +43,8 @@ def enrichment_for_data_relative_path(rel_path: str) -> PaperEnrichment:
         else stem
     )
     summary = summ
-    sources.append("arxiv")
+    if title is not None or summ is not None or primary_cat is not None or cats:
+        sources.append("arxiv")
 
     citation_count: int | None = None
     if is_modern_arxiv_stem(stem):

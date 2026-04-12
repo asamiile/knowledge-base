@@ -13,15 +13,15 @@ from app.services.external.textutil import truncate_summary
 
 def fetch_arxiv_paper_meta(
     arxiv_id_for_api: str,
-) -> tuple[str, str | None, str | None, tuple[str, ...]]:
-    """タイトル・要約・主カテゴリ・全カテゴリ。`arxiv_id_for_api` は stem（例: 2410.09380v1）。"""
+) -> tuple[str | None, str | None, str | None, tuple[str, ...]]:
+    """タイトル・要約・主カテゴリ・全カテゴリ。取得失敗時はすべて None / 空タプル。"""
     entries = fetch_arxiv_entries(
         arxiv_ids=[arxiv_id_for_api],
         search_query=None,
         max_results=1,
     )
     if not entries:
-        return arxiv_id_for_api, None, None, ()
+        return None, None, None, ()
     e = entries[0]
     summary = e.summary.strip() if e.summary else None
     summ = truncate_summary(summary) if summary else None

@@ -63,3 +63,21 @@ def test_enrichment_arxiv_only_when_openalex_missing(
     assert e.citation_count is None
     assert e.sources == ["arxiv"]
     assert e.arxiv_primary_category == "eess.IV"
+
+
+@patch("app.services.external.enrichment.fetch_work_for_arxiv_base")
+@patch("app.services.external.enrichment.fetch_arxiv_paper_meta")
+def test_enrichment_atom_unavailable_no_arxiv_source(
+    mock_atom: object,
+    mock_oa: object,
+) -> None:
+    """429等で Atom が取れないときは 500 にせず stem 表示・sources に arxiv を付けない。"""
+    mock_atom.return_value = (None, None, None, ())
+    mock_oa.return_value = None
+
+    e = enrichment_for_data_relative_path("imports/arxiv/1709.06342v4.md")
+    assert e.display_name == "1709.06342v4"
+    assert e.summary is None
+    assert e.sources == []
+    assert e.arxiv_primary_category is None
+    assert e.arxiv_categories == ()

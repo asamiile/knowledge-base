@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -20,8 +21,13 @@ _ARXIV_ATOM = "{http://arxiv.org/schemas/atom}"
 _MAX_PDF_BYTES = 35 * 1024 * 1024
 # 連続 PDF GET の間隔（負荷配慮・秒）
 _PDF_FETCH_INTERVAL_SEC = 2.0
+# export.arxiv.org Atom API は短時間に集中すると 429 になりやすいため、呼び出し間に空ける
+_ARXIV_API_MIN_INTERVAL_SEC = 3.2
+_ARXIV_API_MAX_ATTEMPTS = 6
 
 logger = logging.getLogger(__name__)
+_arxiv_api_lock = threading.Lock()
+_last_arxiv_api_request_monotonic: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -68,14 +74,86 @@ def _arxiv_api_search_query(user_q: str) -> str:
 
 
 def _arxiv_get(params: dict[str, str | int]) -> str:
-    with httpx.Client(timeout=45.0, follow_redirects=True) as client:
-        r = client.get(
-            ARXIV_API,
-            params=params,
-            headers={"User-Agent": USER_AGENT},
-        )
-        r.raise_for_status()
-        return r.text
+    """Atom API GET。429 / タイムアウト時は指数バックオフで再試行。全プロセスで呼び出し間隔を空ける。"""
+    global _last_arxiv_api_request_monotonic
+    last_exc: BaseException | None = None
+    with _arxiv_api_lock:
+        for attempt in range(_ARXIV_API_MAX_ATTEMPTS):
+            gap = _ARXIV_API_MIN_INTERVAL_SEC - (
+                time.monotonic() - _last_arxiv_api_request_monotonic
+            )
+            if gap > 0:
+                time.sleep(gap)
+            r: httpx.Response | None = None
+            try:
+                with httpx.Client(
+                    timeout=httpx.Timeout(60.0, connect=20.0),
+                    follow_redirects=True,
+                ) as client:
+                    r = client.get(
+                        ARXIV_API,
+                        params=params,
+                        headers={"User-Agent": USER_AGENT},
+                    )
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                last_exc = e
+                _last_arxiv_api_request_monotonic = time.monotonic()
+                logger.warning(
+                    "arXiv API 接続エラー (%s/%s): %s",
+                    attempt + 1,
+                    _ARXIV_API_MAX_ATTEMPTS,
+                    e,
+                )
+                time.sleep(min(25.0, 2.5 * (attempt + 1)))
+                continue
+
+            _last_arxiv_api_request_monotonic = time.monotonic()
+            assert r is not None
+
+            if r.status_code == 429:
+                last_exc = httpx.HTTPStatusError(
+                    f"429 for {r.request.url!r}",
+                    request=r.request,
+                    response=r,
+                )
+                ra = (r.headers.get("Retry-After") or "").strip().split(",")[0]
+                try:
+                    delay = float(ra)
+                except ValueError:
+                    delay = min(90.0, 6.0 * (attempt + 1))
+                delay = max(_ARXIV_API_MIN_INTERVAL_SEC, delay)
+                logger.warning(
+                    "arXiv API 429; %.1f 秒待って再試行 (%s/%s)",
+                    delay,
+                    attempt + 1,
+                    _ARXIV_API_MAX_ATTEMPTS,
+                )
+                time.sleep(delay)
+                continue
+
+            if r.status_code in (502, 503):
+                last_exc = httpx.HTTPStatusError(
+                    f"{r.status_code} for {r.request.url!r}",
+                    request=r.request,
+                    response=r,
+                )
+                time.sleep(min(20.0, 3.0 * (attempt + 1)))
+                continue
+
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                last_exc = e
+                logger.warning("arXiv API HTTP %s: %s", r.status_code, r.text[:200])
+                if attempt < _ARXIV_API_MAX_ATTEMPTS - 1:
+                    time.sleep(min(15.0, 2.0 * (attempt + 1)))
+                    continue
+                raise
+            return r.text
+
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("arXiv API: 再試行上限")
 
 
 def fetch_arxiv_pdf_bytes(
@@ -233,32 +311,42 @@ def fetch_arxiv_entries(
     all_entries: list[_ArxivEntry] = []
 
     if ids:
-        text = _arxiv_get({"id_list": ",".join(ids)})
-        for e in _parse_atom_entries(text):
-            if e.id_url not in seen_urls:
-                seen_urls.add(e.id_url)
-                all_entries.append(e)
+        try:
+            text = _arxiv_get({"id_list": ",".join(ids)})
+        except Exception as e:
+            logger.warning("arXiv id_list 取得に失敗: %s", e)
+            text = ""
+        if text:
+            for e in _parse_atom_entries(text):
+                if e.id_url not in seen_urls:
+                    seen_urls.add(e.id_url)
+                    all_entries.append(e)
 
     q = (search_query or "").strip()
     if q:
         sq = _arxiv_api_search_query(q)
-        text = _arxiv_get(
-            {
-                "search_query": sq,
-                "start": 0,
-                "max_results": max_results,
-            }
-        )
-        for e in _parse_atom_entries(text):
-            if e.id_url not in seen_urls:
-                seen_urls.add(e.id_url)
-                all_entries.append(e)
+        try:
+            text = _arxiv_get(
+                {
+                    "search_query": sq,
+                    "start": 0,
+                    "max_results": max_results,
+                }
+            )
+        except Exception as e:
+            logger.warning("arXiv search_query 取得に失敗: %s", e)
+            text = ""
+        if text:
+            for e in _parse_atom_entries(text):
+                if e.id_url not in seen_urls:
+                    seen_urls.add(e.id_url)
+                    all_entries.append(e)
 
     return all_entries
 
 
-# id_list 1 リクエストあたりの件数（URL・応答サイズのバランス）
-_ARXIV_ID_LIST_BATCH = 40
+# id_list 1 リクエストあたりの件数（長すぎると 429・タイムアウトしやすい）
+_ARXIV_ID_LIST_BATCH = 12
 
 
 def fetch_primary_categories_for_stems(stems: list[str]) -> dict[str, str | None]:
