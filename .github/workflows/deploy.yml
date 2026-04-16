@@ -1,0 +1,118 @@
+# Cloud Run デプロイ
+#
+# 必要な GitHub Secrets:
+#   GCP_PROJECT_ID       - GCP プロジェクト ID
+#   GCP_SA_KEY           - デプロイ用サービスアカウントの JSON キー（base64 不要）
+#   GCP_REGION           - Cloud Run リージョン（例: asia-northeast1）
+#   DATABASE_URL         - 本番 Postgres 接続文字列
+#   GOOGLE_API_KEY       - Gemini API キー
+#   AUTH_JWT_SECRET      - JWT 署名シークレット（openssl rand -hex 32）
+#   CORS_ORIGINS         - 許可オリジン（例: https://yourapp.com）
+#   NEXT_PUBLIC_AUTH_ENABLED - フロントの認証フラグ（true / false）
+#
+# サービスアカウントに必要な IAM ロール:
+#   roles/run.admin
+#   roles/artifactregistry.writer
+#   roles/iam.serviceAccountUser
+
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGISTRY: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/spira-base
+
+jobs:
+  deploy-backend:
+    name: Backend → Cloud Run
+    runs-on: ubuntu-latest
+
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Create Artifact Registry repository (if not exists)
+        run: |
+          gcloud artifacts repositories describe spira-base \
+            --location=${{ env.GCP_REGION }} --project=${{ env.GCP_PROJECT_ID }} \
+            2>/dev/null || \
+          gcloud artifacts repositories create spira-base \
+            --repository-format=docker \
+            --location=${{ env.GCP_REGION }} \
+            --project=${{ env.GCP_PROJECT_ID }}
+
+      - name: Build & push backend image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/backend:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/backend:latest \
+            ./backend
+          docker push ${{ env.REGISTRY }}/backend:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/backend:latest
+
+      - name: Deploy backend to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: spira-base-backend
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.REGISTRY }}/backend:${{ github.sha }}
+          env_vars: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+            DATA_DIR=/app/data
+            ENVIRONMENT=production
+
+  deploy-frontend:
+    name: Frontend → Cloud Run
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & push frontend image
+        run: |
+          docker build \
+            -f frontend/Dockerfile.prod \
+            --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-backend.outputs.url }} \
+            --build-arg NEXT_PUBLIC_AUTH_ENABLED=${{ secrets.NEXT_PUBLIC_AUTH_ENABLED }} \
+            -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/frontend:latest \
+            .
+          docker push ${{ env.REGISTRY }}/frontend:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/frontend:latest
+
+      - name: Deploy frontend to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: spira-base-frontend
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.REGISTRY }}/frontend:${{ github.sha }}
