@@ -103,7 +103,7 @@ jobs:
         run: |
           docker build \
             -f frontend/Dockerfile.prod \
-            --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-backend.outputs.url }} \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_AUTH_ENABLED=${{ secrets.NEXT_PUBLIC_AUTH_ENABLED }} \
             -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
             -t ${{ env.REGISTRY }}/frontend:latest \
