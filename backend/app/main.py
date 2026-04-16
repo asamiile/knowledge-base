@@ -30,7 +30,10 @@ from app.db import get_db, init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    from app.services.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 _prod = is_production_environment()
