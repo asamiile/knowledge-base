@@ -80,7 +80,6 @@ jobs:
             CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
             DATA_DIR=/app/data
             ENVIRONMENT=production
-            PORT=8080
 
   deploy-frontend:
     name: Frontend → Cloud Run
