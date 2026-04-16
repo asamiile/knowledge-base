@@ -55,6 +55,19 @@ curl -s -X POST http://localhost:8001/api/analyze \
 docker compose exec backend python -m app.db.seed_dev
 ```
 
+### ユーザー追加（本番 DB）
+
+本番データベース（Neon 等）にログインユーザーを追加する：
+
+```bash
+docker compose exec \
+  -e DATABASE_URL="postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require" \
+  backend python -m app.db.add_user メールアドレス パスワード
+```
+
+- `DATABASE_URL` は Neon ダッシュボードの `Connection Details → Connection string` から取得
+- パスワード生成例: `openssl rand -base64 16`
+
 ### 本番デプロイ
 
 - 手順・チェックリスト: [docs/PRODUCTION.md](docs/PRODUCTION.md)
