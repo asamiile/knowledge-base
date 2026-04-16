@@ -1,14 +1,13 @@
 import type { SavedSearchRow, SavedSearchTarget } from "@/lib/api/saved-searches";
 
-const STORAGE_KEY = "spira-base:saved-searches-migrated-to-db:v1";
-const LEGACY_STORAGE_KEY = "knowledge-base:saved-searches-migrated-to-db:v1";
+const STORAGE_KEY = "spira-base:saved-material-searches:v1";
+
+export const SAVED_SEARCHES_MIGRATED_TO_DB_KEY =
+  "spira-base:saved-searches-migrated-to-db:v1";
 
 export function isSavedSearchesMigratedToDbFlag(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    localStorage.getItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY) === "1" ||
-    localStorage.getItem(LEGACY_SAVED_SEARCHES_MIGRATED_TO_DB_KEY) === "1"
-  );
+  return localStorage.getItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY) === "1";
 }
 
 export type SavedMaterialSearch = {
@@ -45,14 +44,7 @@ export function savedSearchRowToClient(row: SavedSearchRow): SavedMaterialSearch
 export function loadSavedMaterialSearches(): SavedMaterialSearch[] {
   if (typeof window === "undefined") return [];
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (raw) {
-        localStorage.setItem(STORAGE_KEY, raw);
-        localStorage.removeItem(LEGACY_STORAGE_KEY);
-      }
-    }    
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -83,5 +75,4 @@ export function loadSavedMaterialSearches(): SavedMaterialSearch[] {
 export function storeSavedMaterialSearches(items: SavedMaterialSearch[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  localStorage.removeItem(LEGACY_STORAGE_KEY);
 }

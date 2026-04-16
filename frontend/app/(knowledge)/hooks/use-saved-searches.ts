@@ -14,7 +14,6 @@ import { postKnowledgeSearch } from "@/lib/api/knowledge";
 import { splitArxivIdsInput } from "@/lib/arxiv-input";
 import {
   isSavedSearchesMigratedToDbFlag,
-  LEGACY_SAVED_SEARCHES_MIGRATED_TO_DB_KEY,  
   loadSavedMaterialSearches,
   SAVED_SEARCHES_MIGRATED_TO_DB_KEY,
   savedSearchRowToClient,
@@ -92,7 +91,6 @@ export function useSavedSearches(
             if (!cancelled) {
               storeSavedMaterialSearches([]);
               localStorage.setItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY, "1");
-              localStorage.removeItem(LEGACY_SAVED_SEARCHES_MIGRATED_TO_DB_KEY);
               rows = await listSavedSearches();
             }
           }
