@@ -10,7 +10,7 @@ def test_root_returns_200(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     body = response.json()
-    assert body.get("service") == "knowledge-base-api"
+    assert body.get("service") == "spira-base-api"
 
 
 def test_health_returns_200(client: TestClient) -> None:

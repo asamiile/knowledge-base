@@ -6,7 +6,7 @@ import {
 
 /** API のオリジン（末尾スラッシュなし） */
 export function apiBase(): string {
-  return (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
+  return (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001").replace(
     /\/$/,
     "",
   );

@@ -1,17 +1,21 @@
-const STORAGE_KEY = "knowledge-base:saved-material-searches:v1";
-
-/** localStorage から DB への一回限り移行済みフラグ */
-export const SAVED_SEARCHES_MIGRATED_TO_DB_KEY =
-  "knowledge-base:saved-searches-migrated-to-db:v1";
-
 import type { SavedSearchRow, SavedSearchTarget } from "@/lib/api/saved-searches";
+
+const STORAGE_KEY = "spira-base:saved-material-searches:v1";
+
+export const SAVED_SEARCHES_MIGRATED_TO_DB_KEY =
+  "spira-base:saved-searches-migrated-to-db:v1";
+
+export function isSavedSearchesMigratedToDbFlag(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY) === "1";
+}
 
 export type SavedMaterialSearch = {
   id: string;
   name: string;
-  /** knowledge=ローカル検索クエリ / arxiv=キーワード検索用（論文 ID は arxivIds） */
+  /** Local material query vs arxiv keyword search (arxivIds for paper IDs */
   query: string;
-  /** arxiv の論文 ID（/add と同様、キーワードと別。保存・API では常に配列） */
+  /** arXiv paper IDs; separate from keyword (same as /add). */
   arxivIds: string[];
   /** knowledge=ローカルベクトル検索 / arxiv=arXiv（API・移行後は常にあり） */
   searchTarget?: SavedSearchTarget;
