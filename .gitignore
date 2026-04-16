@@ -52,3 +52,7 @@ yarn-error.log*
 .vercel
 *.tsbuildinfo
 frontend/next-env.d.ts
+
+# GCP サービスアカウントキー
+sa-key.json
+*-key.json
