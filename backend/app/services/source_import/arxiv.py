@@ -15,7 +15,7 @@ import httpx
 
 # http は 301 → https となり、環境によってはリダイレクト追従で失敗するため https を既定にする
 ARXIV_API = "https://export.arxiv.org/api/query"
-USER_AGENT = "knowledge-base/0.1 (local-dev; https://arxiv.org/help/api)"
+USER_AGENT = "spira-base/0.1 (local-dev; https://arxiv.org/help/api)"
 _ATOM = "{http://www.w3.org/2005/Atom}"
 _ARXIV_ATOM = "{http://arxiv.org/schemas/atom}"
 _MAX_PDF_BYTES = 35 * 1024 * 1024

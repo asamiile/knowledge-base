@@ -28,7 +28,7 @@ export function SiteHeader() {
       <div className="flex w-full min-w-0 items-center gap-3 px-4 lg:gap-4 lg:px-6">
         <div className="min-w-0">
           <p className="truncate text-base leading-tight font-semibold tracking-tight">
-            ナレッジベース
+            spira-base
           </p>
         </div>
         <div className="min-w-0 flex-1" />

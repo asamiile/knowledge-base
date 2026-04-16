@@ -43,7 +43,7 @@ from app.models.tables import (
     User,
 )
 
-_DEV_SEED_URL = "https://knowledge-base.local/dev-seed#v1"
+_DEV_SEED_URL = "https://spira-base.local/dev-seed#v1"
 
 _PROD_ENV_NAMES = frozenset({"production", "prod"})
 
