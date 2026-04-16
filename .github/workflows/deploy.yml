@@ -1,18 +1,20 @@
 # Cloud Run デプロイ
 #
 # 必要な GitHub Secrets:
-#   GCP_PROJECT_ID       - GCP プロジェクト ID
-#   GCP_SA_KEY           - デプロイ用サービスアカウントの JSON キー（base64 不要）
-#   GCP_REGION           - Cloud Run リージョン（例: asia-northeast1）
-#   DATABASE_URL         - 本番 Postgres 接続文字列
-#   GOOGLE_API_KEY       - Gemini API キー
-#   AUTH_JWT_SECRET      - JWT 署名シークレット（openssl rand -hex 32）
-#   CORS_ORIGINS         - 許可オリジン（例: https://yourapp.com）
+#   GCP_PROJECT_ID           - GCP プロジェクト ID
+#   GCP_SA_KEY               - デプロイ用サービスアカウントの JSON キー（base64 不要）
+#   GCP_REGION               - Cloud Run リージョン（例: asia-northeast1）
+#   DATABASE_URL             - 本番 Postgres 接続文字列
+#   GOOGLE_API_KEY           - Gemini API キー
+#   AUTH_ENABLED             - 認証の有効化（true / false）
+#   AUTH_JWT_SECRET          - JWT 署名シークレット（openssl rand -hex 32）
+#   CORS_ORIGINS             - 許可オリジン（例: https://yourapp.com）
+#   NEXT_PUBLIC_API_URL      - バックエンドの Cloud Run URL
 #   NEXT_PUBLIC_AUTH_ENABLED - フロントの認証フラグ（true / false）
 #
 # サービスアカウントに必要な IAM ロール:
 #   roles/run.admin
-#   roles/artifactregistry.writer
+#   roles/artifactregistry.admin
 #   roles/iam.serviceAccountUser
 
 name: Deploy to Cloud Run
@@ -31,9 +33,6 @@ jobs:
   deploy-backend:
     name: Backend → Cloud Run
     runs-on: ubuntu-latest
-
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +66,6 @@ jobs:
           docker push ${{ env.REGISTRY }}/backend:latest
 
       - name: Deploy backend to Cloud Run
-        id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: spira-base-backend
@@ -77,10 +75,12 @@ jobs:
           env_vars: |
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            AUTH_ENABLED=${{ secrets.AUTH_ENABLED }}
             AUTH_JWT_SECRET=${{ secrets.AUTH_JWT_SECRET }}
             CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
             DATA_DIR=/app/data
             ENVIRONMENT=production
+            PORT=8080
 
   deploy-frontend:
     name: Frontend → Cloud Run
@@ -103,7 +103,7 @@ jobs:
         run: |
           docker build \
             -f frontend/Dockerfile.prod \
-            --build-arg NEXT_PUBLIC_API_URL=${{ needs.deploy-backend.outputs.url }} \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_AUTH_ENABLED=${{ secrets.NEXT_PUBLIC_AUTH_ENABLED }} \
             -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
             -t ${{ env.REGISTRY }}/frontend:latest \
