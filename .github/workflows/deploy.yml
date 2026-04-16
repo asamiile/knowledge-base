@@ -73,6 +73,7 @@ jobs:
           service: spira-base-backend
           region: ${{ env.GCP_REGION }}
           image: ${{ env.REGISTRY }}/backend:${{ github.sha }}
+          flags: --allow-unauthenticated
           env_vars: |
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
@@ -116,3 +117,4 @@ jobs:
           service: spira-base-frontend
           region: ${{ env.GCP_REGION }}
           image: ${{ env.REGISTRY }}/frontend:${{ github.sha }}
+          flags: --allow-unauthenticated
