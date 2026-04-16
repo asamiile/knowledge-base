@@ -1,4 +1,4 @@
-# knowledge-base — エージェント向け仕様
+# spira-base — エージェント向け仕様
 
 このファイルが **単一の一次ソース**です。以降の実装は「該当 STEP の節だけを開いて実装する」運用とする。
 
@@ -136,7 +136,7 @@
 
 | 項目 | 内容 | 状態 |
 |------|------|------|
-| 取り込み後フロー | アップロード／arXiv 保存成功後、**自動で `POST /api/data/reindex`** するか、**確認ダイアログ**で実行するか。切替はフロント **localStorage**（`knowledge-base:autoReindexAfterImport` = `1` / `0`） | **実装済み**（`/add` のチェックボックス・ダイアログ） |
+| 取り込み後フロー | アップロード／arXiv 保存成功後、**自動で `POST /api/data/reindex`** するか、**確認ダイアログ**で実行するか。切替はフロント **localStorage**（`spira-base:autoReindexAfterImport` = `1` / `0`） | **実装済み**（`/add` のチェックボックス・ダイアログ） |
 | 複数ファイル・D&D | `<input multiple>`、**ドラッグアンドドロップ**で複数ファイルを受け取り、**既存 `POST /api/data/upload` を逐次呼び出し**（プレビューは一覧・一括確定） | **実装済み** |
 | 取り込み済み一覧 | **`GET /api/data/files`** — `DATA_DIR` 配下のファイルを相対パス・サイズ・更新日時で列挙する（`.` で始まるパス除外）。`/add` で一覧表示し重複把握に利用 | **実装済み** |
 | 質問履歴 | テーブル **`question_history`**（`question`, `response` JSONB, `created_at`）。**`POST /api/analyze` 成功時に `save_question_history`（既定 `true`）で保存**。**`GET /api/knowledge/question-history`** で一覧。seed に **[DEV-SEED]** 付きサンプル行 | **実装済み** |
@@ -225,7 +225,7 @@
 ### pnpm（ルート — `frontend/` と `backend/`）
 
 - **導入前:** 上記「新規パッケージを入れる前」と同様に npm レジストリ上の供給元を確認（`pnpm view <pkg>` でも可）。
-- **導入後:** **ルートの** `pnpm-lock.yaml` をコミットし、ルートで `pnpm audit` を実行。依存の追加はルートで `pnpm add <pkg> --filter frontend`（または `--filter knowledge-base-backend-drizzle`）など。**日常の起動・フロント開発は Docker Compose を前提**とし、コンテナ起動時に `pnpm install` が走る。ホストで直接触る場合のみ、ルートの `package.json`（`pnpm dev:frontend` / `pnpm run db:studio` 等）を参照する。
+- **導入後:** **ルートの** `pnpm-lock.yaml` をコミットし、ルートで `pnpm audit` を実行。依存の追加はルートで `pnpm add <pkg> --filter frontend`（または `--filter spira-base-backend-drizzle`）など。**日常の起動・フロント開発は Docker Compose を前提**とし、コンテナ起動時に `pnpm install` が走る。ホストで直接触る場合のみ、ルートの `package.json`（`pnpm dev:frontend` / `pnpm run db:studio` 等）を参照する。
 
 ### Python（`backend/` FastAPI）
 
@@ -424,7 +424,7 @@ arXiv Atom API からメタデータ・要約を取得し（**API キー不要**
 **プロンプト（実装用・原文相当）**
 
 ```
-AGENTS.md の STEP 1 に従い、knowledge-base リポジトリにモノレポと Docker 基盤を実装してください。
+AGENTS.md の STEP 1 に従い、spira-base リポジトリにモノレポと Docker 基盤を実装してください。
 
 - frontend/: Next.js + TypeScript（App Router）、開発用 Dockerfile（ルート volume + pnpm run dev）、.dockerignore、.env.example（NEXT_PUBLIC_API_URL 等）
 - backend/: FastAPI + uvicorn、開発用 Dockerfile（--reload、ソースボリューム）、.dockerignore、.env.example（Compose 用 DATABASE_URL。Supabase はプレースホルダのみ）

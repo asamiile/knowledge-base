@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "knowledge-base",
-  description: "映像制作向け知識ベース — アップロード・RAG・外部取り込み",
+  title: "spira-base",
+  description: "ローカル資料のナレッジベース — アップロード・RAG・外部取り込み",
 };
 
 export default function RootLayout({

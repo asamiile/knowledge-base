@@ -51,6 +51,7 @@ services:
     working_dir: /workspace/frontend
     volumes:
       - .:/workspace
+      - root_node_modules:/workspace/node_modules
       - frontend_node_modules:/workspace/frontend/node_modules
       - frontend_next:/workspace/frontend/.next
     command:
@@ -92,10 +93,11 @@ services:
     command: >
       sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate &&
       cd /workspace && pnpm install --frozen-lockfile &&
-      pnpm --filter knowledge-base-backend-drizzle exec drizzle-kit studio --port 4983 --host 0.0.0.0"
+      pnpm --filter spira-base-backend-drizzle exec drizzle-kit studio --port 4983 --host 0.0.0.0"
 
 volumes:
   pgdata:
+  root_node_modules:
   frontend_node_modules:
   frontend_next:
   drizzle_studio_node_modules:

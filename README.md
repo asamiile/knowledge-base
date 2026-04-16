@@ -1,4 +1,4 @@
-# knowledge-base
+# spira-base
 
 映像制作向けの知識ベース基盤。
 
@@ -85,7 +85,7 @@ docker compose --profile drizzle up -d drizzle-studio
 
 ```bash
 docker compose --profile drizzle run --rm drizzle-studio \
-  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && cd /workspace && pnpm install --frozen-lockfile && pnpm --filter knowledge-base-backend-drizzle run db:pull"
+  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && cd /workspace && pnpm install --frozen-lockfile && pnpm --filter spira-base-backend-drizzle run db:pull"
 ```
 
 ### Agent Skills
