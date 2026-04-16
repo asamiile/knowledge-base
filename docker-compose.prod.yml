@@ -6,7 +6,7 @@
 # - フロント: `frontend/Dockerfile.prod` で next build / next start（開発用 CMD ではない）
 #
 # 起動例（リポジトリルートで）:
-#   export NEXT_PUBLIC_API_URL=http://localhost:8000   # ブラウザが API に辿り着く URL（必ず実環境に合わせる）
+#   export NEXT_PUBLIC_API_URL=http://localhost:8001   # ブラウザが API に辿り着く URL（必ず実環境に合わせる）
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 # backend/.env に GOOGLE_API_KEY・本番用 DB パスワード・AUTH_* 等を用意する。
@@ -34,7 +34,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - ./backend/.env
     environment:
@@ -52,10 +52,10 @@ services:
       context: .
       dockerfile: frontend/Dockerfile.prod
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8001}
         NEXT_PUBLIC_AUTH_ENABLED: ${NEXT_PUBLIC_AUTH_ENABLED:-false}
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - backend
 

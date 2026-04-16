@@ -29,9 +29,9 @@ docker compose up -d --build
 
 | サービス | URL | ポート |
 | -------- | --- | ----- |
-| フロント（Next.js） | http://localhost:3000 | 3000 |
-| API（FastAPI） | http://localhost:8000 | 8000 |
-| API ドキュメント（Swagger UI） | http://localhost:8000/docs | 8000 |
+| フロント（Next.js） | http://localhost:3001 | 3001 |
+| API（FastAPI） | http://localhost:8001 | 8001 |
+| API ドキュメント（Swagger UI） | http://localhost:8001/docs | 8001 |
 | PostgreSQL（pgvector） | localhost:5432 | 5432 |
 | Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio) | 4983 |
 
@@ -44,7 +44,7 @@ docker compose up -d --build
 - テストコマンド例
 
 ```bash
-curl -s -X POST http://localhost:8000/api/analyze \
+curl -s -X POST http://localhost:8001/api/analyze \
   -H "Content-Type: application/json" \
   -d '{"question":"サンプル資料の要点は？","reindex_sources":true}'
 ```

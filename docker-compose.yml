@@ -20,7 +20,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     # Sync Python deps from mounted requirements.txt (avoids stale image missing e.g. PyJWT).
     command:
       - sh
@@ -45,9 +45,9 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8001
     working_dir: /workspace/frontend
     volumes:
       - .:/workspace
