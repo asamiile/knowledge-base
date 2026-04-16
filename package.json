@@ -1,12 +1,12 @@
 {
-  "name": "knowledge-base",
+  "name": "spira-base",
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev:frontend": "pnpm --filter frontend dev",
     "build:frontend": "pnpm --filter frontend build",
     "lint:frontend": "pnpm --filter frontend lint",
-    "db:pull": "pnpm --filter knowledge-base-backend-drizzle db:pull",
-    "db:studio": "pnpm --filter knowledge-base-backend-drizzle db:studio"
+    "db:pull": "pnpm --filter spira-base-backend-drizzle db:pull",
+    "db:studio": "pnpm --filter spira-base-backend-drizzle db:studio"
   }
 }

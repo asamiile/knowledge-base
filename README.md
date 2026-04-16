@@ -1,4 +1,4 @@
-# knowledge-base
+# spira-base
 
 映像制作向けの知識ベース基盤。
 
@@ -29,9 +29,9 @@ docker compose up -d --build
 
 | サービス | URL | ポート |
 | -------- | --- | ----- |
-| フロント（Next.js） | http://localhost:3000 | 3000 |
-| API（FastAPI） | http://localhost:8000 | 8000 |
-| API ドキュメント（Swagger UI） | http://localhost:8000/docs | 8000 |
+| フロント（Next.js） | http://localhost:3001 | 3001 |
+| API（FastAPI） | http://localhost:8001 | 8001 |
+| API ドキュメント（Swagger UI） | http://localhost:8001/docs | 8001 |
 | PostgreSQL（pgvector） | localhost:5432 | 5432 |
 | Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio) | 4983 |
 
@@ -44,7 +44,7 @@ docker compose up -d --build
 - テストコマンド例
 
 ```bash
-curl -s -X POST http://localhost:8000/api/analyze \
+curl -s -X POST http://localhost:8001/api/analyze \
   -H "Content-Type: application/json" \
   -d '{"question":"サンプル資料の要点は？","reindex_sources":true}'
 ```
@@ -85,7 +85,7 @@ docker compose --profile drizzle up -d drizzle-studio
 
 ```bash
 docker compose --profile drizzle run --rm drizzle-studio \
-  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && cd /workspace && pnpm install --frozen-lockfile && pnpm --filter knowledge-base-backend-drizzle run db:pull"
+  sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && cd /workspace && pnpm install --frozen-lockfile && pnpm --filter spira-base-backend-drizzle run db:pull"
 ```
 
 ### Agent Skills
