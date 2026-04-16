@@ -11,7 +11,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _OPENALEX_WORKS = "https://api.openalex.org/works"
-_USER_AGENT = "knowledge-base/0.1 (https://github.com/local-dev; contact: dev@local)"
+_USER_AGENT = "spira-base/0.1 (https://github.com/local-dev; contact: dev@local)"
 
 
 def openalex_doi_url_for_arxiv(arxiv_base: str) -> str:

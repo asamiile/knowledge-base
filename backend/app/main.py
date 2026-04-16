@@ -30,12 +30,15 @@ from app.db import get_db, init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    from app.services.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()    
     yield
+    stop_scheduler()
 
 
 _prod = is_production_environment()
 app = FastAPI(
-    title="knowledge-base API",
+    title="spira-base API",
     version="0.1.0",
     lifespan=lifespan,
     docs_url=None if _prod else "/docs",
@@ -82,7 +85,7 @@ app.include_router(knowledge_router, dependencies=[Depends(require_auth)])
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"service": "knowledge-base-api"}
+    return {"service": "spira-base-api"}
 
 
 @app.get("/health")

@@ -13,6 +13,8 @@ import { postArxivPreview } from "@/lib/api/data";
 import { postKnowledgeSearch } from "@/lib/api/knowledge";
 import { splitArxivIdsInput } from "@/lib/arxiv-input";
 import {
+  isSavedSearchesMigratedToDbFlag,
+  LEGACY_SAVED_SEARCHES_MIGRATED_TO_DB_KEY,  
   loadSavedMaterialSearches,
   SAVED_SEARCHES_MIGRATED_TO_DB_KEY,
   savedSearchRowToClient,
@@ -61,7 +63,7 @@ export function useSavedSearches(
           !cancelled &&
           rows.length === 0 &&
           typeof window !== "undefined" &&
-          !localStorage.getItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY)
+          !isSavedSearchesMigratedToDbFlag()
         ) {
           const legacy = loadSavedMaterialSearches();
           if (legacy.length > 0) {
@@ -90,6 +92,7 @@ export function useSavedSearches(
             if (!cancelled) {
               storeSavedMaterialSearches([]);
               localStorage.setItem(SAVED_SEARCHES_MIGRATED_TO_DB_KEY, "1");
+              localStorage.removeItem(LEGACY_SAVED_SEARCHES_MIGRATED_TO_DB_KEY);
               rows = await listSavedSearches();
             }
           }

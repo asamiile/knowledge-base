@@ -20,7 +20,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     # Sync Python deps from mounted requirements.txt (avoids stale image missing e.g. PyJWT).
     command:
       - sh
@@ -45,12 +45,13 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8001
     working_dir: /workspace/frontend
     volumes:
       - .:/workspace
+      - root_node_modules:/workspace/node_modules
       - frontend_node_modules:/workspace/frontend/node_modules
       - frontend_next:/workspace/frontend/.next
     command:
@@ -92,10 +93,11 @@ services:
     command: >
       sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate &&
       cd /workspace && pnpm install --frozen-lockfile &&
-      pnpm --filter knowledge-base-backend-drizzle exec drizzle-kit studio --port 4983 --host 0.0.0.0"
+      pnpm --filter spira-base-backend-drizzle exec drizzle-kit studio --port 4983 --host 0.0.0.0"
 
 volumes:
   pgdata:
+  root_node_modules:
   frontend_node_modules:
   frontend_next:
   drizzle_studio_node_modules:
