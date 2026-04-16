@@ -41,6 +41,7 @@ services:
       DATABASE_URL: postgresql://knowledge:knowledge@db:5432/knowledge
       DATA_DIR: /app/data
       ENVIRONMENT: production
+      PORT: 8000
     volumes:
       - knowledge_data:/app/data
     depends_on:

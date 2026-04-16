@@ -251,7 +251,7 @@
 | STEP 1 | 完了 | `docker compose up` 疎通済（`/health`・フロント 200）。pnpm audit / pip-audit を適宜。pip-audit クリア（`fastapi==0.135.3` で starlette CVE 対応） |
 | STEP 2 | 完了 | SQLAlchemy + pgvector。`documents` / `raw_data`。起動時 `CREATE EXTENSION IF NOT EXISTS vector` と `create_all`（Alembic はスキーマ変更が増えた段階で導入） |
 | STEP 3 | 完了 | LlamaIndex + Gemini。`data/` 取り込み、`POST /api/analyze`（構造化 JSON）。`documents.embedding` は Gemini 用 **768 次元** |
-| STEP 4 | 進行中 | **shadcn/ui**（base-nova）。5 画面（質問する / 資料を追加 / 資料の検索 / 定期実行 / **実行ログ** `/saved/logs`）。`saved_search_conditions` CRUD、`saved_search_run_logs` の参照用 API（一覧・詳細・ジョブ向け `POST`）。ブラウザ内の定期は MVP、本番はサーバー側ジョブ想定（下記「予定仕様」） |
+| STEP 4 | 完了 | **shadcn/ui**（base-nova）。5 画面（質問する / 資料を追加 / 資料の検索 / 定期実行 / **実行ログ** `/saved/logs`）。`saved_search_conditions` CRUD、`saved_search_run_logs` の参照用 API（一覧・詳細・ジョブ向け `POST`）。APScheduler によるサーバー側定期実行実装済み。pytest 61 passed |
 | STEP 5 | 未着手 | デプロイ・本番ビルド |
 
 ### 定期実行・取り込み（予定仕様）
