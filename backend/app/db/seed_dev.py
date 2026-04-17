@@ -95,6 +95,7 @@ ID_SAVED_ARXIV_NEW = _uuid("saved-search-arxiv-new")
 ID_LOG_SUCCESS = _uuid("run-log-success")
 ID_LOG_FAILURE = _uuid("run-log-failure")
 ID_LOG_UNTITLED = _uuid("run-log-untitled")
+ID_LOG_ARXIV_WRITTEN = _uuid("run-log-arxiv-written")
 
 _DOC_PREFIX = "[DEV-SEED]"
 _DOC_SAMPLES: list[str] = [
@@ -268,19 +269,49 @@ def _seed_run_logs(db: Session) -> None:
         imported_content=None,
         imported_payload={"note": "title_snapshot が空のとき UI は Untitled 表示の確認用"},
     )
+    # /saved/logs のファイルリンク表示確認用（imported_payload.written あり）
+    _upsert_run_log(
+        db,
+        ID_LOG_ARXIV_WRITTEN,
+        saved_search_id=ID_SAVED_ARXIV,
+        title_snapshot="[開発seed] arXiv キーワード",
+        status="success",
+        error_message=None,
+        imported_content="imports/arxiv/2501.00001v1.md\nimports/arxiv/2501.00002v1.md",
+        imported_payload={
+            "written": [
+                "imports/arxiv/2501.00001v1.md",
+                "imports/arxiv/2501.00002v1.md",
+            ]
+        },
+    )
 
 
 def _seed_question_history(db: Session) -> None:
-    n = int(
-        db.scalar(
-            select(func.count()).select_from(QuestionHistory).where(
-                QuestionHistory.question.like("[DEV-SEED] %"),
-            ),
-        )
-        or 0,
-    )
-    if n >= 2:
-        return
+    # シード済みの Document を引用として使う（source_path 表示確認）
+    doc_rows = db.execute(
+        select(Document.id, Document.source_path)
+        .where(Document.text.like(f"{_DOC_PREFIX}%"))
+        .order_by(Document.id)
+        .limit(3)
+    ).all()
+    citations_with_path = [
+        {
+            "document_id": row.id,
+            "excerpt": f"シード用のダミー引用テキストです（doc #{row.id}）。ソース表示・リンクの動作確認に使います。",
+            "source_path": row.source_path,
+        }
+        for row in doc_rows[:2]
+    ]
+    citations_no_path = [
+        {
+            "document_id": row.id,
+            "excerpt": f"source_path なしのフォールバック表示確認用（doc #{row.id}）。",
+            "source_path": None,
+        }
+        for row in doc_rows[2:3]
+    ]
+
     samples: list[tuple[str, dict]] = [
         (
             "[DEV-SEED] 質問履歴の表示確認（1）",
@@ -298,16 +329,26 @@ def _seed_question_history(db: Session) -> None:
                 "citations": [],
             },
         ),
+        (
+            "[DEV-SEED] ソース表示の確認（source_path あり）",
+            {
+                "answer": "引用にファイルパスが付いているとき、/file?path=... へのリンクが表示されます。",
+                "key_points": [
+                    "Citation.source_path が設定されているとリンク表示",
+                    "source_path が null のときは doc #id のフォールバック表示",
+                ],
+                "citations": citations_with_path + citations_no_path,
+            },
+        ),
     ]
     for q, resp in samples:
-        exists = db.scalar(
-            select(func.count()).select_from(QuestionHistory).where(
-                QuestionHistory.question == q,
-            ),
+        row = db.scalar(
+            select(QuestionHistory).where(QuestionHistory.question == q)
         )
-        if int(exists or 0) > 0:
-            continue
-        db.add(QuestionHistory(question=q, response=resp))
+        if row is None:
+            db.add(QuestionHistory(question=q, response=resp))
+        else:
+            row.response = resp
 
 
 def _seed_admin_user(db: Session) -> None:

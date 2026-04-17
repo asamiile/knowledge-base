@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   SeparatedResults,
   SeparatedResultsList,
@@ -45,9 +47,18 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
           keyExtractor={(_, i) => i}
           renderItem={(c) => (
             <article>
-              <span className="font-mono text-muted-foreground text-xs">
-                doc #{c.document_id}
-              </span>
+              {c.source_path ? (
+                <Link
+                  href={`/file?path=${encodeURIComponent(c.source_path)}`}
+                  className="font-mono text-xs text-primary underline-offset-2 hover:underline"
+                >
+                  {c.source_path}
+                </Link>
+              ) : (
+                <span className="font-mono text-muted-foreground text-xs">
+                  doc #{c.document_id}
+                </span>
+              )}
               <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
                 {c.excerpt}
               </p>

@@ -14,7 +14,12 @@ from app.core.settings import (
     get_rag_top_k,
 )
 from app.models.tables import Document, QuestionHistory
-from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
+from app.schemas.analyze import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    Citation,
+    _AnalyzeResponseRaw,
+)
 from app.services.embeddings import build_embedding_model
 from app.services.ingest import (
     has_any_source_files,
@@ -91,14 +96,40 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=AnalyzeResponse,
+            response_schema=_AnalyzeResponseRaw,
             temperature=0.2,
         ),
     )
     text = resp.text
     if not text:
         raise RuntimeError("モデルから空の応答が返りました")
-    result = AnalyzeResponse.model_validate_json(text)
+    raw = _AnalyzeResponseRaw.model_validate_json(text)
+
+    # document_id → source_path を一括ルックアップ
+    cited_ids = [c.document_id for c in raw.citations]
+    path_map: dict[int, str | None] = {}
+    if cited_ids:
+        path_map = dict(
+            db.execute(
+                select(Document.id, Document.source_path).where(
+                    Document.id.in_(cited_ids)
+                )
+            ).all()
+        )
+
+    result = AnalyzeResponse(
+        answer=raw.answer,
+        key_points=raw.key_points,
+        citations=[
+            Citation(
+                document_id=c.document_id,
+                excerpt=c.excerpt,
+                source_path=path_map.get(c.document_id),
+            )
+            for c in raw.citations
+        ],
+    )
+
     if req.save_question_history:
         db.add(
             QuestionHistory(

@@ -1,6 +1,6 @@
 import { apiBase, fetchJson } from "./api";
 
-export type Citation = { document_id: number; excerpt: string };
+export type Citation = { document_id: number; excerpt: string; source_path?: string | null };
 
 export type AnalyzeResponse = {
   answer: string;
