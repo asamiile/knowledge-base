@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import {
   ArrowUp,
+  FolderInput,
   Loader2,
   RefreshCw,
   SlidersHorizontal,
@@ -51,6 +53,7 @@ export type AskAnalyzePanelProps = {
   submitAnalyze: () => void;
   questionHistory: QuestionHistoryItem[];
   refreshQuestionHistory: () => void | Promise<void>;
+  isEmpty?: boolean;
 };
 
 function QuestionAnswerPair({
@@ -103,6 +106,7 @@ export function AskAnalyzePanel({
   submitAnalyze,
   questionHistory,
   refreshQuestionHistory,
+  isEmpty = false,
 }: AskAnalyzePanelProps) {
   const pendingLiveResult = useMemo(() => {
     if (!result) return null;
@@ -129,6 +133,26 @@ export function AskAnalyzePanel({
       >
         <div className="mx-auto max-w-3xl space-y-8 pb-10">
           <StudioAlerts error={error} info={info} />
+
+          {isEmpty && questionHistory.length === 0 && !pendingLiveResult && (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                <FolderInput className="text-muted-foreground size-5" aria-hidden />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">まだ資料がありません</p>
+                <p className="text-muted-foreground text-xs">
+                  質問に答えるには、先に資料をナレッジベースへ追加してください。
+                </p>
+              </div>
+              <Link
+                href="/add"
+                className="text-primary text-sm underline-offset-4 hover:underline"
+              >
+                資料を追加する →
+              </Link>
+            </div>
+          )}
 
           {pendingLiveResult && (
             <QuestionAnswerPair
