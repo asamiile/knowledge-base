@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -96,19 +97,44 @@ export function SavedSearchRunLogsContent() {
                 <p className="text-muted-foreground text-xs font-medium">
                   取り込んだ内容
                 </p>
-                {detail.imported_content?.trim() ? (
-                  <pre className="text-foreground/90 font-sans text-sm leading-relaxed whitespace-pre-wrap">
-                    {detail.imported_content}
-                  </pre>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    本文はまだありません（サーバー側ジョブが
-                    <code className="text-foreground/80 mx-1 rounded bg-muted px-1 text-xs">
-                      imported_content
-                    </code>
-                    を記録すると表示されます）。
-                  </p>
-                )}
+                {(() => {
+                  const written = Array.isArray(detail.imported_payload?.written)
+                    ? (detail.imported_payload!.written as unknown[]).filter(
+                        (f): f is string => typeof f === "string"
+                      )
+                    : null;
+
+                  if (written && written.length > 0) {
+                    return (
+                      <ul className="flex flex-col gap-1">
+                        {written.map((path) => (
+                          <li key={path}>
+                            <Link
+                              href={`/file?path=${encodeURIComponent(path)}`}
+                              className="font-mono text-xs text-primary underline-offset-2 hover:underline"
+                            >
+                              {path}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+
+                  if (detail.imported_content?.trim()) {
+                    return (
+                      <pre className="text-foreground/90 font-sans text-sm leading-relaxed whitespace-pre-wrap">
+                        {detail.imported_content}
+                      </pre>
+                    );
+                  }
+
+                  return (
+                    <p className="text-muted-foreground text-sm">
+                      取り込んだ内容はありません。
+                    </p>
+                  );
+                })()}
               </section>
             </>
           ) : null}
