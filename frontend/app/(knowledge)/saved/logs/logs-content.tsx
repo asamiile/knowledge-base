@@ -44,7 +44,8 @@ export function SavedSearchRunLogsContent() {
   }, [selectedId]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-4 md:px-2">
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="mx-auto max-w-3xl space-y-4 pb-10">
       {error && (
         <Alert variant="error" className="mb-4">
           <AlertTitle>エラー</AlertTitle>
@@ -115,6 +116,7 @@ export function SavedSearchRunLogsContent() {
           ) : null}
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -21,7 +21,7 @@ function isSafeRelativePath(path: string): boolean {
 function StudioScrollPage({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <div className="mx-auto w-full max-w-4xl space-y-4 pb-10">{children}</div>
+      <div className="mx-auto w-full max-w-3xl space-y-4 pb-10">{children}</div>
     </div>
   );
 }
