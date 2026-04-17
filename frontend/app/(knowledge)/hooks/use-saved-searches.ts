@@ -19,7 +19,7 @@ import {
   savedSearchRowToClient,
   storeSavedMaterialSearches,
   type SavedMaterialSearch,
-} from "@/lib/saved-material-searches";
+} from "@/lib/api/saved-material-searches";
 
 import type { StudioShell } from "./use-studio-shell";
 

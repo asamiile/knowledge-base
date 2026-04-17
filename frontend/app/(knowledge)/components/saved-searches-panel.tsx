@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 
 import type { PeriodicSavedSearchTarget } from "@/lib/api/saved-searches";
-import type { SavedMaterialSearch } from "@/lib/saved-material-searches";
+import type { SavedMaterialSearch } from "@/lib/api/saved-material-searches";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,

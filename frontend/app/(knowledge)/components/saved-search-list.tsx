@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { SavedMaterialSearch } from "@/lib/saved-material-searches";
+import type { SavedMaterialSearch } from "@/lib/api/saved-material-searches";
 
 export type SavedSearchListProps = {
   items: SavedMaterialSearch[];
