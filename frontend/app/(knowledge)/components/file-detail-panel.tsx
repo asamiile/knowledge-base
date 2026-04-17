@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 import type { DataFileInfo } from "@/lib/api/data";
 import { getDataFileLookup } from "@/lib/api/data";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 import { FileDetailExternalMeta } from "./file-detail-external-meta";
 
@@ -84,12 +80,6 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
           <code className="text-foreground">path</code>{" "}
           クエリがありません。
         </p>
-        <Link
-          href="/"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
-          ダッシュボードへ
-        </Link>
       </StudioScrollPage>
     );
   }
@@ -98,31 +88,12 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
     return (
       <StudioScrollPage>
         <p className="text-destructive text-sm">パスが不正です。</p>
-        <Link
-          href="/"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
-          ダッシュボードへ
-        </Link>
       </StudioScrollPage>
     );
   }
 
   return (
     <StudioScrollPage>
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground -ml-2 gap-1",
-          )}
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          ダッシュボード
-        </Link>
-      </div>
-
       {decodedPath ? (
         <FileDetailExternalMeta
           key={decodedPath}

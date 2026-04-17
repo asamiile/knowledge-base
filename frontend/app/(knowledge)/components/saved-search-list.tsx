@@ -1,6 +1,7 @@
 "use client";
 
-import { Play, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { History, Play, Trash2 } from "lucide-react";
 
 import {
   SAVED_SEARCH_INTERVAL_OPTIONS,
@@ -115,6 +116,14 @@ export function SavedSearchList({
 
               {/* Action buttons */}
               <div className="flex shrink-0 gap-1">
+                <Link
+                  href={`/saved/logs?search=${encodeURIComponent(item.id)}`}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="実行履歴を見る"
+                >
+                  <History className="size-3.5" aria-hidden />
+                  履歴
+                </Link>
                 {canRun && (
                   <Button
                     size="sm"
