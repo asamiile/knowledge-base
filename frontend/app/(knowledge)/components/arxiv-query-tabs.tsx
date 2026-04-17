@@ -86,7 +86,7 @@ export function ArxivQueryTabs({
               rows={5}
               placeholder={"0000.00000\nhttps://arxiv.org/abs/0000.00000"}
               disabled={disabled}
-              className="rounded-xl field-sizing-fixed"
+              className="field-sizing-fixed"
             />
           </div>
           {paperIdTabFooter}
@@ -112,7 +112,6 @@ export function ArxivQueryTabs({
               onChange={(e) => onKeywordChange(e.target.value)}
               placeholder="例: video diffusion"
               disabled={disabled}
-              className="rounded-xl"
             />
           </div>
           {showMaxResults && (
@@ -125,7 +124,7 @@ export function ArxivQueryTabs({
                 type="number"
                 min={1}
                 max={20}
-                className="w-24 rounded-xl"
+                className="w-24"
                 value={maxResults}
                 onChange={(e) =>
                   onMaxResultsChange(Number(e.target.value) || 5)

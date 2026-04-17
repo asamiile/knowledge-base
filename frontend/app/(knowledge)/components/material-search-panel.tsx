@@ -45,7 +45,7 @@ export function MaterialSearchPanel({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <div className="mx-auto w-full max-w-4xl space-y-4">
+      <div className="mx-auto w-full max-w-3xl space-y-4">
         <StudioAlerts error={error} info={info} />
 
         <div className="flex flex-col gap-4">
@@ -58,7 +58,7 @@ export function MaterialSearchPanel({
               onKeyDown={onQueryKeyDown}
               placeholder="インデックス内で探したい内容を入力…"
               disabled={busy !== null}
-              className="h-11 min-w-0 w-full rounded-2xl text-[15px] sm:flex-1 sm:h-12"
+              className="h-11 min-w-0 w-full text-[15px] sm:flex-1 sm:h-12"
               aria-label="検索クエリ"
               enterKeyHint="search"
             />
@@ -76,7 +76,7 @@ export function MaterialSearchPanel({
                   type="number"
                   min={1}
                   max={20}
-                  className="h-11 w-18 rounded-xl sm:h-12"
+                  className="h-11 w-18 sm:h-12"
                   value={materialSearchTopK}
                   onChange={(e) =>
                     setMaterialSearchTopK(Number(e.target.value) || 5)
@@ -87,7 +87,7 @@ export function MaterialSearchPanel({
               <Button
                 disabled={busy !== null}
                 onClick={() => void onMaterialSearchClick()}
-                className="h-11 shrink-0 rounded-full px-6 sm:h-12 sm:px-8"
+                className="h-11 shrink-0 rounded-md px-6 sm:h-12 sm:px-8"
                 variant="secondary"
               >
                 {busy === "materialSearch" ? "検索中…" : "検索"}

@@ -48,8 +48,8 @@ export function SiteSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-start px-2 py-2 group-data-[collapsible=icon]:px-1">
+      <SidebarHeader className="h-(--header-height) flex items-center border-b border-sidebar-border">
+        <div className="flex items-center justify-start group-data-[collapsible=icon]:px-1">
           <SidebarTrigger
             className="-ml-0.5"
             aria-label="サイドメニューを開閉"

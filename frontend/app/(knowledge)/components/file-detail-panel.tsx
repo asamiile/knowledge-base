@@ -86,7 +86,7 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         </p>
         <Link
           href="/"
-          className={cn(buttonVariants({ variant: "outline" }), "rounded-xl")}
+          className={cn(buttonVariants({ variant: "outline" }))}
         >
           ダッシュボードへ
         </Link>
@@ -100,7 +100,7 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
         <p className="text-destructive text-sm">パスが不正です。</p>
         <Link
           href="/"
-          className={cn(buttonVariants({ variant: "outline" }), "rounded-xl")}
+          className={cn(buttonVariants({ variant: "outline" }))}
         >
           ダッシュボードへ
         </Link>
@@ -115,7 +115,7 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
           href="/"
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground -ml-2 gap-1 rounded-xl",
+            "text-muted-foreground -ml-2 gap-1",
           )}
         >
           <ArrowLeft className="size-4" aria-hidden />

@@ -71,7 +71,7 @@ export function SavedSearchList({
             : item.query.trim().length > 0;
 
         return (
-          <Card key={item.id} className="rounded-xl border-border/60">
+          <Card key={item.id} className="border-border/60">
             <CardContent className="p-4 space-y-3">
               {/* Header row */}
               <div className="flex items-start justify-between gap-2">

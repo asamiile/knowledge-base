@@ -141,7 +141,7 @@ export function AddSourceArxivPreviewCard({
       <Button
         disabled={disabled}
         onClick={onConfirmImport}
-        className="w-fit rounded-xl"
+        className="w-fit"
         type="button"
       >
         {importBusy ? "取り込み中…" : "選択した論文を取り込む"}

@@ -102,7 +102,7 @@ export function SavedSearchesPanel({
               <Button
                 type="button"
                 size="sm"
-                className="shrink-0 gap-1.5 rounded-xl"
+                className="shrink-0 gap-1.5"
                 disabled={busyAny}
               />
             }

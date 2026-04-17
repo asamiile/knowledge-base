@@ -40,7 +40,7 @@ export function SiteHeader() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="text-muted-foreground hover:text-foreground shrink-0 rounded-full"
+                  className="text-muted-foreground hover:text-foreground shrink-0 rounded-md"
                   aria-label="アカウントメニュー"
                 />
               }

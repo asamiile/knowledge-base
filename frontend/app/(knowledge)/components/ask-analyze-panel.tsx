@@ -172,7 +172,7 @@ export function AskAnalyzePanel({
 
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 shrink-0 pt-5 backdrop-blur md:pt-6">
         <div className="mx-auto max-w-3xl">
-          <Card size="sm" className="shadow-sm">
+          <Card size="sm">
             <CardContent className="space-y-2 py-4">
               <Textarea
                 placeholder="知識ベースに質問…"
@@ -193,7 +193,7 @@ export function AskAnalyzePanel({
                   variant="ghost"
                   size="sm"
                   disabled={busy !== null}
-                  className="text-muted-foreground hover:text-foreground h-9 gap-2 rounded-full px-3 has-[>svg]:px-2.5"
+                  className="text-muted-foreground hover:text-foreground h-9 gap-2 rounded-md px-3 has-[>svg]:px-2.5"
                   aria-expanded={askOptionsOpen}
                   aria-haspopup="dialog"
                   aria-controls="ask-options-panel"
@@ -202,7 +202,7 @@ export function AskAnalyzePanel({
                   <SlidersHorizontal className="size-4 opacity-80" />
                   オプション
                   {topK !== 5 && (
-                    <span className="bg-primary/15 text-primary rounded-full px-1.5 py-px text-[10px] font-medium tabular-nums">
+                    <span className="bg-primary/15 text-primary rounded px-1.5 py-px text-[10px] font-medium tabular-nums">
                       k={topK}
                     </span>
                   )}
@@ -216,7 +216,7 @@ export function AskAnalyzePanel({
                       ref={askOptionsPanelRef}
                       role="dialog"
                       aria-label="検索オプション（top_k）"
-                      className="border-border bg-popover text-popover-foreground ring-foreground/10 fixed z-[200] w-80 rounded-lg border p-3 shadow-md ring-1"
+                      className="border-border bg-popover text-popover-foreground ring-foreground/10 fixed z-[200] w-80 rounded-lg border p-3 ring-1"
                       style={{
                         left: askOptionsCoords.left,
                         bottom: askOptionsCoords.bottom,
@@ -249,7 +249,7 @@ export function AskAnalyzePanel({
                 <Button
                 type="button"
                 size="icon-lg"
-                className="size-10 shrink-0 rounded-full"
+                className="size-10 shrink-0 rounded-md"
                 onClick={() => submitAnalyze()}
                 disabled={busy !== null || !question.trim()}
                 aria-label={busy === "analyze" ? "分析中" : "分析する"}
