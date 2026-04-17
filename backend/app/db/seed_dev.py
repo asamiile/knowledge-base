@@ -89,6 +89,9 @@ def _uuid(key: str) -> uuid.UUID:
 
 ID_SAVED_KNOWLEDGE = _uuid("saved-search-knowledge")
 ID_SAVED_ARXIV = _uuid("saved-search-arxiv")
+ID_SAVED_ARXIV_MULTI = _uuid("saved-search-arxiv-multi")
+ID_SAVED_ARXIV_RECENT = _uuid("saved-search-arxiv-recent")
+ID_SAVED_ARXIV_NEW = _uuid("saved-search-arxiv-new")
 ID_LOG_SUCCESS = _uuid("run-log-success")
 ID_LOG_FAILURE = _uuid("run-log-failure")
 ID_LOG_UNTITLED = _uuid("run-log-untitled")
@@ -155,7 +158,10 @@ def _upsert_saved_search(db: Session, row_id: uuid.UUID, **fields: object) -> No
 
 
 def _seed_saved_searches(db: Session) -> None:
+    from datetime import timedelta
+
     now = datetime.now(timezone.utc)
+    # 1. knowledge 検索・定期実行オン・最終実行あり（数分前）
     _upsert_saved_search(
         db,
         ID_SAVED_KNOWLEDGE,
@@ -166,8 +172,9 @@ def _seed_saved_searches(db: Session) -> None:
         top_k=5,
         interval_minutes=60,
         schedule_enabled=True,
-        last_run_at=now,
+        last_run_at=now - timedelta(minutes=3),
     )
+    # 2. arXiv キーワード + ID 混在・定期実行オフ・未実行
     _upsert_saved_search(
         db,
         ID_SAVED_ARXIV,
@@ -178,6 +185,45 @@ def _seed_saved_searches(db: Session) -> None:
         top_k=10,
         interval_minutes=1440,
         schedule_enabled=False,
+        last_run_at=None,
+    )
+    # 3. arXiv 複数ID + キーワード・定期実行オン（6時間）・最終実行 3 時間前
+    _upsert_saved_search(
+        db,
+        ID_SAVED_ARXIV_MULTI,
+        name="[開発seed] arXiv 複数ID＋キーワード（定期オン）",
+        query="diffusion model video generation",
+        arxiv_ids=["2312.00001", "2312.00002", "2401.12345"],
+        search_target="arxiv",
+        top_k=5,
+        interval_minutes=360,
+        schedule_enabled=True,
+        last_run_at=now - timedelta(hours=3),
+    )
+    # 4. arXiv キーワードのみ・定期なし・最終実行 昨日
+    _upsert_saved_search(
+        db,
+        ID_SAVED_ARXIV_RECENT,
+        name="[開発seed] arXiv 昨日実行済み",
+        query="3D gaussian splatting",
+        arxiv_ids=[],
+        search_target="arxiv",
+        top_k=3,
+        interval_minutes=0,
+        schedule_enabled=False,
+        last_run_at=now - timedelta(hours=26),
+    )
+    # 5. arXiv ID のみ・定期実行オン（15分）・未実行（新規追加直後を想定）
+    _upsert_saved_search(
+        db,
+        ID_SAVED_ARXIV_NEW,
+        name="[開発seed] 新規追加（未実行）",
+        query="",
+        arxiv_ids=["2501.00001", "2501.00002"],
+        search_target="arxiv",
+        top_k=5,
+        interval_minutes=15,
+        schedule_enabled=True,
         last_run_at=None,
     )
 

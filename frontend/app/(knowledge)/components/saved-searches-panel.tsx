@@ -1,10 +1,20 @@
 "use client";
 
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 
 import type { PeriodicSavedSearchTarget } from "@/lib/api/saved-searches";
 import type { SavedMaterialSearch } from "@/lib/saved-material-searches";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 import { SavedSearchForm } from "./saved-search-form";
 import { SavedSearchList } from "./saved-search-list";
@@ -31,7 +41,7 @@ export type SavedSearchesPanelProps = {
   setSaveMaterialSearchTarget: Dispatch<
     SetStateAction<PeriodicSavedSearchTarget>
   >;
-  addSavedMaterialSearch: () => void | Promise<void>;
+  addSavedMaterialSearch: (onSuccess?: () => void) => void | Promise<void>;
   runSavedMaterialSearch: (item: SavedMaterialSearch) => void | Promise<void>;
   patchSavedMaterialSearch: (
     id: string,
@@ -40,7 +50,7 @@ export type SavedSearchesPanelProps = {
   deleteSavedMaterialSearch: (id: string) => void | Promise<void>;
 };
 
-/** `/saved` — 定期実行（保存条件） */
+/** `/saved` — 保存した条件一覧 */
 export function SavedSearchesPanel({
   error,
   info,
@@ -66,34 +76,82 @@ export function SavedSearchesPanel({
   deleteSavedMaterialSearch,
 }: SavedSearchesPanelProps) {
   const busyAny = busy !== null;
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <StudioAlerts error={error} info={info} />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* ページヘッダー */}
+      <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-base font-semibold leading-snug">
+            保存した条件
+            {savedMaterialSearches.length > 0 && (
+              <span className="text-muted-foreground ml-2 text-sm font-normal">
+                {savedMaterialSearches.length} 件
+              </span>
+            )}
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            arXiv の検索条件を保存して定期取り込みできます。
+          </p>
+        </div>
 
-        <SavedSearchForm
-          busyAny={busyAny}
-          busySavedSearchWrite={busy === "savedSearchWrite"}
-          saveMaterialName={saveMaterialName}
-          setSaveMaterialName={setSaveMaterialName}
-          saveMaterialSearchTarget={saveMaterialSearchTarget}
-          setSaveMaterialSearchTarget={setSaveMaterialSearchTarget}
-          saveMaterialArxivIds={saveMaterialArxivIds}
-          setSaveMaterialArxivIds={setSaveMaterialArxivIds}
-          saveMaterialArxivKeyword={saveMaterialArxivKeyword}
-          setSaveMaterialArxivKeyword={setSaveMaterialArxivKeyword}
-          saveMaterialTopK={saveMaterialTopK}
-          setSaveMaterialTopK={setSaveMaterialTopK}
-          saveMaterialIntervalMinutes={saveMaterialIntervalMinutes}
-          setSaveMaterialIntervalMinutes={setSaveMaterialIntervalMinutes}
-          saveMaterialScheduleEnabled={saveMaterialScheduleEnabled}
-          setSaveMaterialScheduleEnabled={setSaveMaterialScheduleEnabled}
-          onSave={() => void addSavedMaterialSearch()}
-        />
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger
+            render={
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0 gap-1.5 rounded-xl"
+                disabled={busyAny}
+              />
+            }
+          >
+            <Plus className="size-4" aria-hidden />
+            追加
+          </SheetTrigger>
+          <SheetContent side="right" className="overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>条件を追加</SheetTitle>
+              <SheetDescription>
+                arXiv の検索条件を保存します。
+              </SheetDescription>
+            </SheetHeader>
+            <div className="px-4 pb-6">
+              <SavedSearchForm
+                busyAny={busyAny}
+                busySavedSearchWrite={busy === "savedSearchWrite"}
+                saveMaterialName={saveMaterialName}
+                setSaveMaterialName={setSaveMaterialName}
+                saveMaterialSearchTarget={saveMaterialSearchTarget}
+                setSaveMaterialSearchTarget={setSaveMaterialSearchTarget}
+                saveMaterialArxivIds={saveMaterialArxivIds}
+                setSaveMaterialArxivIds={setSaveMaterialArxivIds}
+                saveMaterialArxivKeyword={saveMaterialArxivKeyword}
+                setSaveMaterialArxivKeyword={setSaveMaterialArxivKeyword}
+                saveMaterialTopK={saveMaterialTopK}
+                setSaveMaterialTopK={setSaveMaterialTopK}
+                saveMaterialIntervalMinutes={saveMaterialIntervalMinutes}
+                setSaveMaterialIntervalMinutes={setSaveMaterialIntervalMinutes}
+                saveMaterialScheduleEnabled={saveMaterialScheduleEnabled}
+                setSaveMaterialScheduleEnabled={setSaveMaterialScheduleEnabled}
+                onSave={() =>
+                  void addSavedMaterialSearch(() => setSheetOpen(false))
+                }
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
-        <Separator className="my-4" />
+      {(error || info) && (
+        <div className="mb-3 shrink-0">
+          <StudioAlerts error={error} info={info} />
+        </div>
+      )}
 
+      {/* 一覧 */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">
         <SavedSearchList
           items={savedMaterialSearches}
           busyAny={busyAny}
