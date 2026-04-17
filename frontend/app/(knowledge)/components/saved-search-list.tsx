@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { History, Play, Trash2 } from "lucide-react";
+import { History, Pencil, Play, Trash2 } from "lucide-react";
 
 import {
   SAVED_SEARCH_INTERVAL_OPTIONS,
@@ -27,6 +27,7 @@ export type SavedSearchListProps = {
   onPatch: (id: string, patch: Partial<SavedMaterialSearch>) => void;
   onDelete: (id: string) => void;
   onRunNow: (item: SavedMaterialSearch) => void;
+  onEdit: (item: SavedMaterialSearch) => void;
 };
 
 function formatLastRun(iso: string): string {
@@ -50,6 +51,7 @@ export function SavedSearchList({
   onPatch,
   onDelete,
   onRunNow,
+  onEdit,
 }: SavedSearchListProps) {
   if (items.length === 0) {
     return (
@@ -116,6 +118,17 @@ export function SavedSearchList({
 
               {/* Action buttons */}
               <div className="flex shrink-0 gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                  disabled={busyAny}
+                  onClick={() => onEdit(item)}
+                  title="編集"
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                  <span className="sr-only">編集</span>
+                </Button>
                 <Link
                   href={`/saved/logs?search=${encodeURIComponent(item.id)}`}
                   className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

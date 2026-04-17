@@ -36,6 +36,7 @@ export type SavedSearchFormProps = {
   saveMaterialScheduleEnabled: boolean;
   setSaveMaterialScheduleEnabled: (v: boolean) => void;
   onSave: () => void;
+  saveLabel?: string;
 };
 
 export function SavedSearchForm({
@@ -56,6 +57,7 @@ export function SavedSearchForm({
   saveMaterialScheduleEnabled,
   setSaveMaterialScheduleEnabled,
   onSave,
+  saveLabel,
 }: SavedSearchFormProps) {
   return (
     <section
@@ -165,7 +167,7 @@ export function SavedSearchForm({
         onClick={onSave}
         className="w-fit"
       >
-        {busySavedSearchWrite ? "保存中…" : "条件を保存"}
+        {busySavedSearchWrite ? "保存中…" : (saveLabel ?? "条件を保存")}
       </Button>
     </section>
   );

@@ -6,6 +6,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import type { PeriodicSavedSearchTarget } from "@/lib/api/saved-searches";
 import type { SavedMaterialSearch } from "@/lib/api/saved-material-searches";
+import { splitArxivIdsInput } from "@/lib/arxiv-input";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -78,6 +79,45 @@ export function SavedSearchesPanel({
   const busyAny = busy !== null;
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // 編集 Sheet
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<SavedMaterialSearch | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editArxivIds, setEditArxivIds] = useState("");
+  const [editArxivKeyword, setEditArxivKeyword] = useState("");
+  const [editTopK, setEditTopK] = useState(5);
+  const [editIntervalMinutes, setEditIntervalMinutes] = useState(0);
+  const [editScheduleEnabled, setEditScheduleEnabled] = useState(false);
+  const [editSearchTarget, setEditSearchTarget] = useState<PeriodicSavedSearchTarget>("arxiv");
+
+  const handleOpenEdit = (item: SavedMaterialSearch) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditArxivIds(item.arxivIds.join(" "));
+    setEditArxivKeyword(item.query);
+    setEditTopK(item.topK);
+    setEditIntervalMinutes(item.intervalMinutes);
+    setEditScheduleEnabled(item.scheduleEnabled);
+    setEditSearchTarget((item.searchTarget ?? "arxiv") as PeriodicSavedSearchTarget);
+    setEditSheetOpen(true);
+  };
+
+  const handleEditSave = () => {
+    if (!editingItem) return;
+    const ids = splitArxivIdsInput(editArxivIds);
+    const kw = editArxivKeyword.trim();
+    void patchSavedMaterialSearch(editingItem.id, {
+      name: editName.trim(),
+      query: kw,
+      arxivIds: ids,
+      searchTarget: editSearchTarget,
+      topK: editTopK,
+      intervalMinutes: editIntervalMinutes,
+      scheduleEnabled: editScheduleEnabled && editIntervalMinutes > 0,
+    });
+    setEditSheetOpen(false);
+  };
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <div className="mx-auto max-w-3xl space-y-4 pb-10">
@@ -98,6 +138,39 @@ export function SavedSearchesPanel({
               arXiv の検索条件を保存して定期取り込みできます。
             </p>
           </div>
+
+          <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
+            <SheetContent side="right" className="overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>条件を編集</SheetTitle>
+                <SheetDescription>
+                  {editingItem?.name ?? ""}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="px-4 pb-6">
+                <SavedSearchForm
+                  busyAny={busyAny}
+                  busySavedSearchWrite={busy === "savedSearchWrite"}
+                  saveMaterialName={editName}
+                  setSaveMaterialName={setEditName}
+                  saveMaterialSearchTarget={editSearchTarget}
+                  setSaveMaterialSearchTarget={setEditSearchTarget}
+                  saveMaterialArxivIds={editArxivIds}
+                  setSaveMaterialArxivIds={setEditArxivIds}
+                  saveMaterialArxivKeyword={editArxivKeyword}
+                  setSaveMaterialArxivKeyword={setEditArxivKeyword}
+                  saveMaterialTopK={editTopK}
+                  setSaveMaterialTopK={setEditTopK}
+                  saveMaterialIntervalMinutes={editIntervalMinutes}
+                  setSaveMaterialIntervalMinutes={setEditIntervalMinutes}
+                  saveMaterialScheduleEnabled={editScheduleEnabled}
+                  setSaveMaterialScheduleEnabled={setEditScheduleEnabled}
+                  onSave={handleEditSave}
+                  saveLabel="変更を保存"
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger
@@ -153,6 +226,7 @@ export function SavedSearchesPanel({
           onPatch={(id, patch) => void patchSavedMaterialSearch(id, patch)}
           onDelete={(id) => void deleteSavedMaterialSearch(id)}
           onRunNow={(item) => void runSavedMaterialSearch(item)}
+          onEdit={handleOpenEdit}
         />
       </div>
     </div>
