@@ -77,15 +77,15 @@
   --accent-foreground: #ffffff;
   --destructive: #ff5555;
   /* Structure */
-  --border: #27272a;            /* Border Dark — barely-visible containment */
-  --input: #1a1a1a;
+  --border: #383838;            /* Border — visible containment */
+  --input: #3a3a3a;
   --ring: #767d88;              /* Cool Slate */
   /* Charts — cool gray scale */
   --chart-1: #c9ccd1;
   --chart-2: #a7a7a7;
   --chart-3: #767d88;
   --chart-4: #404040;
-  --chart-5: #27272a;
+  --chart-5: #383838;
   /* Border radius: 4px base (RunwayML: 4–8px, never pill-shaped) */
   --radius: 0.25rem;
   /* Sidebar */
@@ -95,7 +95,7 @@
   --sidebar-primary-foreground: #000000;
   --sidebar-accent: #1a1a1a;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #27272a;
+  --sidebar-border: #383838;
   --sidebar-ring: #767d88;
   --header-height: 3.5rem;
 }
@@ -117,21 +117,21 @@
   --accent: #1a1a1a;
   --accent-foreground: #ffffff;
   --destructive: #ff5555;
-  --border: #27272a;
-  --input: #1a1a1a;
+  --border: #383838;
+  --input: #3a3a3a;
   --ring: #767d88;
   --chart-1: #c9ccd1;
   --chart-2: #a7a7a7;
   --chart-3: #767d88;
   --chart-4: #404040;
-  --chart-5: #27272a;
+  --chart-5: #383838;
   --sidebar: #030303;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #ffffff;
   --sidebar-primary-foreground: #000000;
   --sidebar-accent: #1a1a1a;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #27272a;
+  --sidebar-border: #383838;
   --sidebar-ring: #767d88;
 }
 

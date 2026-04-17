@@ -169,6 +169,7 @@ export function AddSourcesPanel({
 
         <Button
           type="button"
+          variant="secondary"
           disabled={busyAny}
           onClick={() => void onReindexClick()}
           className="w-fit gap-2"

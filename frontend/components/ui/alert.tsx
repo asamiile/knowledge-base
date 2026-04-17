@@ -1,5 +1,11 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  XCircle,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -8,15 +14,18 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
+        default:
+          "bg-card text-card-foreground [&_svg]:text-muted-foreground",
         destructive:
-          "border-red-200 bg-red-50/80 text-foreground dark:border-red-950 dark:bg-red-950/35 [&_[data-slot=alert-title]]:text-red-900 dark:[&_[data-slot=alert-title]]:text-red-100 [&_[data-slot=alert-description]]:text-red-950/85 dark:[&_[data-slot=alert-description]]:text-red-50/85 [&_svg]:text-red-600 dark:[&_svg]:text-red-400",
+          "border-red-900 bg-red-950/35 text-foreground [&_[data-slot=alert-title]]:text-red-100 [&_[data-slot=alert-description]]:text-red-50/85 [&_svg]:text-red-400",
         error:
-          "border-red-200 bg-red-50/80 text-foreground dark:border-red-950 dark:bg-red-950/35 [&_[data-slot=alert-title]]:text-red-900 dark:[&_[data-slot=alert-title]]:text-red-100 [&_[data-slot=alert-description]]:text-red-950/85 dark:[&_[data-slot=alert-description]]:text-red-50/85 [&_svg]:text-red-600 dark:[&_svg]:text-red-400",
+          "border-red-900 bg-red-950/35 text-foreground [&_[data-slot=alert-title]]:text-red-100 [&_[data-slot=alert-description]]:text-red-50/85 [&_svg]:text-red-400",
+        warning:
+          "border-amber-800 bg-amber-950/35 text-foreground [&_[data-slot=alert-title]]:text-amber-100 [&_[data-slot=alert-description]]:text-amber-50/85 [&_svg]:text-amber-400",
         info:
-          "border-blue-200 bg-blue-50/80 text-foreground dark:border-blue-900 dark:bg-blue-950/35 *:data-[slot=alert-description]:text-blue-950/85 dark:*:data-[slot=alert-description]:text-blue-50/85 *:[svg]:text-blue-600 dark:*:[svg]:text-blue-400",
+          "border-blue-900 bg-blue-950/35 text-foreground [&_[data-slot=alert-title]]:text-blue-100 [&_[data-slot=alert-description]]:text-blue-50/85 [&_svg]:text-blue-400",
         success:
-          "border-emerald-200 bg-emerald-50/80 text-foreground dark:border-emerald-900 dark:bg-emerald-950/35 *:data-[slot=alert-description]:text-emerald-950/85 dark:*:data-[slot=alert-description]:text-emerald-50/85 *:[svg]:text-emerald-600 dark:*:[svg]:text-emerald-400",
+          "border-emerald-900 bg-emerald-950/35 text-foreground [&_[data-slot=alert-title]]:text-emerald-100 [&_[data-slot=alert-description]]:text-emerald-50/85 [&_svg]:text-emerald-400",
       },
     },
     defaultVariants: {
@@ -25,18 +34,32 @@ const alertVariants = cva(
   }
 )
 
+const variantIcons: Record<string, React.ReactElement> = {
+  default:     <Info />,
+  destructive: <AlertTriangle />,
+  error:       <XCircle />,
+  warning:     <AlertTriangle />,
+  info:        <Info />,
+  success:     <CheckCircle2 />,
+}
+
 function Alert({
   className,
-  variant,
+  variant = "default",
+  children,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+  const icon = variantIcons[variant ?? "default"]
   return (
     <div
       data-slot="alert"
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {icon}
+      {children}
+    </div>
   )
 }
 
@@ -61,7 +84,7 @@ function AlertDescription({
     <div
       data-slot="alert-description"
       className={cn(
-        "text-sm text-balance text-muted-foreground md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+        "text-sm text-balance text-muted-foreground group-has-[>svg]/alert:col-start-2 md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
         className
       )}
       {...props}

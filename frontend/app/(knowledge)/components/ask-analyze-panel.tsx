@@ -173,7 +173,7 @@ export function AskAnalyzePanel({
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 shrink-0 pt-5 backdrop-blur md:pt-6">
         <div className="mx-auto max-w-3xl">
           <Card size="sm">
-            <CardContent className="space-y-2 py-4">
+            <CardContent className="space-y-3 py-4">
               <Textarea
                 placeholder="知識ベースに質問…"
                 value={question}
@@ -183,10 +183,9 @@ export function AskAnalyzePanel({
                 onKeyDown={onAskQuestionTextareaKeyDown}
                 rows={4}
                 disabled={busy !== null}
-                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 pt-1 pb-1 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm"
+                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 py-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm"
               />
-              <div className="flex items-center justify-between gap-2 pb-0.5">
-                <div className="shrink-0">
+              <div className="flex items-center justify-between gap-2">
                 <Button
                   ref={askOptionsTriggerRef}
                   type="button"
@@ -245,22 +244,21 @@ export function AskAnalyzePanel({
                     </div>,
                     document.body,
                   )}
-                </div>
                 <Button
-                type="button"
-                size="icon-lg"
-                className="size-10 shrink-0 rounded-md"
-                onClick={() => submitAnalyze()}
-                disabled={busy !== null || !question.trim()}
-                aria-label={busy === "analyze" ? "分析中" : "分析する"}
-              >
-                {busy === "analyze" ? (
-                  <Loader2 className="size-5 animate-spin" aria-hidden />
-                ) : (
-                  <ArrowUp className="size-5" strokeWidth={2.25} aria-hidden />
-                )}
-              </Button>
-            </div>
+                  type="button"
+                  size="icon-lg"
+                  className="size-9 shrink-0 rounded-md"
+                  onClick={() => submitAnalyze()}
+                  disabled={busy !== null || !question.trim()}
+                  aria-label={busy === "analyze" ? "分析中" : "分析する"}
+                >
+                  {busy === "analyze" ? (
+                    <Loader2 className="size-5 animate-spin" aria-hidden />
+                  ) : (
+                    <ArrowUp className="size-5" strokeWidth={2.25} aria-hidden />
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

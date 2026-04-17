@@ -6,9 +6,9 @@ import {
   SAVED_SEARCH_INTERVAL_OPTIONS,
   savedSearchTargetLabel,
 } from "./saved-search-constants";
+import { SeparatedResultsList } from "./separated-results";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,15 +55,17 @@ export function SavedSearchList({
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
         <p className="text-muted-foreground text-sm">保存した条件がありません。</p>
         <p className="text-muted-foreground text-xs">
-          右上の「＋ 追加」から検索条件を登録できます。
+          右上の「追加」から検索条件を登録できます。
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {items.map((item) => {
+    <SeparatedResultsList
+      items={items}
+      keyExtractor={(item) => item.id}
+      renderItem={(item) => {
         const target = item.searchTarget ?? "knowledge";
         const canRun =
           target === "arxiv"
@@ -71,132 +73,130 @@ export function SavedSearchList({
             : item.query.trim().length > 0;
 
         return (
-          <Card key={item.id} className="border-border/60">
-            <CardContent className="p-4 space-y-3">
-              {/* Header row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="font-heading text-sm font-semibold leading-tight">
-                      {item.name}
-                    </h4>
-                    <Badge variant="secondary" className="text-xs">
-                      {savedSearchTargetLabel(target)}
+          <article className="space-y-2.5">
+            {/* Header row */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-sm font-semibold leading-tight">
+                    {item.name}
+                  </h4>
+                  <Badge variant="secondary" className="text-xs">
+                    {savedSearchTargetLabel(target)}
+                  </Badge>
+                  {item.scheduleEnabled && item.intervalMinutes > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      定期実行中
                     </Badge>
-                    {item.scheduleEnabled && item.intervalMinutes > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        定期実行中
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Query summary */}
-                  <div className="space-y-0.5 text-xs text-muted-foreground">
-                    {target === "arxiv" ? (
-                      <>
-                        {item.arxivIds.length > 0 && (
-                          <p className="truncate font-mono">
-                            ID: {item.arxivIds.join(", ")}
-                          </p>
-                        )}
-                        {item.query.trim() && (
-                          <p className="truncate">
-                            キーワード: {item.query.trim()}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="line-clamp-2">{item.query.trim()}</p>
-                    )}
-                    <p>取得件数: {item.topK}</p>
-                  </div>
+                  )}
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex shrink-0 gap-1">
-                  {canRun && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 gap-1.5 rounded-lg px-2.5 text-xs"
-                      disabled={busyAny}
-                      onClick={() => onRunNow(item)}
-                      title="今すぐ実行"
-                    >
-                      <Play className="size-3.5" aria-hidden />
-                      実行
-                    </Button>
+                {/* Query summary */}
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  {target === "arxiv" ? (
+                    <>
+                      {item.arxivIds.length > 0 && (
+                        <p className="truncate font-mono">
+                          ID: {item.arxivIds.join(", ")}
+                        </p>
+                      )}
+                      {item.query.trim() && (
+                        <p className="truncate">
+                          キーワード: {item.query.trim()}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="line-clamp-2">{item.query.trim()}</p>
                   )}
+                  <p>取得件数: {item.topK}</p>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex shrink-0 gap-1">
+                {canRun && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-destructive"
+                    className="h-8 gap-1.5 px-2.5 text-xs"
                     disabled={busyAny}
-                    onClick={() => onDelete(item.id)}
-                    title="削除"
+                    onClick={() => onRunNow(item)}
+                    title="今すぐ実行"
                   >
-                    <Trash2 className="size-3.5" aria-hidden />
-                    <span className="sr-only">削除</span>
+                    <Play className="size-3.5" aria-hidden />
+                    実行
                   </Button>
-                </div>
-              </div>
-
-              {/* Schedule controls */}
-              <div className="flex flex-wrap items-center gap-3 border-t border-border/40 pt-2.5">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`sched-${item.id}`}
-                    checked={item.scheduleEnabled}
-                    disabled={busyAny || item.intervalMinutes <= 0}
-                    onCheckedChange={(v) => {
-                      const on = Boolean(v);
-                      if (on && item.intervalMinutes <= 0) {
-                        onPatch(item.id, { intervalMinutes: 15, scheduleEnabled: true });
-                      } else {
-                        onPatch(item.id, { scheduleEnabled: on });
-                      }
-                    }}
-                  />
-                  <Label
-                    htmlFor={`sched-${item.id}`}
-                    className="cursor-pointer text-xs font-normal"
-                  >
-                    定期実行
-                  </Label>
-                </div>
-                <Select
-                  value={String(item.intervalMinutes)}
-                  onValueChange={(v) => {
-                    const mins = Number(v);
-                    onPatch(item.id, {
-                      intervalMinutes: mins,
-                      scheduleEnabled: mins > 0 ? item.scheduleEnabled : false,
-                    });
-                  }}
-                  disabled={busyAny}
-                >
-                  <SelectTrigger className="h-7 w-[150px] rounded-lg text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SAVED_SEARCH_INTERVAL_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value} className="text-xs">
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {item.lastRunAt && (
-                  <p className="ml-auto text-xs text-muted-foreground">
-                    最終実行: {formatLastRun(item.lastRunAt)}
-                  </p>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  disabled={busyAny}
+                  onClick={() => onDelete(item.id)}
+                  title="削除"
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  <span className="sr-only">削除</span>
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Schedule controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id={`sched-${item.id}`}
+                  checked={item.scheduleEnabled}
+                  disabled={busyAny || item.intervalMinutes <= 0}
+                  onCheckedChange={(v) => {
+                    const on = Boolean(v);
+                    if (on && item.intervalMinutes <= 0) {
+                      onPatch(item.id, { intervalMinutes: 15, scheduleEnabled: true });
+                    } else {
+                      onPatch(item.id, { scheduleEnabled: on });
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor={`sched-${item.id}`}
+                  className="cursor-pointer text-xs font-normal"
+                >
+                  定期実行
+                </Label>
+              </div>
+              <Select
+                value={String(item.intervalMinutes)}
+                onValueChange={(v) => {
+                  const mins = Number(v);
+                  onPatch(item.id, {
+                    intervalMinutes: mins,
+                    scheduleEnabled: mins > 0 ? item.scheduleEnabled : false,
+                  });
+                }}
+                disabled={busyAny}
+              >
+                <SelectTrigger className="h-7 w-[150px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SAVED_SEARCH_INTERVAL_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-xs">
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {item.lastRunAt && (
+                <p className="ml-auto text-xs text-muted-foreground">
+                  最終実行: {formatLastRun(item.lastRunAt)}
+                </p>
+              )}
+            </div>
+          </article>
         );
-      })}
-    </div>
+      }}
+    />
   );
 }

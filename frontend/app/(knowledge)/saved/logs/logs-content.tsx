@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   getSavedSearchRunLog,
@@ -48,7 +48,6 @@ export function SavedSearchRunLogsContent() {
       <div className="mx-auto max-w-3xl space-y-4 pb-10">
       {error && (
         <Alert variant="error" className="mb-4">
-          <AlertTitle>エラー</AlertTitle>
           <AlertDescription className="font-mono text-xs break-all">
             {error}
           </AlertDescription>
@@ -85,7 +84,6 @@ export function SavedSearchRunLogsContent() {
               </div>
               {detail.error_message && (
                 <Alert variant="error">
-                  <AlertTitle>エラー詳細</AlertTitle>
                   <AlertDescription className="whitespace-pre-wrap text-xs">
                     {detail.error_message}
                   </AlertDescription>

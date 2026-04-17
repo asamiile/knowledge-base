@@ -48,13 +48,8 @@ export function SiteSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="h-(--header-height) flex items-center border-b border-sidebar-border">
-        <div className="flex items-center justify-start group-data-[collapsible=icon]:px-1">
-          <SidebarTrigger
-            className="-ml-0.5"
-            aria-label="サイドメニューを開閉"
-          />
-        </div>
+      <SidebarHeader className="h-(--header-height) flex items-baseline justify-center border-b border-sidebar-border px-2">
+        <SidebarTrigger aria-label="サイドメニューを開閉" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="gap-2 group-data-[collapsible=icon]:gap-2 p-2">
