@@ -123,7 +123,7 @@ export function SavedSearchForm({
         />
       )}
       <div className="grid gap-3">
-        <p className="text-foreground text-sm font-medium">定期実行の設定</p>
+        <p className="text-foreground font-medium">定期実行の設定</p>
         <div className="grid min-w-[200px] gap-1">
           <Label className="text-xs" htmlFor="save-interval">
             実行間隔
@@ -154,7 +154,7 @@ export function SavedSearchForm({
           />
           <Label
             htmlFor="save-schedule"
-            className="cursor-pointer text-sm font-normal"
+            className="cursor-pointer font-normal"
           >
             定期実行を有効にする
           </Label>

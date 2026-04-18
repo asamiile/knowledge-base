@@ -56,7 +56,7 @@ export function SavedSearchList({
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
-        <p className="text-muted-foreground text-sm">保存した条件がありません。</p>
+        <p className="text-muted-foreground">保存した条件がありません。</p>
         <p className="text-muted-foreground text-xs">
           右上の「追加」から検索条件を登録できます。
         </p>
@@ -81,7 +81,7 @@ export function SavedSearchList({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-sm font-semibold leading-tight">
+                  <h4 className="font-semibold leading-tight">
                     {item.name}
                   </h4>
                   <Badge variant="secondary" className="text-xs">

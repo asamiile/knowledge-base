@@ -129,12 +129,12 @@ export function SavedSearchesPanel({
             <h2 className="font-heading text-base font-semibold leading-snug">
               保存した条件
               {savedMaterialSearches.length > 0 && (
-                <span className="text-muted-foreground ml-2 text-sm font-normal">
+                <span className="text-muted-foreground ml-2 text-xs font-normal">
                   {savedMaterialSearches.length} 件
                 </span>
               )}
             </h2>
-            <p className="text-muted-foreground mt-0.5 text-sm">
+            <p className="text-muted-foreground mt-0.5">
               arXiv の検索条件を保存して定期取り込みできます。
             </p>
           </div>

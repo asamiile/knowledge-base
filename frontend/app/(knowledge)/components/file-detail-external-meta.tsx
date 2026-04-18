@@ -59,10 +59,10 @@ export function FileDetailExternalMeta({
           ) : null}
         </div>
 
-        <p className="text-foreground break-all font-mono text-sm">{fileLabel}</p>
+        <p className="text-foreground break-all font-mono text-xs">{fileLabel}</p>
 
         {enrichError ? (
-          <p className="text-destructive text-sm">{enrichError}</p>
+          <p className="text-destructive">{enrichError}</p>
         ) : null}
 
         {categories.length > 0 ? (
@@ -71,7 +71,7 @@ export function FileDetailExternalMeta({
               const ja = arxivCategoryLabelJa(code);
               const label = ja || "（名称未登録）";
               return (
-                <li key={code} className="text-foreground text-sm leading-snug">
+                <li key={code} className="text-foreground leading-snug">
                   カテゴリ: {label}、区分コード:{" "}
                   <span className="font-mono">{code}</span>
                 </li>
@@ -81,13 +81,13 @@ export function FileDetailExternalMeta({
         ) : enrich !== undefined &&
           enrich?.arxiv_id &&
           categories.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground">
             カテゴリは取得できませんでした。
           </p>
         ) : null}
 
         {enrich !== undefined && enrich?.arxiv_id ? (
-          <p className="text-foreground text-sm tabular-nums">
+          <p className="text-foreground tabular-nums">
             引用数:{" "}
             {(enrich.citation_count ?? 0).toLocaleString()}
           </p>
@@ -99,7 +99,7 @@ export function FileDetailExternalMeta({
               href={`https://arxiv.org/abs/${enrich.arxiv_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary text-sm underline-offset-2 hover:underline"
+              className="text-primary underline-offset-2 hover:underline"
             >
               arXiv で開く
             </Link>
@@ -119,7 +119,7 @@ export function FileDetailExternalMeta({
       ) : enrich !== undefined &&
         enrich?.arxiv_id &&
         !summary ? (
-        <p className="text-muted-foreground text-sm">要約はありません。</p>
+        <p className="text-muted-foreground">要約はありません。</p>
       ) : null}
 
       {summary ? <Separator /> : null}
@@ -141,14 +141,14 @@ export function FileDetailExternalMeta({
         {fileMeta === undefined && !fileMetaError ? (
           <div>
             <p className="text-muted-foreground text-xs">サイズ</p>
-            <p className="text-muted-foreground mt-2 text-sm">読み込み中…</p>
+            <p className="text-muted-foreground mt-2">読み込み中…</p>
           </div>
         ) : null}
 
         {fileMeta === null && !fileMetaError ? (
           <div>
             <p className="text-muted-foreground text-xs">サイズ / 更新日時</p>
-            <p className="text-muted-foreground mt-2 text-sm">
+            <p className="text-muted-foreground mt-2">
               ローカル上のファイル情報を取得できませんでした。
             </p>
           </div>
@@ -158,13 +158,13 @@ export function FileDetailExternalMeta({
           <div className="flex flex-col gap-4 sm:flex-row sm:gap-10">
             <div>
               <p className="text-muted-foreground text-xs">サイズ</p>
-              <p className="text-foreground mt-2 font-mono text-sm tabular-nums">
+              <p className="text-foreground mt-2 font-mono tabular-nums">
                 {fileMeta.size_bytes.toLocaleString()} B
               </p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">更新日時</p>
-              <p className="text-foreground mt-2 font-mono text-sm tabular-nums">
+              <p className="text-foreground mt-2 font-mono tabular-nums">
                 {new Date(fileMeta.modified_at).toLocaleString()}
               </p>
             </div>
@@ -177,7 +177,7 @@ export function FileDetailExternalMeta({
         !enrich.summary &&
         enrich.citation_count === null &&
         !enrich.arxiv_id ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground">
           このパスでは外部の論文メタは取得していません（アップロード資料など）。
         </p>
       ) : null}

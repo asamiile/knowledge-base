@@ -25,7 +25,7 @@ function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
 
   return (
     <section className="flex flex-col gap-2" aria-label="取り込んだ内容">
-      <p className="text-muted-foreground text-sm font-medium">取り込んだ内容</p>
+      <p className="text-muted-foreground text-xs font-medium">取り込んだ内容</p>
       {written && written.length > 0 ? (
         <ul className="flex flex-col gap-1">
           {written.map((path) => (
@@ -40,11 +40,11 @@ function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
           ))}
         </ul>
       ) : detail.imported_content?.trim() ? (
-        <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap text-sm">
+        <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
           {detail.imported_content}
         </pre>
       ) : (
-        <p className="text-muted-foreground text-sm">取り込んだ内容はありません。</p>
+        <p className="text-muted-foreground">取り込んだ内容はありません。</p>
       )}
     </section>
   );
@@ -99,7 +99,7 @@ function LogDetail({ logId }: { logId: string }) {
   }, [logId]);
 
   if (loading) {
-    return <p className="text-muted-foreground text-sm">読み込み中…</p>;
+    return <p className="text-muted-foreground">読み込み中…</p>;
   }
 
   if (error) {
@@ -130,7 +130,7 @@ function LogDetail({ logId }: { logId: string }) {
             className="md:w-56 md:shrink-0 flex flex-col gap-2"
             aria-label="実行履歴"
           >
-            <p className="text-muted-foreground text-sm font-medium">実行履歴</p>
+            <p className="text-muted-foreground text-xs font-medium">実行履歴</p>
             <ul className="flex flex-col divide-y divide-border md:overflow-y-auto md:max-h-[calc(100vh-12rem)] scrollbar-hide">
               {siblings.map((log) => {
                 const isSelected = log.id === logId;
@@ -153,7 +153,7 @@ function LogDetail({ logId }: { logId: string }) {
                       >
                         {log.status === "success" ? "成功" : "失敗"}
                       </Badge>
-                      <span className="text-muted-foreground text-sm tabular-nums">
+                      <span className="text-muted-foreground text-xs tabular-nums">
                         {new Date(log.created_at).toLocaleString("ja-JP")}
                       </span>
                     </Link>
@@ -170,14 +170,14 @@ function LogDetail({ logId }: { logId: string }) {
           aria-label="選択中の実行結果"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-muted-foreground text-sm font-medium">実行結果</p>
+            <p className="text-muted-foreground text-xs font-medium">実行結果</p>
             <Badge
               variant={detail.status === "success" ? "secondary" : "destructive"}
               className="font-normal"
             >
               {detail.status === "success" ? "成功" : "失敗"}
             </Badge>
-            <span className="text-muted-foreground text-sm">
+            <span className="text-muted-foreground text-xs">
               {new Date(detail.created_at).toLocaleString("ja-JP")}
             </span>
           </div>
@@ -234,7 +234,7 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
   }, [savedSearchId]);
 
   if (loading) {
-    return <p className="text-muted-foreground text-sm">読み込み中…</p>;
+    return <p className="text-muted-foreground">読み込み中…</p>;
   }
 
   if (error) {
@@ -249,7 +249,7 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
 
   if (logs.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">実行履歴がありません。</p>
+      <p className="text-muted-foreground">実行履歴がありません。</p>
     );
   }
 
@@ -267,7 +267,7 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
             >
               {log.status === "success" ? "成功" : "失敗"}
             </Badge>
-            <span className="min-w-0 flex-1 truncate text-sm">
+            <span className="min-w-0 flex-1 truncate">
               {savedSearch?.name || log.title_snapshot || "Untitled"}
             </span>
             <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -298,7 +298,7 @@ export function SavedSearchRunLogsContent() {
             <LogsBySearch savedSearchId={filterSearchId} />
           </>
         ) : (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground">
             左のサイドメニュー「定期実行」から項目を選ぶと、ここに取り込み内容が表示されます。
           </p>
         )}
