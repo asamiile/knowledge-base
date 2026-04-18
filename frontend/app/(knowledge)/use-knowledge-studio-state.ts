@@ -83,6 +83,7 @@ export function useKnowledgeStudioState() {
     onAskQuestionCompositionEnd: ask.onAskQuestionCompositionEnd,
     onAskQuestionTextareaKeyDown: ask.onAskQuestionTextareaKeyDown,
     question: ask.question,
+    submittedQuestion: ask.submittedQuestion,
     setQuestion: ask.setQuestion,
     topK: ask.topK,
     setTopK: ask.setTopK,

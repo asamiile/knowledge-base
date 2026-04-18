@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export type StudioAlertsProps = {
   error: string | null;
@@ -13,7 +13,6 @@ export function StudioAlerts({ error, info }: StudioAlertsProps) {
     <>
       {error && (
         <Alert variant="error">
-          <AlertTitle>エラー</AlertTitle>
           <AlertDescription className="font-mono text-xs break-all">
             {error}
           </AlertDescription>
@@ -21,7 +20,6 @@ export function StudioAlerts({ error, info }: StudioAlertsProps) {
       )}
       {info && !error && (
         <Alert variant="success">
-          <AlertTitle>完了</AlertTitle>
           <AlertDescription>{info}</AlertDescription>
         </Alert>
       )}

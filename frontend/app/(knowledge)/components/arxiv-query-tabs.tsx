@@ -54,7 +54,7 @@ export function ArxivQueryTabs({
     maxResults != null && onMaxResultsChange != null;
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-muted-foreground text-xs">{intro}</div>
+      <div className="text-muted-foreground text-sm">{intro}</div>
       <Tabs defaultValue="id" className="gap-4">
         <TabsList className="inline-flex w-fit shrink-0 flex-nowrap justify-start self-start">
           <TabsTrigger value="id" className="flex-none px-3">
@@ -86,7 +86,7 @@ export function ArxivQueryTabs({
               rows={5}
               placeholder={"0000.00000\nhttps://arxiv.org/abs/0000.00000"}
               disabled={disabled}
-              className="rounded-xl field-sizing-fixed"
+              className="field-sizing-fixed"
             />
           </div>
           {paperIdTabFooter}
@@ -112,7 +112,6 @@ export function ArxivQueryTabs({
               onChange={(e) => onKeywordChange(e.target.value)}
               placeholder="例: video diffusion"
               disabled={disabled}
-              className="rounded-xl"
             />
           </div>
           {showMaxResults && (
@@ -125,7 +124,7 @@ export function ArxivQueryTabs({
                 type="number"
                 min={1}
                 max={20}
-                className="w-24 rounded-xl"
+                className="w-24"
                 value={maxResults}
                 onChange={(e) =>
                   onMaxResultsChange(Number(e.target.value) || 5)

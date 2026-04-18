@@ -8,7 +8,7 @@ export default function FileDetailPage() {
     <Suspense
       fallback={
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="text-muted-foreground mx-auto w-full max-w-4xl pb-10 text-sm">
+          <div className="text-muted-foreground mx-auto w-full max-w-3xl pb-10 text-sm">
             読み込み中…
           </div>
         </div>

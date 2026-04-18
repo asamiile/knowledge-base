@@ -97,14 +97,14 @@ export function AddSourceTabs({
         <TabsList className="inline-flex h-auto w-fit shrink-0 flex-nowrap items-stretch justify-start self-start p-1">
           <TabsTrigger
             value="upload"
-            className="flex-none gap-2 rounded-md px-3 py-2 data-active:shadow-sm"
+            className="flex-none gap-2 rounded-md px-3 py-2 data-active:ring-1 data-active:ring-border"
           >
             <Upload className="size-4 shrink-0" />
             ファイル
           </TabsTrigger>
           <TabsTrigger
             value="arxiv"
-            className="flex-none gap-2 rounded-md px-3 py-2 data-active:shadow-sm"
+            className="flex-none gap-2 rounded-md px-3 py-2 data-active:ring-1 data-active:ring-border"
           >
             <BookOpen className="size-4 shrink-0" />
             arXiv
@@ -114,7 +114,7 @@ export function AddSourceTabs({
         <TabsContent value="upload" className="flex flex-col gap-3">
           <div
             className={cn(
-              "flex flex-col gap-3 rounded-xl border border-dashed border-border/80 p-4 transition-colors",
+              "flex flex-col gap-3 rounded-lg border border-dashed border-border/80 p-4 transition-colors",
               dropActive && "border-primary bg-primary/5",
               busyAny && "pointer-events-none opacity-70",
             )}
@@ -144,7 +144,7 @@ export function AddSourceTabs({
               variant="outline"
               disabled={busyAny}
               onClick={() => fileInputRef.current?.click()}
-              className="w-fit rounded-xl"
+              className="w-fit"
               type="button"
             >
               <Upload className="size-4" />
@@ -156,7 +156,6 @@ export function AddSourceTabs({
                 variant="outline"
                 disabled={busyAny}
                 onClick={() => cancelPendingUpload()}
-                className="rounded-xl"
                 type="button"
               >
                 選択を取り消す
@@ -170,7 +169,6 @@ export function AddSourceTabs({
                     fileInputRef.current?.click();
                   }, 0);
                 }}
-                className="rounded-xl"
                 type="button"
               >
                 別のファイルを選ぶ
@@ -210,7 +208,7 @@ export function AddSourceTabs({
                 variant="secondary"
                 disabled={busyAny}
                 onClick={() => void fetchArxivPreviewFromAddPage("id")}
-                className="w-fit rounded-xl"
+                className="w-fit"
                 type="button"
               >
                 {busyArxivPreview ? "取得中…" : "一覧を取得"}
@@ -221,7 +219,7 @@ export function AddSourceTabs({
                 variant="secondary"
                 disabled={busyAny}
                 onClick={() => void fetchArxivPreviewFromAddPage("keyword")}
-                className="w-fit rounded-xl"
+                className="w-fit"
                 type="button"
               >
                 {busyArxivPreview ? "取得中…" : "一覧を取得"}

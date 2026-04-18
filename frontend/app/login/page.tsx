@@ -34,7 +34,7 @@ export default function LoginPage() {
     return (
       <div className="bg-background flex min-h-svh w-full items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-sm">
-          <Card className="rounded-xl">
+          <Card>
             <CardHeader>
               <CardTitle className="text-xl">ログインは無効です</CardTitle>
               <CardDescription>
@@ -66,7 +66,7 @@ export default function LoginPage() {
                 が必要です。
               </p>
               <Link href="/" className="block">
-                <Button type="button" variant="outline" className="w-full rounded-xl">
+                <Button type="button" variant="outline" className="w-full">
                   トップへ
                 </Button>
               </Link>

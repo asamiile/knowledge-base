@@ -169,9 +169,10 @@ export function AddSourcesPanel({
 
         <Button
           type="button"
+          variant="secondary"
           disabled={busyAny}
           onClick={() => void onReindexClick()}
-          className="w-fit gap-2 rounded-xl"
+          className="w-fit gap-2"
         >
           <Database className="size-4" />
           {busy === "reindex" ? "更新中…" : "インデックスを更新"}

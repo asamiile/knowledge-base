@@ -36,6 +36,7 @@ export type SavedSearchFormProps = {
   saveMaterialScheduleEnabled: boolean;
   setSaveMaterialScheduleEnabled: (v: boolean) => void;
   onSave: () => void;
+  saveLabel?: string;
 };
 
 export function SavedSearchForm({
@@ -56,6 +57,7 @@ export function SavedSearchForm({
   saveMaterialScheduleEnabled,
   setSaveMaterialScheduleEnabled,
   onSave,
+  saveLabel,
 }: SavedSearchFormProps) {
   return (
     <section
@@ -69,7 +71,6 @@ export function SavedSearchForm({
           onChange={(e) => setSaveMaterialName(e.target.value)}
           placeholder="一覧に表示する名前"
           disabled={busyAny}
-          className="rounded-xl"
         />
       </div>
       <div className="grid gap-2">
@@ -81,7 +82,7 @@ export function SavedSearchForm({
           }
           disabled={busyAny}
         >
-          <SelectTrigger className="rounded-xl">
+          <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -132,7 +133,7 @@ export function SavedSearchForm({
             onValueChange={(v) => setSaveMaterialIntervalMinutes(Number(v))}
             disabled={busyAny}
           >
-            <SelectTrigger id="save-interval" className="rounded-xl">
+            <SelectTrigger id="save-interval">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -164,9 +165,9 @@ export function SavedSearchForm({
         variant="secondary"
         disabled={busyAny}
         onClick={onSave}
-        className="w-fit rounded-xl"
+        className="w-fit"
       >
-        {busySavedSearchWrite ? "保存中…" : "条件を保存"}
+        {busySavedSearchWrite ? "保存中…" : (saveLabel ?? "条件を保存")}
       </Button>
     </section>
   );

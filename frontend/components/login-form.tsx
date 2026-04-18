@@ -47,7 +47,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="rounded-xl">
+    <Card>
       <CardHeader>
         <CardTitle className="text-xl">ログイン</CardTitle>
         <CardDescription>
@@ -89,7 +89,7 @@ export function LoginForm() {
                 {error}
               </p>
             ) : null}
-            <Button type="submit" className="w-full rounded-xl" disabled={pending}>
+            <Button type="submit" className="w-full" disabled={pending}>
               {pending ? "ログイン中…" : "ログイン"}
             </Button>
           </div>

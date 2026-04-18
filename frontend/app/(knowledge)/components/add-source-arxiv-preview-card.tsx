@@ -94,7 +94,7 @@ export function AddSourceArxivPreviewCard({
                   >
                     {e.title}
                   </label>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-muted-foreground text-sm">
                     {e.arxiv_id}
                     {e.authors.length > 0 && (
                       <>
@@ -103,7 +103,7 @@ export function AddSourceArxivPreviewCard({
                       </>
                     )}
                   </p>
-                  <p className="text-muted-foreground text-xs leading-relaxed">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
                     {textSnippet(e.summary, 320)}
                   </p>
                   <a
@@ -141,7 +141,7 @@ export function AddSourceArxivPreviewCard({
       <Button
         disabled={disabled}
         onClick={onConfirmImport}
-        className="w-fit rounded-xl"
+        className="w-fit"
         type="button"
       >
         {importBusy ? "取り込み中…" : "選択した論文を取り込む"}

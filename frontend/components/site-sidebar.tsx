@@ -48,13 +48,11 @@ export function SiteSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-start px-2 py-2 group-data-[collapsible=icon]:px-1">
-          <SidebarTrigger
-            className="-ml-0.5"
-            aria-label="サイドメニューを開閉"
-          />
-        </div>
+      <SidebarHeader className="h-(--header-height) flex flex-row items-center gap-2 border-b border-sidebar-border px-2">
+        <SidebarTrigger aria-label="サイドメニューを開閉" />
+        <span className="truncate text-base font-semibold leading-tight tracking-tight group-data-[collapsible=icon]:hidden">
+          spira-base
+        </span>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="gap-2 group-data-[collapsible=icon]:gap-2 p-2">
@@ -121,11 +119,11 @@ export function SiteSidebar({
       </SidebarContent>
       <SidebarFooter>
         <div className="space-y-2">
-          <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-[11px] group-data-[collapsible=icon]:hidden">
-            <Badge variant="secondary" className="font-mono text-[10px]">
+          <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm group-data-[collapsible=icon]:hidden">
+            <Badge variant="secondary" className="font-mono text-xs">
               chunks {statsLoading ? "…" : (stats?.document_chunks ?? "—")}
             </Badge>
-            <Badge variant="outline" className="font-mono text-[10px]">
+            <Badge variant="outline" className="font-mono text-xs">
               raw {statsLoading ? "…" : (stats?.raw_data_rows ?? "—")}
             </Badge>
           </div>

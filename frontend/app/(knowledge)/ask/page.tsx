@@ -10,6 +10,7 @@ export default function AskPage() {
     info,
     result,
     question,
+    submittedQuestion,
     setQuestion,
     onAskQuestionCompositionStart,
     onAskQuestionCompositionEnd,
@@ -25,6 +26,8 @@ export default function AskPage() {
     submitAnalyze,
     questionHistory,
     refreshQuestionHistory,
+    stats,
+    statsLoading,
   } = useKnowledgeStudio();
 
   return (
@@ -33,6 +36,7 @@ export default function AskPage() {
       info={info}
       result={result}
       question={question}
+      submittedQuestion={submittedQuestion}
       setQuestion={setQuestion}
       onAskQuestionCompositionStart={onAskQuestionCompositionStart}
       onAskQuestionCompositionEnd={onAskQuestionCompositionEnd}
@@ -48,6 +52,7 @@ export default function AskPage() {
       submitAnalyze={submitAnalyze}
       questionHistory={questionHistory}
       refreshQuestionHistory={refreshQuestionHistory}
+      isEmpty={!statsLoading && (stats?.document_chunks ?? 0) === 0}
     />
   );
 }
