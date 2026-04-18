@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 SearchTarget = Literal["knowledge", "arxiv"]
 
 
-def _normalize_arxiv_id_list(raw: list[str]) -> list[str]:
+def normalize_arxiv_id_list(raw: list[str]) -> list[str]:
+    """arXiv ID リストを正規化（空白除去・空文字除外）。"""
     return [s.strip() for s in raw if isinstance(s, str) and s.strip()]
 
 
@@ -47,9 +48,14 @@ class SavedSearchCreate(BaseModel):
     interval_minutes: int = Field(default=0, ge=0)
     schedule_enabled: bool = False
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_name(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
+
     @model_validator(mode="after")
     def _validate_norm(self):
-        ids = _normalize_arxiv_id_list(self.arxiv_ids)
+        ids = normalize_arxiv_id_list(self.arxiv_ids)
         q = (self.query or "").strip()
         if self.search_target == "knowledge":
             if not q:

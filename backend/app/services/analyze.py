@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
+from app.core.constants import MAX_QUESTION_LENGTH
 from app.core.settings import (
     get_data_dir,
     get_gemini_llm_model,
@@ -35,6 +36,53 @@ from app.services.ingest import (
 )
 
 
+def _fetch_source_path_map(db: Session, cited_ids: list[int]) -> dict[int, str | None]:
+    """document_id → source_path のマップを一括取得する。"""
+    if not cited_ids:
+        return {}
+    return dict(
+        db.execute(
+            select(Document.id, Document.source_path).where(Document.id.in_(cited_ids))
+        ).all()
+    )
+
+
+def _ensure_documents_indexed(
+    db: Session,
+    embed_model,
+    data_dir,
+    *,
+    reindex: bool = False,
+) -> None:
+    """ドキュメントがインデックス済みであることを保証する。空なら自動取り込みし、それでも 0 なら ValueError。"""
+    if reindex:
+        ingest_data_directory(db, embed_model, data_dir)
+
+    n_docs = int(
+        db.scalar(
+            select(func.count()).select_from(Document).where(Document.embedding.isnot(None))
+        ) or 0
+    )
+    if not n_docs and has_vector_source_files(data_dir):
+        ingest_data_directory(db, embed_model, data_dir)
+        n_docs = int(
+            db.scalar(
+                select(func.count()).select_from(Document).where(Document.embedding.isnot(None))
+            ) or 0
+        )
+
+    if not n_docs:
+        if has_any_source_files(data_dir) and not has_vector_source_files(data_dir):
+            raise ValueError(
+                "NO_TEXT_SOURCES: ベクトル検索には DATA_DIR に .md または .txt が必要です"
+                "（JSON のみでは documents は作りません）。"
+            )
+        raise ValueError(
+            "NO_DOCUMENTS: DATA_DIR（Compose では /app/data）に .md/.txt を置くか、"
+            f"明示的に reindex_sources: true を指定してください。参照ディレクトリ: {data_dir}"
+        )
+
+
 def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
     api_key = get_google_api_key()
     if not api_key:
@@ -42,33 +90,7 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
 
     embed_model = build_embedding_model()
     data_dir = get_data_dir()
-
-    if req.reindex_sources:
-        ingest_data_directory(db, embed_model, data_dir)
-
-    n_docs = db.scalar(
-        select(func.count())
-        .select_from(Document)
-        .where(Document.embedding.isnot(None))
-    )
-    # 初回などインデックスが空で、DATA_DIR に .md/.txt があるなら自動取り込み（reindex フラグ不要）
-    if not n_docs and has_vector_source_files(data_dir):
-        ingest_data_directory(db, embed_model, data_dir)
-        n_docs = db.scalar(
-            select(func.count())
-            .select_from(Document)
-            .where(Document.embedding.isnot(None))
-        )
-
-    if not n_docs:
-        if has_any_source_files(data_dir) and not has_vector_source_files(data_dir):
-            raise ValueError(
-                "NO_TEXT_SOURCES: ベクトル検索には DATA_DIR に .md または .txt が必要です（JSON のみでは documents は作りません）。"
-            )
-        raise ValueError(
-            "NO_DOCUMENTS: DATA_DIR（Compose では /app/data）に .md/.txt を置くか、"
-            f"明示的に reindex_sources: true を指定してください。参照ディレクトリ: {data_dir}"
-        )
+    _ensure_documents_indexed(db, embed_model, data_dir, reindex=req.reindex_sources)
 
     k = req.top_k or get_rag_top_k()
     qvec = embed_model.get_text_embedding(req.question)
@@ -112,18 +134,7 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
         raise RuntimeError("モデルから空の応答が返りました")
     raw = _AnalyzeResponseRaw.model_validate_json(text)
 
-    # document_id → source_path を一括ルックアップ
-    cited_ids = [c.document_id for c in raw.citations]
-    path_map: dict[int, str | None] = {}
-    if cited_ids:
-        path_map = dict(
-            db.execute(
-                select(Document.id, Document.source_path).where(
-                    Document.id.in_(cited_ids)
-                )
-            ).all()
-        )
-
+    path_map = _fetch_source_path_map(db, [c.document_id for c in raw.citations])
     result = AnalyzeResponse(
         answer=raw.answer,
         key_points=raw.key_points,
@@ -140,7 +151,7 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
     if req.save_question_history:
         db.add(
             QuestionHistory(
-                question=req.question.strip()[:8000],
+                question=req.question.strip()[:MAX_QUESTION_LENGTH],
                 response=result.model_dump(mode="json"),
             )
         )
@@ -168,37 +179,10 @@ def run_analyze_stream(
 
         embed_model = build_embedding_model()
         data_dir = get_data_dir()
-
-        if req.reindex_sources:
-            ingest_data_directory(db, embed_model, data_dir)
-
-        n_docs = db.scalar(
-            select(func.count())
-            .select_from(Document)
-            .where(Document.embedding.isnot(None))
-        )
-        if not n_docs and has_vector_source_files(data_dir):
-            ingest_data_directory(db, embed_model, data_dir)
-            n_docs = db.scalar(
-                select(func.count())
-                .select_from(Document)
-                .where(Document.embedding.isnot(None))
-            )
-
-        if not n_docs:
-            if has_any_source_files(data_dir) and not has_vector_source_files(data_dir):
-                yield _sse({
-                    "type": "error",
-                    "message": "NO_TEXT_SOURCES: ベクトル検索には DATA_DIR に .md または .txt が必要です。",
-                })
-            else:
-                yield _sse({
-                    "type": "error",
-                    "message": (
-                        f"NO_DOCUMENTS: DATA_DIR に .md/.txt を置くか reindex_sources: true を指定してください。"
-                        f" 参照ディレクトリ: {data_dir}"
-                    ),
-                })
+        try:
+            _ensure_documents_indexed(db, embed_model, data_dir, reindex=req.reindex_sources)
+        except ValueError as e:
+            yield _sse({"type": "error", "message": str(e)})
             return
 
         # ── RAG 検索 ──────────────────────────────────────────────────────────
@@ -264,17 +248,7 @@ def run_analyze_stream(
 
         raw_meta = _AnalyzeMetadata.model_validate_json(meta_text)
 
-        # source_path を付与
-        cited_ids = [c.document_id for c in raw_meta.citations]
-        path_map: dict[int, str | None] = {}
-        if cited_ids:
-            path_map = dict(
-                db.execute(
-                    select(Document.id, Document.source_path).where(
-                        Document.id.in_(cited_ids)
-                    )
-                ).all()
-            )
+        path_map = _fetch_source_path_map(db, [c.document_id for c in raw_meta.citations])
         citations = [
             Citation(
                 document_id=c.document_id,
@@ -299,7 +273,7 @@ def run_analyze_stream(
             )
             db.add(
                 QuestionHistory(
-                    question=req.question.strip()[:8000],
+                    question=req.question.strip()[:MAX_QUESTION_LENGTH],
                     response=result.model_dump(mode="json"),
                 )
             )
