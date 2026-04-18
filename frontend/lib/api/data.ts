@@ -25,7 +25,18 @@ export async function postUpload(file: File): Promise<UploadResponse> {
   return data as UploadResponse;
 }
 
-export type ArxivImportResponse = { written: string[]; entry_count: number };
+export type ArxivMatchHint = {
+  path: string;
+  arxiv_id: string;
+  matched_in: string[];
+  snippet: string;
+};
+
+export type ArxivImportResponse = {
+  written: string[];
+  entry_count: number;
+  match_hints: ArxivMatchHint[];
+};
 
 export type ArxivPreviewEntry = {
   arxiv_id: string;

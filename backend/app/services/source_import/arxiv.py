@@ -234,6 +234,121 @@ def _entry_file_stem(entry: _ArxivEntry) -> str:
     return tail or "unknown"
 
 
+# 実行ログ用: キーワードがヒットした箇所の短い抜粋（前後を含む）
+_SNIPPET_RADIUS = 60
+_SNIPPET_MAX_LEN = 140
+_TITLE_SUMMARY_SEP = "\n\n"
+
+
+def _collapse_ws(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _combined_title_summary(entry: _ArxivEntry) -> str:
+    t = entry.title.strip()
+    s = entry.summary.strip()
+    if not s:
+        return t
+    return f"{t}{_TITLE_SUMMARY_SEP}{s}"
+
+
+def _match_span_in_text(haystack: str, query: str) -> tuple[int, int] | None:
+    """(start, end) exclusive end in haystack; None if no match."""
+    q = query.strip()
+    if not q:
+        return None
+    m = re.search(re.escape(q), haystack, flags=re.IGNORECASE)
+    if m:
+        return m.start(), m.end()
+    for tok in q.split():
+        tok = tok.strip()
+        if len(tok) < 2:
+            continue
+        m2 = re.search(re.escape(tok), haystack, flags=re.IGNORECASE)
+        if m2:
+            return m2.start(), m2.end()
+    return None
+
+
+def _matched_fields_for_span(entry: _ArxivEntry, start: int, end: int) -> list[str]:
+    t = entry.title.strip()
+    s = entry.summary.strip()
+    if not s:
+        return ["title"] if start < len(t) else []
+
+    title_end = len(t)
+    summary_start = len(t) + len(_TITLE_SUMMARY_SEP)
+    combined_len = len(t) + len(_TITLE_SUMMARY_SEP) + len(s)
+    out: list[str] = []
+    if start < title_end and min(end, title_end) > max(0, start):
+        out.append("title")
+    if end > summary_start and start < combined_len:
+        out.append("abstract")
+    return list(dict.fromkeys(out))
+
+
+def _snippet_around(haystack: str, start: int, end: int) -> str:
+    center = (start + end) // 2
+    lo = max(0, center - _SNIPPET_RADIUS)
+    hi = min(len(haystack), center + _SNIPPET_RADIUS)
+    chunk = haystack[lo:hi]
+    chunk = _collapse_ws(chunk)
+    if lo > 0:
+        chunk = f"…{chunk}"
+    if hi < len(haystack):
+        chunk = f"{chunk}…"
+    if len(chunk) > _SNIPPET_MAX_LEN:
+        chunk = chunk[: _SNIPPET_MAX_LEN - 1] + "…"
+    return chunk
+
+
+def _snippet_for_entry(entry: _ArxivEntry, search_query: str | None) -> tuple[str, list[str]]:
+    """(snippet, matched_in) — matched_in は title / abstract / 空（要約先頭フォールバック）。"""
+    combined = _combined_title_summary(entry)
+    if not combined.strip():
+        return "", []
+
+    q = (search_query or "").strip()
+    if not q:
+        fb = _collapse_ws(entry.summary.strip() or entry.title.strip())
+        if len(fb) > _SNIPPET_MAX_LEN:
+            fb = fb[: _SNIPPET_MAX_LEN - 1] + "…"
+        return fb, []
+
+    span = _match_span_in_text(combined, q)
+    if span is None:
+        fb = _collapse_ws(entry.summary.strip() or entry.title.strip())
+        if len(fb) > _SNIPPET_MAX_LEN:
+            fb = fb[: _SNIPPET_MAX_LEN - 1] + "…"
+        return fb, []
+
+    start, end = span
+    fields = _matched_fields_for_span(entry, start, end)
+    snip = _snippet_around(combined, start, end)
+    return snip, fields
+
+
+def build_arxiv_match_hints(
+    entries: list[_ArxivEntry],
+    written_rel_paths: list[str],
+    search_query: str | None,
+) -> list[dict[str, str | list[str]]]:
+    """各取り込みファイルについて、キーワード周辺の短い抜粋を付与（実行ログの imported_payload 用）。"""
+    hints: list[dict[str, str | list[str]]] = []
+    for entry, path in zip(entries, written_rel_paths):
+        stem = _entry_file_stem(entry)
+        snippet, matched_in = _snippet_for_entry(entry, search_query)
+        hints.append(
+            {
+                "path": path,
+                "arxiv_id": stem,
+                "matched_in": matched_in,
+                "snippet": snippet,
+            },
+        )
+    return hints
+
+
 def _canonical_abs_url(id_url: str) -> str:
     """Atom の entry id（通常は http://arxiv.org/abs/...vN）を https の abs URL に揃える。"""
     u = id_url.strip()
@@ -465,16 +580,22 @@ def import_arxiv_to_data_dir(
     search_query: str | None,
     max_results: int,
     include_full_text: bool = False,
-) -> list[str]:
-    """arXiv から取得し `imports/arxiv/*.md` に保存。戻り値は DATA_DIR からの相対パス。"""
+) -> tuple[list[str], list[dict[str, str | list[str]]]]:
+    """arXiv から取得し `imports/arxiv/*.md` に保存。
+
+    Returns:
+        (DATA_DIR からの相対パス, 各ファイルのマッチ抜粋メタ)
+    """
     entries = fetch_arxiv_entries(
         arxiv_ids=arxiv_ids,
         search_query=search_query,
         max_results=max_results,
     )
-    return write_arxiv_entries_to_data_dir(
+    written = write_arxiv_entries_to_data_dir(
         data_dir,
         entries,
         include_full_text=include_full_text,
     )
+    hints = build_arxiv_match_hints(entries, written, search_query)
+    return written, hints
 

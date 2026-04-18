@@ -50,11 +50,15 @@ def preview_arxiv(req: ArxivImportRequest) -> ArxivPreviewResponse:
 @router.post("/arxiv", response_model=ArxivImportResponse)
 def import_arxiv(req: ArxivImportRequest) -> ArxivImportResponse:
     with translate_import_http_errors(logger, source_label=_ARXIV):
-        written = import_arxiv_to_data_dir(
+        written, match_hints = import_arxiv_to_data_dir(
             get_data_dir(),
             arxiv_ids=list(req.arxiv_ids),
             search_query=req.search_query,
             max_results=req.max_results,
             include_full_text=req.include_full_text,
         )
-        return ArxivImportResponse(written=written, entry_count=len(written))
+        return ArxivImportResponse(
+            written=written,
+            entry_count=len(written),
+            match_hints=match_hints,
+        )

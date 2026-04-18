@@ -83,7 +83,7 @@ def _run_arxiv_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
     from app.services.source_import.arxiv import import_arxiv_to_data_dir
 
     data_dir = get_data_dir()
-    written = import_arxiv_to_data_dir(
+    written, match_hints = import_arxiv_to_data_dir(
         data_dir,
         arxiv_ids=list(row.arxiv_ids or []),
         search_query=(row.query or None),
@@ -96,7 +96,7 @@ def _run_arxiv_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
         logger.info("ベクトル索引を更新しました（chunks=%d, raw=%d）", chunks, raw)
 
     content = "\n".join(written)
-    payload: dict = {"written": written}
+    payload: dict = {"written": written, "match_hints": match_hints}
     return content, payload
 
 

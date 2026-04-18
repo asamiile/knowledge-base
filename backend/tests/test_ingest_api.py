@@ -83,6 +83,10 @@ def test_import_arxiv_by_id_mocked(client: TestClient, tmp_path: Path, monkeypat
     assert body["entry_count"] == 1
     assert len(body["written"]) == 1
     assert body["written"][0].startswith("imports/arxiv/")
+    assert len(body["match_hints"]) == 1
+    assert body["match_hints"][0]["path"] == body["written"][0]
+    assert body["match_hints"][0]["matched_in"] == []
+    assert "Test abstract" in body["match_hints"][0]["snippet"]
     md = tmp_path / body["written"][0]
     assert md.is_file()
     text = md.read_text(encoding="utf-8")
