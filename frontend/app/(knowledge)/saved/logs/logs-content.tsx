@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "../../components/status-badge";
@@ -222,18 +222,18 @@ function LogDetail({ logId }: { logId: string }) {
   );
 }
 
-// ─── 検索条件別ログ一覧 ───────────────────────────────────────────────────────
+// ─── ?search= 保存検索 ID → 最新の ?log= へ集約（一覧中継は廃止）────────────────
 
-function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
+function LogsSearchRedirect({ savedSearchId }: { savedSearchId: string }) {
+  const router = useRouter();
   const { loading, data, error } = useAsyncData(
-    () => Promise.all([listSavedSearchRunLogs(), listSavedSearches()]),
+    () => listSavedSearchRunLogs(),
     savedSearchId,
   );
 
   const logs = useMemo(() => {
     if (!data) return [];
-    const [allLogs] = data;
-    return allLogs
+    return data
       .filter((l) => l.saved_search_id === savedSearchId)
       .sort(
         (a, b) =>
@@ -241,11 +241,10 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
       );
   }, [data, savedSearchId]);
 
-  const savedSearch = useMemo(() => {
-    if (!data) return null;
-    const [, allSearches] = data;
-    return allSearches.find((s) => s.id === savedSearchId) ?? null;
-  }, [data, savedSearchId]);
+  useEffect(() => {
+    if (loading || error || logs.length === 0) return;
+    router.replace(`/saved/logs?log=${encodeURIComponent(logs[0].id)}`);
+  }, [loading, error, logs, router]);
 
   if (loading) {
     return <p className="text-muted-foreground">読み込み中…</p>;
@@ -268,24 +267,7 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border">
-      {logs.map((log) => (
-        <li key={log.id}>
-          <Link
-            href={`/saved/logs?log=${encodeURIComponent(log.id)}`}
-            className="flex items-center gap-3 py-3 hover:bg-muted/30 -mx-1 px-1 rounded transition-colors"
-          >
-            <StatusBadge status={log.status} className="shrink-0" />
-            <span className="min-w-0 flex-1 truncate">
-              {savedSearch?.name || log.title_snapshot || "Untitled"}
-            </span>
-            <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-              {new Date(log.created_at).toLocaleString("ja-JP")}
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <p className="text-muted-foreground text-sm">最新の実行結果を表示します…</p>
   );
 }
 
@@ -302,10 +284,7 @@ export function SavedSearchRunLogsContent() {
         {selectedLogId ? (
           <LogDetail logId={selectedLogId} />
         ) : filterSearchId ? (
-          <>
-            <h1 className="font-heading text-base font-medium">実行履歴</h1>
-            <LogsBySearch savedSearchId={filterSearchId} />
-          </>
+          <LogsSearchRedirect savedSearchId={filterSearchId} />
         ) : (
           <p className="text-muted-foreground">
             左のサイドメニュー「定期実行」から項目を選ぶと、ここに取り込み内容が表示されます。
