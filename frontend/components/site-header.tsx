@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { authEnabledInBrowser, clearAccessToken } from "@/lib/auth/token";
 
 export function SiteHeader() {
@@ -26,6 +27,12 @@ export function SiteHeader() {
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-all duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full min-w-0 items-center gap-3 px-4 lg:gap-4 lg:px-6">
+        <div className="flex min-w-0 items-center gap-2 md:hidden">
+          <SidebarTrigger aria-label="サイドメニューを開閉" />
+          <span className="truncate text-base font-semibold leading-tight tracking-tight">
+            spira-base
+          </span>
+        </div>
         <div className="min-w-0 flex-1" />
         {authOn ? (
           <DropdownMenu>
