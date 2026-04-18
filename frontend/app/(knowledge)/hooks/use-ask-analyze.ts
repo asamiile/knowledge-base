@@ -23,6 +23,7 @@ export function useAskAnalyze(shell: StudioShell) {
 
   const imeComposingRef = useRef(false);
   const [question, setQuestion] = useState("");
+  const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [topK, setTopK] = useState(5);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [askOptionsOpen, setAskOptionsOpen] = useState(false);
@@ -101,6 +102,7 @@ export function useAskAnalyze(shell: StudioShell) {
     setInfo(null);
     setBusy("analyze");
     setResult(null);
+    setSubmittedQuestion(question.trim());
 
     try {
       let accAnswer = "";
@@ -166,6 +168,7 @@ export function useAskAnalyze(shell: StudioShell) {
   return {
     question,
     setQuestion,
+    submittedQuestion,
     topK,
     setTopK,
     result,

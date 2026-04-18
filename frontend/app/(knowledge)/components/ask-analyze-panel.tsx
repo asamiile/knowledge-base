@@ -36,6 +36,7 @@ export type AskAnalyzePanelProps = {
   info: string | null;
   result: AnalyzeResponse | null;
   question: string;
+  submittedQuestion: string;
   setQuestion: Dispatch<SetStateAction<string>>;
   onAskQuestionCompositionStart: () => void;
   onAskQuestionCompositionEnd: () => void;
@@ -67,7 +68,7 @@ function QuestionAnswerPair({
 }) {
   return (
     <div className="space-y-4">
-      <Card size="sm">
+      <Card size="sm" className="!py-0">
         <CardContent className="space-y-2 py-4">
           <p className="text-sm leading-relaxed whitespace-pre-wrap">
             {questionText}
@@ -91,6 +92,7 @@ export function AskAnalyzePanel({
   info,
   result,
   question,
+  submittedQuestion,
   setQuestion,
   onAskQuestionCompositionStart,
   onAskQuestionCompositionEnd,
@@ -187,7 +189,7 @@ export function AskAnalyzePanel({
 
           {pendingLiveResult && (
             <QuestionAnswerPair
-              questionText={question.trim() || "—"}
+              questionText={submittedQuestion || "—"}
               response={pendingLiveResult}
             />
           )}
@@ -196,7 +198,7 @@ export function AskAnalyzePanel({
 
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 shrink-0 pt-5 backdrop-blur md:pt-6">
         <div className="mx-auto max-w-3xl">
-          <Card size="sm">
+          <Card size="sm" className="!py-0">
             <CardContent className="space-y-3 py-4">
               <Textarea
                 placeholder="知識ベースに質問…"

@@ -10,6 +10,7 @@ export default function AskPage() {
     info,
     result,
     question,
+    submittedQuestion,
     setQuestion,
     onAskQuestionCompositionStart,
     onAskQuestionCompositionEnd,
@@ -35,6 +36,7 @@ export default function AskPage() {
       info={info}
       result={result}
       question={question}
+      submittedQuestion={submittedQuestion}
       setQuestion={setQuestion}
       onAskQuestionCompositionStart={onAskQuestionCompositionStart}
       onAskQuestionCompositionEnd={onAskQuestionCompositionEnd}
