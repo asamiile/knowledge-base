@@ -159,3 +159,11 @@
   height: 100dvh;
   min-height: 100dvh;
 }
+
+/* スクロールバーを非表示にしつつスクロール可能にする */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

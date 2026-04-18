@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type { DataFileInfo } from "@/lib/api/data";
 import { getDataFileLookup } from "@/lib/api/data";
+import { useAsyncData } from "../hooks/use-async-data";
 
 import { FileDetailExternalMeta } from "./file-detail-external-meta";
 
@@ -43,35 +44,22 @@ export function FileDetailPanel({ pathParam }: FileDetailPanelProps) {
     return false;
   }, [pathParam, decodedPath]);
 
-  const [row, setRow] = useState<DataFileInfo | null | undefined>(undefined);
-  const [listError, setListError] = useState<string | null>(null);
+  const fetchKey = pathInvalid || !decodedPath ? null : decodedPath;
+  const {
+    loading: rowLoading,
+    data: rowData,
+    error: listError,
+  } = useAsyncData(
+    () => (fetchKey ? getDataFileLookup(fetchKey) : Promise.resolve(null)),
+    fetchKey,
+  );
+  const row: DataFileInfo | null | undefined = rowLoading ? undefined : rowData;
 
   const fileLabel = useMemo(() => {
     if (!decodedPath) return "";
     const seg = decodedPath.split("/").pop();
     return seg ?? decodedPath;
   }, [decodedPath]);
-
-  useEffect(() => {
-    if (!pathParam || !decodedPath || pathInvalid) {
-      return;
-    }
-    let cancelled = false;
-    void getDataFileLookup(decodedPath)
-      .then((hit) => {
-        if (cancelled) return;
-        setListError(null);
-        setRow(hit);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setListError("ファイル情報の取得に失敗しました。");
-        setRow(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pathParam, decodedPath, pathInvalid]);
 
   if (!pathParam) {
     return (

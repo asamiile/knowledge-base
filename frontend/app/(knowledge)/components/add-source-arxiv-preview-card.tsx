@@ -35,7 +35,7 @@ export function AddSourceArxivPreviewCard({
   return (
     <section className="flex flex-col gap-3" aria-label="arXiv 取り込みプレビュー">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-foreground text-sm font-medium">
+        <span className="text-foreground font-medium">
           取り込み対象
         </span>
         <div className="flex flex-wrap gap-2">
@@ -90,11 +90,11 @@ export function AddSourceArxivPreviewCard({
                 <div className="min-w-0 flex-1 space-y-1">
                   <label
                     htmlFor={cbId}
-                    className="text-foreground cursor-pointer text-sm font-medium leading-snug"
+                    className="text-foreground cursor-pointer font-medium leading-snug"
                   >
                     {e.title}
                   </label>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground text-xs">
                     {e.arxiv_id}
                     {e.authors.length > 0 && (
                       <>
@@ -103,7 +103,7 @@ export function AddSourceArxivPreviewCard({
                       </>
                     )}
                   </p>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     {textSnippet(e.summary, 320)}
                   </p>
                   <a

@@ -28,7 +28,7 @@ export function AddSourceFilePreviewCard({
       className="flex flex-col gap-3"
       aria-label={`プレビュー: ${pending.file.name}`}
     >
-      <p className="text-foreground text-sm font-medium">
+      <p className="text-foreground font-medium">
         {pending.file.name}
         {pending.truncated && (
           <span className="text-muted-foreground ml-2 font-normal text-xs">
