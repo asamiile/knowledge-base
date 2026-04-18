@@ -11,6 +11,7 @@
 #   CORS_ORIGINS             - 許可オリジン（例: https://yourapp.com）
 #   NEXT_PUBLIC_API_URL      - バックエンドの Cloud Run URL
 #   NEXT_PUBLIC_AUTH_ENABLED - フロントの認証フラグ（true / false）
+#   NEXT_PUBLIC_CANONICAL_SITE_URL - 任意。設定時は *.run.app のフロント URL から 301 でこの URL へ（例: https://yourapp.com）
 #
 # サービスアカウントに必要な IAM ロール:
 #   roles/run.admin
@@ -104,6 +105,7 @@ jobs:
             -f frontend/Dockerfile.prod \
             --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_AUTH_ENABLED=${{ secrets.NEXT_PUBLIC_AUTH_ENABLED }} \
+            --build-arg NEXT_PUBLIC_CANONICAL_SITE_URL=${{ secrets.NEXT_PUBLIC_CANONICAL_SITE_URL }} \
             -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
             -t ${{ env.REGISTRY }}/frontend:latest \
             .
