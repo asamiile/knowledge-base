@@ -32,6 +32,7 @@ spira-base を本番に載せる前の作業を整理する。順序は依存関
   ```
 
 - **フロント**: `frontend/Dockerfile.prod` で `next build` / `next start`。ビルド引数で `NEXT_PUBLIC_*` を渡す
+- **DB ER 図**: [eralchemy2](https://github.com/maurerle/eralchemy2) + [Graphviz](https://graphviz.org/)（`dot` が PATH に必要）。リポジトリルートで `./scripts/generate-db-diagram.sh`（venv 作成・pip・生成を含む）→ `docs/database-er.png`（詳細は README）
 
 ## 4. セキュリティ・運用
 

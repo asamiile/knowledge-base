@@ -45,6 +45,17 @@ class Document(Base):
         Vector(768),
         nullable=True,
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
 
 class RawData(Base):
@@ -55,6 +66,17 @@ class RawData(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(String(1024), nullable=False)
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
 
 
@@ -64,6 +86,11 @@ class QuestionHistory(Base):
     __tablename__ = "question_history"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     question: Mapped[str] = mapped_column(Text, nullable=False)
     response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -74,7 +101,7 @@ class QuestionHistory(Base):
 
 
 class SavedSearch(Base):
-    """インデックス検索または arXiv 検索の保存条件（単一テナント・認可なし）。"""
+    """インデックス検索または arXiv 検索の保存条件。"""
 
     __tablename__ = "saved_search_conditions"
 
@@ -82,6 +109,11 @@ class SavedSearch(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     # knowledge=ローカル資料への意味検索全文

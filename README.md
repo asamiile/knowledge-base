@@ -61,6 +61,21 @@ docker compose up -d --build
 docker compose exec backend pytest -q
 ```
 
+### DB ER 図の生成
+
+- **初回のみ**以下を実行する
+
+```bash
+brew install graphviz
+```
+
+- ER図の生成
+
+```bash
+./scripts/generate-db-diagram.sh
+```
+
+
 ### Drizzle Studio
 
 ```bash

@@ -7,6 +7,8 @@ export type PeriodicSavedSearchTarget = Exclude<SavedSearchTarget, "knowledge">;
 
 export type SavedSearchRow = {
   id: string;
+  /** 認証オン時はサーバーが付与。認証オフや旧データでは null */
+  user_id: string | null;
   name: string;
   query: string;
   arxiv_ids: string[];

@@ -158,14 +158,23 @@ def _upsert_saved_search(db: Session, row_id: uuid.UUID, **fields: object) -> No
         setattr(row, k, v)
 
 
-def _seed_saved_searches(db: Session) -> None:
+def _resolve_seed_owner_id(db: Session) -> uuid.UUID | None:
+    email = (os.environ.get("ADMIN_EMAIL") or "").strip().lower()
+    if not email:
+        return None
+    return db.scalar(select(User.id).where(User.email == email))
+
+
+def _seed_saved_searches(db: Session, owner_id: uuid.UUID | None) -> None:
     from datetime import timedelta
 
     now = datetime.now(timezone.utc)
+    own = {"user_id": owner_id}
     # 1. knowledge 検索・定期実行オン・最終実行あり（数分前）
     _upsert_saved_search(
         db,
         ID_SAVED_KNOWLEDGE,
+        **own,
         name="[開発seed] ローカル資料（定期実行）",
         query="映像表現 論文 検索",
         arxiv_ids=[],
@@ -179,6 +188,7 @@ def _seed_saved_searches(db: Session) -> None:
     _upsert_saved_search(
         db,
         ID_SAVED_ARXIV,
+        **own,
         name="[開発seed] arXiv キーワード",
         query="neural rendering",
         arxiv_ids=["2401.00001"],
@@ -192,6 +202,7 @@ def _seed_saved_searches(db: Session) -> None:
     _upsert_saved_search(
         db,
         ID_SAVED_ARXIV_MULTI,
+        **own,
         name="[開発seed] arXiv 複数ID＋キーワード（定期オン）",
         query="diffusion model video generation",
         arxiv_ids=["2312.00001", "2312.00002", "2401.12345"],
@@ -205,6 +216,7 @@ def _seed_saved_searches(db: Session) -> None:
     _upsert_saved_search(
         db,
         ID_SAVED_ARXIV_RECENT,
+        **own,
         name="[開発seed] arXiv 昨日実行済み",
         query="3D gaussian splatting",
         arxiv_ids=[],
@@ -218,6 +230,7 @@ def _seed_saved_searches(db: Session) -> None:
     _upsert_saved_search(
         db,
         ID_SAVED_ARXIV_NEW,
+        **own,
         name="[開発seed] 新規追加（未実行）",
         query="",
         arxiv_ids=["2501.00001", "2501.00002"],
@@ -307,7 +320,7 @@ def _seed_run_logs(db: Session) -> None:
     )
 
 
-def _seed_question_history(db: Session) -> None:
+def _seed_question_history(db: Session, owner_id: uuid.UUID | None) -> None:
     # シード済みの Document を引用として使う（source_path 表示確認）
     doc_rows = db.execute(
         select(Document.id, Document.source_path)
@@ -366,9 +379,11 @@ def _seed_question_history(db: Session) -> None:
             select(QuestionHistory).where(QuestionHistory.question == q)
         )
         if row is None:
-            db.add(QuestionHistory(question=q, response=resp))
+            db.add(QuestionHistory(user_id=owner_id, question=q, response=resp))
         else:
             row.response = resp
+            if owner_id is not None:
+                row.user_id = owner_id
 
 
 def _seed_admin_user(db: Session) -> None:
@@ -400,10 +415,11 @@ def seed_dev(db: Session) -> None:
     """開発 DB にサンプル行を投入・更新する。"""
     _seed_documents(db)
     _seed_raw_data(db)
-    _seed_saved_searches(db)
-    _seed_run_logs(db)
-    _seed_question_history(db)
     _seed_admin_user(db)
+    owner_id = _resolve_seed_owner_id(db)
+    _seed_saved_searches(db, owner_id)
+    _seed_run_logs(db)
+    _seed_question_history(db, owner_id)
 
 
 def main() -> None:

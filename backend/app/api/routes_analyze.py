@@ -1,10 +1,12 @@
 import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.api.deps_auth import get_effective_user_id
 from app.db import get_db
 from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
 from app.services.analyze import run_analyze, run_analyze_stream
@@ -16,10 +18,12 @@ router = APIRouter(prefix="/api", tags=["analyze"])
 
 @router.post("/analyze/stream")
 def analyze_stream(
-    req: AnalyzeRequest, db: Session = Depends(get_db)
+    req: AnalyzeRequest,
+    db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
 ) -> StreamingResponse:
     return StreamingResponse(
-        run_analyze_stream(db, req),
+        run_analyze_stream(db, req, user_id=user_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -29,9 +33,13 @@ def analyze_stream(
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-def analyze(req: AnalyzeRequest, db: Session = Depends(get_db)) -> AnalyzeResponse:
+def analyze(
+    req: AnalyzeRequest,
+    db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
+) -> AnalyzeResponse:
     try:
-        return run_analyze(db, req)
+        return run_analyze(db, req, user_id=user_id)
     except RuntimeError as e:
         msg = str(e)
         if "GOOGLE_API_KEY" in msg:
