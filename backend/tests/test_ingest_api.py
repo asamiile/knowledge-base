@@ -137,7 +137,7 @@ def test_reindex_mocked(client: TestClient, clean_documents: None) -> None:
     """embedding / ingest をモックし、応答形状だけ確認する。"""
     with (
         patch(
-            "app.api.routes_data.build_embedding_model",
+            "app.api.deps.build_embedding_model",
             return_value=MagicMock(),
         ),
         patch(
