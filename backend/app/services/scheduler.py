@@ -62,17 +62,26 @@ def _run_knowledge_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
     return content, payload
 
 
-def _run_arxiv_job(row: SavedSearch) -> tuple[str, dict]:
-    """arXiv 検索: 論文を取り込み imports/arxiv/*.md に保存する。"""
+def _run_arxiv_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
+    """arXiv 検索: 論文を取り込み imports/arxiv/*.md に保存し、ベクトル索引を更新する。"""
     from app.core.settings import get_data_dir
+    from app.services.embeddings import build_embedding_model
+    from app.services.ingest import ingest_data_directory
     from app.services.source_import.arxiv import import_arxiv_to_data_dir
 
+    data_dir = get_data_dir()
     written = import_arxiv_to_data_dir(
-        get_data_dir(),
+        data_dir,
         arxiv_ids=list(row.arxiv_ids or []),
         search_query=(row.query or None),
         max_results=row.top_k,
     )
+
+    if written:
+        embed_model = build_embedding_model()
+        chunks, raw = ingest_data_directory(db, embed_model, data_dir)
+        logger.info("ベクトル索引を更新しました（chunks=%d, raw=%d）", chunks, raw)
+
     content = "\n".join(written)
     payload: dict = {"written": written}
     return content, payload
@@ -98,7 +107,7 @@ def execute_one(saved_search_id: UUID) -> None:
             if row.search_target == "knowledge":
                 content, payload = _run_knowledge_job(db, row)
             else:
-                content, payload = _run_arxiv_job(row)
+                content, payload = _run_arxiv_job(db, row)
 
             log = SavedSearchRunLog(
                 saved_search_id=row.id,
