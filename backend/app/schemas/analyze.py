@@ -59,7 +59,7 @@ class AnalyzeRequest(BaseModel):
     top_k: int | None = Field(
         default=None,
         ge=1,
-        le=20,
+        le=50,
         description="ベクトル検索の件数。省略時は環境変数 RAG_TOP_K",
     )
     save_question_history: bool = Field(

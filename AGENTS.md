@@ -237,7 +237,7 @@ spira-base/
 |-----------|-----|------|
 | `question` | string | ユーザ質問（1〜8000 文字） |
 | `reindex_sources` | boolean | `true` のとき DATA_DIR を再取り込み |
-| `top_k` | int | ベクトル検索件数（1〜20、省略時 `RAG_TOP_K`） |
+| `top_k` | int | ベクトル検索件数（1〜50、省略時 `RAG_TOP_K`） |
 | `save_question_history` | boolean | 既定 `true`。成功時に `question_history` へ保存（`AUTH_ENABLED=true` のときは JWT ユーザーを `user_id` に紐づける） |
 
 **Response（JSON）**

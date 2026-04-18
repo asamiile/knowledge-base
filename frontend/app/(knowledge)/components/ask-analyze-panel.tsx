@@ -256,7 +256,7 @@ export function AskAnalyzePanel({
                           id="ask-topk"
                           type="number"
                           min={1}
-                          max={20}
+                          max={50}
                           className="h-9 w-full rounded-lg"
                           value={topK}
                           onChange={(e) =>

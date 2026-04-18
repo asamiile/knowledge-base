@@ -27,6 +27,6 @@ def get_data_dir() -> Path:
 def get_rag_top_k() -> int:
     try:
         k = int(os.environ.get("RAG_TOP_K", "5"))
-        return max(1, min(k, 20))
+        return max(1, min(k, 50))
     except ValueError:
         return 5
