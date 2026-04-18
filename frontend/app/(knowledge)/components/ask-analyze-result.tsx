@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+
 import {
   SeparatedResults,
   SeparatedResultsList,
@@ -14,47 +17,77 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
   return (
     <SeparatedResults>
       <section aria-label="分析結果の本文">
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => (
+              <p className="mb-3 leading-relaxed last:mb-0">{children}</p>
+            ),
+            ul: ({ children }) => (
+              <ul className="mb-3 list-inside list-disc space-y-1 last:mb-0">{children}</ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="mb-3 list-inside list-decimal space-y-1 last:mb-0">{children}</ol>
+            ),
+            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            h1: ({ children }) => <h1 className="mb-2 text-lg font-semibold">{children}</h1>,
+            h2: ({ children }) => <h2 className="mb-2 font-semibold">{children}</h2>,
+            h3: ({ children }) => <h3 className="mb-1 font-medium">{children}</h3>,
+          }}
+        >
           {result.answer}
-        </p>
+        </ReactMarkdown>
       </section>
 
-      <section aria-labelledby="ask-points-heading">
-        <h3
-          id="ask-points-heading"
-          className="font-heading pb-2 text-base font-medium"
-        >
-          ポイント
-        </h3>
-        <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-          {result.key_points.map((k, i) => (
-            <li key={i}>{k}</li>
-          ))}
-        </ul>
-      </section>
+      {result.key_points.length > 0 && (
+        <section aria-labelledby="ask-points-heading">
+          <h3
+            id="ask-points-heading"
+            className="font-heading pb-2 text-base font-medium"
+          >
+            ポイント
+          </h3>
+          <ul className="text-muted-foreground list-inside list-disc space-y-1">
+            {result.key_points.map((k, i) => (
+              <li key={i}>{k}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <section aria-labelledby="ask-citations-heading">
-        <h3
-          id="ask-citations-heading"
-          className="font-heading pb-2 text-base font-medium"
-        >
-          引用
-        </h3>
-        <SeparatedResultsList
-          items={result.citations}
-          keyExtractor={(_, i) => i}
-          renderItem={(c) => (
-            <article>
-              <span className="font-mono text-muted-foreground text-xs">
-                doc #{c.document_id}
-              </span>
-              <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
-                {c.excerpt}
-              </p>
-            </article>
-          )}
-        />
-      </section>
+      {result.citations.length > 0 && (
+        <section aria-labelledby="ask-citations-heading">
+          <h3
+            id="ask-citations-heading"
+            className="font-heading pb-2 text-base font-medium"
+          >
+            引用
+          </h3>
+          <SeparatedResultsList
+            items={result.citations}
+            keyExtractor={(_, i) => i}
+            renderItem={(c) => (
+              <article>
+                {c.source_path ? (
+                  <Link
+                    href={`/file?path=${encodeURIComponent(c.source_path)}`}
+                    className="font-mono text-sm text-primary underline-offset-2 hover:underline"
+                  >
+                    {c.source_path}
+                  </Link>
+                ) : (
+                  <span className="font-mono text-muted-foreground text-sm">
+                    doc #{c.document_id}
+                  </span>
+                )}
+                <p className="mt-1 leading-relaxed text-muted-foreground text-sm whitespace-pre-wrap">
+                  {c.excerpt}
+                </p>
+              </article>
+            )}
+          />
+        </section>
+      )}
     </SeparatedResults>
   );
 }

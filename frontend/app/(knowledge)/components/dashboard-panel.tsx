@@ -104,7 +104,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-xl gap-2"
+              className="gap-2"
               disabled={busy}
               onClick={() => void refreshAll()}
             >
@@ -117,7 +117,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="rounded-xl border-border/80">
+            <Card className="border-border/80">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">ファイル数</CardTitle>
               </CardHeader>
@@ -147,7 +147,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-border/80">
+            <Card className="border-border/80">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">分類</CardTitle>
               </CardHeader>

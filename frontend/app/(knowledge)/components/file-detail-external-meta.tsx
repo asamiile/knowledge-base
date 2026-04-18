@@ -112,7 +112,7 @@ export function FileDetailExternalMeta({
       {summary ? (
         <div>
           <p className="text-muted-foreground text-xs">要約</p>
-          <div className="text-foreground mt-2 font-sans text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+          <div className="text-foreground mt-2 whitespace-pre-wrap wrap-break-word">
             {summary}
           </div>
         </div>
@@ -128,7 +128,7 @@ export function FileDetailExternalMeta({
         {enrich && enrich.sources.length > 0 ? (
           <div>
             <p className="text-muted-foreground text-xs">データソース</p>
-            <p className="text-muted-foreground mt-2 font-sans text-sm">
+            <p className="text-muted-foreground mt-2">
               {enrich.sources.join(", ")}
             </p>
           </div>
@@ -158,13 +158,13 @@ export function FileDetailExternalMeta({
           <div className="flex flex-col gap-4 sm:flex-row sm:gap-10">
             <div>
               <p className="text-muted-foreground text-xs">サイズ</p>
-              <p className="text-foreground mt-2 font-mono text-[15px] tabular-nums">
+              <p className="text-foreground mt-2 font-mono text-sm tabular-nums">
                 {fileMeta.size_bytes.toLocaleString()} B
               </p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">更新日時</p>
-              <p className="text-foreground mt-2 font-mono text-[15px] tabular-nums">
+              <p className="text-foreground mt-2 font-mono text-sm tabular-nums">
                 {new Date(fileMeta.modified_at).toLocaleString()}
               </p>
             </div>

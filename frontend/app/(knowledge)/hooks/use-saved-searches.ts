@@ -19,7 +19,7 @@ import {
   savedSearchRowToClient,
   storeSavedMaterialSearches,
   type SavedMaterialSearch,
-} from "@/lib/saved-material-searches";
+} from "@/lib/api/saved-material-searches";
 
 import type { StudioShell } from "./use-studio-shell";
 
@@ -172,7 +172,7 @@ export function useSavedSearches(
     return () => clearInterval(id);
   }, []);
 
-  const addSavedMaterialSearch = useCallback(async () => {
+  const addSavedMaterialSearch = useCallback(async (onSuccess?: () => void) => {
     const name = saveMaterialName.trim();
     if (!name) {
       setError("表示名を入力してください。");
@@ -210,6 +210,7 @@ export function useSavedSearches(
       setSaveMaterialScheduleEnabled(false);
       setSaveMaterialSearchTarget("arxiv");
       setInfo(`「${name}」を保存しました。`);
+      onSuccess?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

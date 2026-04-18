@@ -60,11 +60,6 @@ export function SidebarPeriodicRunLogs({
     };
   }, []);
 
-  const openLogsRoot = () => {
-    onSectionChange("savedLogs");
-    router.push(KNOWLEDGE_PATHS.savedLogs);
-  };
-
   const openSavedSettings = () => {
     onSectionChange("saved");
     router.push(KNOWLEDGE_PATHS.saved);
@@ -73,39 +68,22 @@ export function SidebarPeriodicRunLogs({
   return (
     <>
       {sidebarState === "collapsed" && (
-        <>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={activeSection === "saved"}
-              tooltip="定期実行を設定"
-              disabled={navDisabled("saved")}
-              onClick={openSavedSettings}
-            >
-              <Bookmark />
-              <span className="sr-only">定期実行を設定</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={
-                activeSection === "savedLogs" &&
-                (activeLogId == null || activeLogId === "")
-              }
-              tooltip="実行ログ"
-              disabled={navDisabled("savedLogs")}
-              onClick={openLogsRoot}
-            >
-              <History />
-              <span className="sr-only">実行ログ</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={activeSection === "saved"}
+            tooltip="定期実行を設定"
+            disabled={navDisabled("saved")}
+            onClick={openSavedSettings}
+          >
+            <Bookmark />
+            <span className="sr-only">定期実行を設定</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       )}
       <SidebarMenuItem className="group-data-[collapsible=icon]:hidden min-w-0">
         <Collapsible defaultOpen className="group/collapsible w-full min-w-0">
           <CollapsibleTrigger
             type="button"
-            disabled={navDisabled("savedLogs")}
             className={cn(
               sidebarMenuButtonVariants({ variant: "default", size: "default" }),
               "w-full min-w-0",

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 import {
   authEnabledInBrowser,
-  getAccessToken,
+  clearAccessToken,
+  isTokenValid,
 } from "@/lib/auth/token";
 
 export function KnowledgeAuthGuard({
@@ -18,7 +19,8 @@ export function KnowledgeAuthGuard({
     if (!authEnabledInBrowser()) {
       return;
     }
-    if (!getAccessToken()) {
+    if (!isTokenValid()) {
+      clearAccessToken();
       router.replace("/login");
       return;
     }

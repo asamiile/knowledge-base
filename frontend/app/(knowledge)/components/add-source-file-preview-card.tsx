@@ -36,7 +36,7 @@ export function AddSourceFilePreviewCard({
           </span>
         )}
       </p>
-      <pre className="bg-muted/50 max-h-64 overflow-auto rounded-xl border border-border/60 p-3 font-mono text-xs whitespace-pre-wrap wrap-break-word">
+      <pre className="bg-muted/50 max-h-64 overflow-auto rounded-lg border border-border/60 p-3 font-mono text-xs whitespace-pre-wrap wrap-break-word">
         {pending.preview}
       </pre>
       <div className="flex flex-wrap gap-2">
@@ -44,7 +44,6 @@ export function AddSourceFilePreviewCard({
           variant="outline"
           disabled={disabled}
           onClick={onCancel}
-          className="rounded-xl"
           type="button"
         >
           キャンセル
@@ -52,7 +51,6 @@ export function AddSourceFilePreviewCard({
         <Button
           disabled={disabled}
           onClick={onConfirm}
-          className="rounded-xl"
           type="button"
         >
           {uploadBusy ? "アップロード中…" : "この内容でアップロード"}

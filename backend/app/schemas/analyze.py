@@ -1,13 +1,52 @@
 from pydantic import BaseModel, Field
 
 
-class Citation(BaseModel):
-    """回答の根拠となったドキュメント断片。"""
+# ── Gemini の response_schema に渡す内部モデル ────────────────────────────────
+# source_path は LLM が知らないため含めない。
+
+class _CitationRaw(BaseModel):
+    """Gemini structured output 用（内部専用）。"""
 
     document_id: int = Field(description="documents テーブルの主キー")
     excerpt: str = Field(
         max_length=2000,
         description="引用した本文の抜粋（数百文字以内推奨）",
+    )
+
+
+class _AnalyzeResponseRaw(BaseModel):
+    """Gemini structured output 用（内部専用）。"""
+
+    answer: str = Field(description="質問に対する日本語または入力言語での要約回答")
+    key_points: list[str] = Field(
+        description="箇条書きの重要ポイント（短い文のリスト）",
+    )
+    citations: list[_CitationRaw] = Field(
+        description="コンテキストに用いた documents の引用",
+    )
+
+
+class _AnalyzeMetadata(BaseModel):
+    """ストリーミング Phase 2 用: key_points + citations のみ（内部専用）。"""
+
+    key_points: list[str] = Field(
+        description="箇条書きの重要ポイント（短い文のリスト）",
+    )
+    citations: list[_CitationRaw] = Field(
+        description="コンテキストに用いた documents の引用",
+    )
+
+
+# ── 公開 API スキーマ ────────────────────────────────────────────────────────
+
+class Citation(BaseModel):
+    """回答の根拠となったドキュメント断片。"""
+
+    document_id: int
+    excerpt: str
+    source_path: str | None = Field(
+        default=None,
+        description="DATA_DIR 相対パス。あるとき /file?path= へリンク可能",
     )
 
 

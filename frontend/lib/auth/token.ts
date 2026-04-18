@@ -50,3 +50,24 @@ export function clearAccessToken(): void {
 export function authEnabledInBrowser(): boolean {
   return process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
 }
+
+/** JWT の exp クレームを秒単位で返す。デコード失敗時は null。 */
+function getTokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof decoded?.exp === "number" ? decoded.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/** トークンが存在し、かつ有効期限内であれば true。 */
+export function isTokenValid(): boolean {
+  const token = readToken();
+  if (!token) return false;
+  const exp = getTokenExpiry(token);
+  if (exp === null) return true; // exp なし JWT は期限なしとみなす
+  return Date.now() / 1000 < exp;
+}

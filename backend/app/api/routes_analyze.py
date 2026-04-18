@@ -1,16 +1,31 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
-from app.services.analyze import run_analyze
+from app.services.analyze import run_analyze, run_analyze_stream
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["analyze"])
+
+
+@router.post("/analyze/stream")
+def analyze_stream(
+    req: AnalyzeRequest, db: Session = Depends(get_db)
+) -> StreamingResponse:
+    return StreamingResponse(
+        run_analyze_stream(db, req),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
