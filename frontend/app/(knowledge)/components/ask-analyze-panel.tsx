@@ -154,14 +154,7 @@ export function AskAnalyzePanel({
             </div>
           )}
 
-          {pendingLiveResult && (
-            <QuestionAnswerPair
-              questionText={question.trim() || "—"}
-              response={pendingLiveResult}
-            />
-          )}
-
-          {questionHistory.map((h, i) => (
+          {[...questionHistory].reverse().map((h, i, arr) => (
             <QuestionAnswerPair
               key={h.id}
               questionText={h.question}
@@ -174,7 +167,7 @@ export function AskAnalyzePanel({
                   >
                     {new Date(h.created_at).toLocaleString()}
                   </time>
-                  {i === 0 && (
+                  {i === arr.length - 1 && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -191,6 +184,13 @@ export function AskAnalyzePanel({
               }
             />
           ))}
+
+          {pendingLiveResult && (
+            <QuestionAnswerPair
+              questionText={question.trim() || "—"}
+              response={pendingLiveResult}
+            />
+          )}
         </div>
       </div>
 

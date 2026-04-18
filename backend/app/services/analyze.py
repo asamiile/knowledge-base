@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import json as _json
+import logging
+from typing import Generator
+
 from google import genai
 from google.genai import types
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.settings import (
     get_data_dir,
@@ -18,6 +24,7 @@ from app.schemas.analyze import (
     AnalyzeRequest,
     AnalyzeResponse,
     Citation,
+    _AnalyzeMetadata,
     _AnalyzeResponseRaw,
 )
 from app.services.embeddings import build_embedding_model
@@ -139,3 +146,165 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
         )
         db.commit()
     return result
+
+
+def run_analyze_stream(
+    db: Session, req: AnalyzeRequest
+) -> Generator[str, None, None]:
+    """SSE イベントを yield する同期ジェネレーター。
+
+    Phase 1: answer のみ plain text でストリーミング
+    Phase 2: key_points + citations を構造化出力で取得し done イベントで送信
+    """
+
+    def _sse(payload: dict) -> str:
+        return f"data: {_json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    try:
+        api_key = get_google_api_key()
+        if not api_key:
+            yield _sse({"type": "error", "message": "GOOGLE_API_KEY is not configured"})
+            return
+
+        embed_model = build_embedding_model()
+        data_dir = get_data_dir()
+
+        if req.reindex_sources:
+            ingest_data_directory(db, embed_model, data_dir)
+
+        n_docs = db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(Document.embedding.isnot(None))
+        )
+        if not n_docs and has_vector_source_files(data_dir):
+            ingest_data_directory(db, embed_model, data_dir)
+            n_docs = db.scalar(
+                select(func.count())
+                .select_from(Document)
+                .where(Document.embedding.isnot(None))
+            )
+
+        if not n_docs:
+            if has_any_source_files(data_dir) and not has_vector_source_files(data_dir):
+                yield _sse({
+                    "type": "error",
+                    "message": "NO_TEXT_SOURCES: ベクトル検索には DATA_DIR に .md または .txt が必要です。",
+                })
+            else:
+                yield _sse({
+                    "type": "error",
+                    "message": (
+                        f"NO_DOCUMENTS: DATA_DIR に .md/.txt を置くか reindex_sources: true を指定してください。"
+                        f" 参照ディレクトリ: {data_dir}"
+                    ),
+                })
+            return
+
+        # ── RAG 検索 ──────────────────────────────────────────────────────────
+        k = req.top_k or get_rag_top_k()
+        qvec = embed_model.get_text_embedding(req.question)
+        distance = Document.embedding.cosine_distance(qvec)
+        rows = db.execute(
+            select(Document.id, Document.text, distance.label("dist"))
+            .where(Document.embedding.isnot(None))
+            .order_by(distance)
+            .limit(k)
+        ).all()
+        context = "\n---\n".join(
+            f"[document_id={rid}]\n{text}\n" for rid, text, _ in rows
+        )
+
+        client = genai.Client(api_key=api_key)
+
+        # ── Phase 1: answer をストリーミング ──────────────────────────────────
+        answer_prompt = (
+            "あなたは知識ベースの分析アシスタントです。"
+            "次のコンテキストのみを根拠に質問に日本語で回答してください。\n"
+            "コンテキストにない内容は推測せず「提供された資料には記載がありません」と述べてください。\n"
+            "回答のテキストのみを出力してください。\n\n"
+            f"コンテキスト:\n{context}\n\n"
+            f"質問: {req.question}"
+        )
+
+        answer_parts: list[str] = []
+        for chunk in client.models.generate_content_stream(
+            model=get_gemini_llm_model(),
+            contents=answer_prompt,
+            config=types.GenerateContentConfig(temperature=0.2),
+        ):
+            if chunk.text:
+                answer_parts.append(chunk.text)
+                yield _sse({"type": "token", "content": chunk.text})
+
+        answer = "".join(answer_parts)
+
+        # ── Phase 2: key_points + citations を構造化出力で取得 ─────────────────
+        meta_prompt = (
+            f"次の質問への回答と参照コンテキストをもとに以下を抽出してください。\n"
+            f"- key_points: 回答の重要ポイント（簡潔な日本語の箇条書き）\n"
+            f"- citations: 回答の根拠となったコンテキストの document_id と抜粋\n\n"
+            f"質問: {req.question}\n"
+            f"回答: {answer}\n\n"
+            f"コンテキスト:\n{context}"
+        )
+        meta_resp = client.models.generate_content(
+            model=get_gemini_llm_model(),
+            contents=meta_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=_AnalyzeMetadata,
+                temperature=0.2,
+            ),
+        )
+        meta_text = meta_resp.text or ""
+        if not meta_text:
+            yield _sse({"type": "done", "key_points": [], "citations": []})
+            return
+
+        raw_meta = _AnalyzeMetadata.model_validate_json(meta_text)
+
+        # source_path を付与
+        cited_ids = [c.document_id for c in raw_meta.citations]
+        path_map: dict[int, str | None] = {}
+        if cited_ids:
+            path_map = dict(
+                db.execute(
+                    select(Document.id, Document.source_path).where(
+                        Document.id.in_(cited_ids)
+                    )
+                ).all()
+            )
+        citations = [
+            Citation(
+                document_id=c.document_id,
+                excerpt=c.excerpt,
+                source_path=path_map.get(c.document_id),
+            )
+            for c in raw_meta.citations
+        ]
+
+        yield _sse({
+            "type": "done",
+            "key_points": raw_meta.key_points,
+            "citations": [c.model_dump() for c in citations],
+        })
+
+        # ── question_history に保存 ────────────────────────────────────────────
+        if req.save_question_history:
+            result = AnalyzeResponse(
+                answer=answer,
+                key_points=raw_meta.key_points,
+                citations=citations,
+            )
+            db.add(
+                QuestionHistory(
+                    question=req.question.strip()[:8000],
+                    response=result.model_dump(mode="json"),
+                )
+            )
+            db.commit()
+
+    except Exception as e:
+        logger.exception("run_analyze_stream failed")
+        yield _sse({"type": "error", "message": f"{type(e).__name__}: {e}"})

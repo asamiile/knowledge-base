@@ -26,6 +26,17 @@ class _AnalyzeResponseRaw(BaseModel):
     )
 
 
+class _AnalyzeMetadata(BaseModel):
+    """ストリーミング Phase 2 用: key_points + citations のみ（内部専用）。"""
+
+    key_points: list[str] = Field(
+        description="箇条書きの重要ポイント（短い文のリスト）",
+    )
+    citations: list[_CitationRaw] = Field(
+        description="コンテキストに用いた documents の引用",
+    )
+
+
 # ── 公開 API スキーマ ────────────────────────────────────────────────────────
 
 class Citation(BaseModel):

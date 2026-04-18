@@ -10,7 +10,7 @@ import {
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import type { AnalyzeResponse } from "@/lib/api/analyze";
-import { postAnalyze } from "@/lib/api/analyze";
+import { postAnalyzeStream } from "@/lib/api/analyze";
 import {
   type QuestionHistoryItem,
   getQuestionHistory,
@@ -101,15 +101,35 @@ export function useAskAnalyze(shell: StudioShell) {
     setInfo(null);
     setBusy("analyze");
     setResult(null);
+
     try {
-      const data = await postAnalyze({
+      let accAnswer = "";
+
+      for await (const event of postAnalyzeStream({
         question: question.trim(),
         reindex_sources: false,
         top_k: topK,
         save_question_history: true,
-      });
-      setResult(data);
-      void refreshQuestionHistory();
+      })) {
+        if (event.type === "token") {
+          accAnswer += event.content;
+          setResult((prev) => ({
+            answer: accAnswer,
+            key_points: prev?.key_points ?? [],
+            citations: prev?.citations ?? [],
+          }));
+        } else if (event.type === "done") {
+          setResult({
+            answer: accAnswer,
+            key_points: event.key_points,
+            citations: event.citations,
+          });
+          void refreshQuestionHistory();
+        } else if (event.type === "error") {
+          setError(event.message);
+          setResult(null);
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
