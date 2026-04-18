@@ -114,9 +114,7 @@ export function AskAnalyzePanel({
     if (!result) return null;
     const top = questionHistory[0];
     if (!top) return result;
-    return JSON.stringify(result) === JSON.stringify(top.response)
-      ? null
-      : result;
+    return top.response.answer === result.answer ? null : result;
   }, [result, questionHistory]);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);

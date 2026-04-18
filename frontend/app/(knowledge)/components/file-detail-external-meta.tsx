@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import type { DataFileInfo, FileEnrichmentResponse } from "@/lib/api/data";
+import { useAsyncData } from "../hooks/use-async-data";
+
+import type { DataFileInfo } from "@/lib/api/data";
 import { getFileEnrichment } from "@/lib/api/data";
 import { Separator } from "@/components/ui/separator";
 import { arxivCategoryLabelJa } from "@/lib/arxiv-category-labels";
@@ -21,31 +22,13 @@ export function FileDetailExternalMeta({
   fileMeta,
   fileMetaError,
 }: FileDetailExternalMetaProps) {
-  const [enrich, setEnrich] = useState<FileEnrichmentResponse | null | undefined>(
-    undefined,
+  const { loading: showMetaLoading, data: enrich, error: enrichError } = useAsyncData(
+    () => getFileEnrichment(dataPath),
+    dataPath,
   );
-  const [enrichError, setEnrichError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getFileEnrichment(dataPath)
-      .then((data) => {
-        if (!cancelled) setEnrich(data);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setEnrichError("外部メタの取得に失敗しました。");
-          setEnrich(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dataPath]);
 
   const categories = enrich?.arxiv_categories ?? [];
   const summary = enrich?.summary?.trim();
-  const showMetaLoading = enrich === undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,7 +61,7 @@ export function FileDetailExternalMeta({
               );
             })}
           </ul>
-        ) : enrich !== undefined &&
+        ) : !showMetaLoading &&
           enrich?.arxiv_id &&
           categories.length === 0 ? (
           <p className="text-muted-foreground">
@@ -86,7 +69,7 @@ export function FileDetailExternalMeta({
           </p>
         ) : null}
 
-        {enrich !== undefined && enrich?.arxiv_id ? (
+        {!showMetaLoading && enrich?.arxiv_id ? (
           <p className="text-foreground tabular-nums">
             引用数:{" "}
             {(enrich.citation_count ?? 0).toLocaleString()}
@@ -116,7 +99,7 @@ export function FileDetailExternalMeta({
             {summary}
           </div>
         </div>
-      ) : enrich !== undefined &&
+      ) : !showMetaLoading &&
         enrich?.arxiv_id &&
         !summary ? (
         <p className="text-muted-foreground">要約はありません。</p>
