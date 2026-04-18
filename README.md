@@ -62,6 +62,21 @@ docker compose up -d --build
 docker compose exec backend pytest -q
 ```
 
+### DB ER 図の生成
+
+- **初回のみ**以下を実行する
+
+```bash
+brew install graphviz
+```
+
+- ER図の生成
+
+```bash
+./scripts/generate-db-diagram.sh
+```
+
+
 ### Drizzle Studio
 
 ORM は **SQLAlchemy のまま**にし、[Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview) は開発時の **DB 閲覧**と、`drizzle-kit pull` による **イントロスペクション**（`drizzle/schema.ts` の更新）だけに使う。マイグレーションの正は引き続き SQLAlchemy 側。

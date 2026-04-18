@@ -18,6 +18,7 @@ def normalize_arxiv_id_list(raw: list[str]) -> list[str]:
 
 class SavedSearchRead(BaseModel):
     id: UUID
+    user_id: UUID | None = None
     name: str
     query: str
     arxiv_ids: list[str] = Field(default_factory=list)

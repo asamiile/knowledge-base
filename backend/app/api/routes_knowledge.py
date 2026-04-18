@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
+from app.api.deps_auth import get_effective_user_id
 from app.db import get_db
 from app.models.tables import (
     Document,
@@ -40,6 +41,22 @@ from app.services.material_search import run_material_search
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
 
+def _get_saved_search_or_404(
+    db: Session,
+    search_id: UUID,
+    *,
+    user_id: UUID | None,
+) -> SavedSearch:
+    row = db.get(SavedSearch, search_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="saved search not found")
+    if user_id is not None and row.user_id is not None and row.user_id != user_id:
+        raise HTTPException(status_code=404, detail="saved search not found")
+    if user_id is not None and row.user_id is None:
+        raise HTTPException(status_code=404, detail="saved search not found")
+    return row
+
+
 def _validate_saved_row_or_400(*, search_target: str, query: str, arxiv_ids: list[str]) -> None:
     q = (query or "").strip()
     ids = [x for x in arxiv_ids if x]
@@ -60,15 +77,15 @@ def _validate_saved_row_or_400(*, search_target: str, query: str, arxiv_ids: lis
 @router.get("/question-history", response_model=list[QuestionHistoryRead])
 def list_question_history(
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
     limit: int = 50,
 ) -> list[QuestionHistoryRead]:
     """質問と Analyze 応答の履歴（新しい順）。"""
     lim = max(1, min(limit, 100))
-    rows = db.scalars(
-        select(QuestionHistory)
-        .order_by(QuestionHistory.created_at.desc())
-        .limit(lim),
-    ).all()
+    stmt = select(QuestionHistory).order_by(QuestionHistory.created_at.desc()).limit(lim)
+    if user_id is not None:
+        stmt = stmt.where(QuestionHistory.user_id == user_id)
+    rows = db.scalars(stmt).all()
     return [QuestionHistoryRead.model_validate(r) for r in rows]
 
 
@@ -119,10 +136,14 @@ def knowledge_material_search(
 
 
 @router.get("/saved-searches", response_model=list[SavedSearchRead])
-def list_saved_searches(db: Session = Depends(get_db)) -> list[SavedSearchRead]:
-    rows = db.scalars(
-        select(SavedSearch).order_by(SavedSearch.created_at.asc()),
-    ).all()
+def list_saved_searches(
+    db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
+) -> list[SavedSearchRead]:
+    stmt = select(SavedSearch).order_by(SavedSearch.created_at.asc())
+    if user_id is not None:
+        stmt = stmt.where(SavedSearch.user_id == user_id)
+    rows = db.scalars(stmt).all()
     return [SavedSearchRead.model_validate(r) for r in rows]
 
 
@@ -130,9 +151,11 @@ def list_saved_searches(db: Session = Depends(get_db)) -> list[SavedSearchRead]:
 def create_saved_search(
     req: SavedSearchCreate,
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
 ) -> SavedSearchRead:
     enabled = req.schedule_enabled and req.interval_minutes > 0
     row = SavedSearch(
+        user_id=user_id,
         name=req.name,
         query=req.query,
         arxiv_ids=list(req.arxiv_ids),
@@ -152,10 +175,9 @@ def patch_saved_search(
     search_id: UUID,
     req: SavedSearchPatch,
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
 ) -> SavedSearchRead:
-    row = db.get(SavedSearch, search_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="saved search not found")
+    row = _get_saved_search_or_404(db, search_id, user_id=user_id)
     data = req.model_dump(exclude_unset=True)
     if "name" in data:
         row.name = data["name"].strip()
@@ -192,10 +214,9 @@ def patch_saved_search(
 def delete_saved_search(
     search_id: UUID,
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
 ) -> Response:
-    row = db.get(SavedSearch, search_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="saved search not found")
+    row = _get_saved_search_or_404(db, search_id, user_id=user_id)
     db.delete(row)
     db.commit()
     return Response(status_code=204)
@@ -204,14 +225,23 @@ def delete_saved_search(
 @router.get("/saved-search-run-logs", response_model=list[SavedSearchRunLogListItem])
 def list_saved_search_run_logs(
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
     limit: int = 200,
 ) -> list[SavedSearchRunLogListItem]:
     lim = max(1, min(limit, 500))
-    rows = db.scalars(
+    stmt = (
         select(SavedSearchRunLog)
         .order_by(SavedSearchRunLog.created_at.desc())
-        .limit(lim),
-    ).all()
+        .limit(lim)
+    )
+    if user_id is not None:
+        owned_ids = db.scalars(
+            select(SavedSearch.id).where(SavedSearch.user_id == user_id),
+        ).all()
+        if not owned_ids:
+            return []
+        stmt = stmt.where(SavedSearchRunLog.saved_search_id.in_(owned_ids))
+    rows = db.scalars(stmt).all()
     return [SavedSearchRunLogListItem.model_validate(r) for r in rows]
 
 
@@ -222,10 +252,17 @@ def list_saved_search_run_logs(
 def get_saved_search_run_log(
     log_id: UUID,
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
 ) -> SavedSearchRunLogRead:
     row = db.get(SavedSearchRunLog, log_id)
     if row is None:
         raise HTTPException(status_code=404, detail="run log not found")
+    if user_id is not None:
+        if row.saved_search_id is None:
+            raise HTTPException(status_code=404, detail="run log not found")
+        parent = db.get(SavedSearch, row.saved_search_id)
+        if parent is None or parent.user_id != user_id:
+            raise HTTPException(status_code=404, detail="run log not found")
     return SavedSearchRunLogRead.model_validate(row)
 
 
@@ -237,7 +274,12 @@ def get_saved_search_run_log(
 def create_saved_search_run_log(
     req: SavedSearchRunLogCreate,
     db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
 ) -> SavedSearchRunLogRead:
+    if req.saved_search_id is not None and user_id is not None:
+        parent = db.get(SavedSearch, req.saved_search_id)
+        if parent is None or parent.user_id != user_id:
+            raise HTTPException(status_code=404, detail="saved search not found")
     row = SavedSearchRunLog(
         saved_search_id=req.saved_search_id,
         title_snapshot=req.title_snapshot.strip() or "Untitled",

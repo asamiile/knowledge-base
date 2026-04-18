@@ -1,3 +1,6 @@
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
 const CLOUD_RUN_HOST_MARKER = ".run.app";
 
 function canonicalBaseUrl(): string | null {
@@ -23,25 +26,25 @@ function isCloudRunDefaultHost(host: string): boolean {
   return h.includes(".a.run.app") || /\.[a-z0-9-]+\.run\.app$/i.test(h);
 }
 
-export default function middleware(request: Request) {
+export function proxy(request: NextRequest) {
   const base = canonicalBaseUrl();
-  if (!base) return;
+  if (!base) return NextResponse.next();
 
   const hostHeader = request.headers.get("host");
   const host = hostHeader?.split(":")[0]?.toLowerCase() ?? "";
-  if (!host || !isCloudRunDefaultHost(host)) return;
+  if (!host || !isCloudRunDefaultHost(host)) return NextResponse.next();
 
   let canonicalHost: string;
   try {
     canonicalHost = new URL(base).host.toLowerCase();
   } catch {
-    return;
+    return NextResponse.next();
   }
-  if (host === canonicalHost) return;
+  if (host === canonicalHost) return NextResponse.next();
 
   const current = new URL(request.url);
   const target = new URL(current.pathname + current.search, base);
-  return Response.redirect(target.toString(), 301);
+  return NextResponse.redirect(target, 301);
 }
 
 export const config = {
