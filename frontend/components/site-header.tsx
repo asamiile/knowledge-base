@@ -26,11 +26,6 @@ export function SiteHeader() {
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-all duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full min-w-0 items-center gap-3 px-4 lg:gap-4 lg:px-6">
-        <div className="min-w-0">
-          <p className="truncate text-base leading-tight font-semibold tracking-tight">
-            spira-base
-          </p>
-        </div>
         <div className="min-w-0 flex-1" />
         {authOn ? (
           <DropdownMenu>

@@ -227,7 +227,7 @@ export function AskAnalyzePanel({
                   <SlidersHorizontal className="size-4 opacity-80" />
                   オプション
                   {topK !== 5 && (
-                    <span className="bg-primary/15 text-primary rounded px-1.5 py-px text-[10px] font-medium tabular-nums">
+                    <span className="bg-primary/15 text-primary rounded px-1.5 py-px text-xs font-medium tabular-nums">
                       k={topK}
                     </span>
                   )}
