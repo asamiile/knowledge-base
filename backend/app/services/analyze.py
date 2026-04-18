@@ -5,6 +5,7 @@ from __future__ import annotations
 import json as _json
 import logging
 from typing import Generator
+from uuid import UUID
 
 from google import genai
 from google.genai import types
@@ -83,7 +84,12 @@ def _ensure_documents_indexed(
         )
 
 
-def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
+def run_analyze(
+    db: Session,
+    req: AnalyzeRequest,
+    *,
+    user_id: UUID | None = None,
+) -> AnalyzeResponse:
     api_key = get_google_api_key()
     if not api_key:
         raise RuntimeError("GOOGLE_API_KEY is not configured")
@@ -151,6 +157,7 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
     if req.save_question_history:
         db.add(
             QuestionHistory(
+                user_id=user_id,
                 question=req.question.strip()[:MAX_QUESTION_LENGTH],
                 response=result.model_dump(mode="json"),
             )
@@ -160,7 +167,10 @@ def run_analyze(db: Session, req: AnalyzeRequest) -> AnalyzeResponse:
 
 
 def run_analyze_stream(
-    db: Session, req: AnalyzeRequest
+    db: Session,
+    req: AnalyzeRequest,
+    *,
+    user_id: UUID | None = None,
 ) -> Generator[str, None, None]:
     """SSE イベントを yield する同期ジェネレーター。
 
@@ -273,6 +283,7 @@ def run_analyze_stream(
             )
             db.add(
                 QuestionHistory(
+                    user_id=user_id,
                     question=req.question.strip()[:MAX_QUESTION_LENGTH],
                     response=result.model_dump(mode="json"),
                 )
