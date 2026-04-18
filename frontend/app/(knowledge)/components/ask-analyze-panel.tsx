@@ -68,13 +68,13 @@ function QuestionAnswerPair({
 }) {
   return (
     <div className="space-y-4">
-      <Card size="sm" className="!py-0">
+      <Card size="sm" className="!py-0 text-base">
         <CardContent className="space-y-2 py-4">
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="leading-relaxed whitespace-pre-wrap">
             {questionText}
           </p>
           {questionMeta ? (
-            <div className="text-muted-foreground flex flex-wrap items-center gap-1 text-[11px] tabular-nums">
+            <div className="text-muted-foreground flex flex-wrap items-center gap-1 text-sm tabular-nums">
               {questionMeta}
             </div>
           ) : null}
@@ -143,7 +143,7 @@ export function AskAnalyzePanel({
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">まだ資料がありません</p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-muted-foreground text-sm">
                   質問に答えるには、先に資料をナレッジベースへ追加してください。
                 </p>
               </div>
@@ -164,7 +164,7 @@ export function AskAnalyzePanel({
               questionMeta={
                 <div className="flex items-center gap-0.5">
                   <time
-                    className="text-muted-foreground text-[11px] tabular-nums"
+                    className="text-muted-foreground text-sm tabular-nums"
                     dateTime={h.created_at}
                   >
                     {new Date(h.created_at).toLocaleString()}
@@ -198,7 +198,7 @@ export function AskAnalyzePanel({
 
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 shrink-0 pt-5 backdrop-blur md:pt-6">
         <div className="mx-auto max-w-3xl">
-          <Card size="sm" className="!py-0">
+          <Card size="sm" className="!py-0 text-base">
             <CardContent className="space-y-3 py-4">
               <Textarea
                 placeholder="知識ベースに質問…"
@@ -209,7 +209,7 @@ export function AskAnalyzePanel({
                 onKeyDown={onAskQuestionTextareaKeyDown}
                 rows={4}
                 disabled={busy !== null}
-                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 py-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-sm"
+                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center justify-between gap-2">
                 <Button
@@ -250,7 +250,7 @@ export function AskAnalyzePanel({
                       <div className="flex flex-col gap-1.5">
                         <Label
                           htmlFor="ask-topk"
-                          className="text-muted-foreground text-xs"
+                          className="text-muted-foreground text-sm"
                         >
                           top_k（ベクトル検索件数）
                         </Label>

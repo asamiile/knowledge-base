@@ -20,7 +20,7 @@ export function AddSourceBatchPreviewCard({
 }: AddSourceBatchPreviewCardProps) {
   return (
     <div className="border-border bg-muted/30 space-y-3 rounded-lg border p-4">
-      <p className="text-muted-foreground text-xs">
+      <p className="text-muted-foreground text-sm">
         {files.length} 件をアップロードします（.md / .txt / .json / .pdf）
       </p>
       <ul className="max-h-40 overflow-y-auto text-sm">

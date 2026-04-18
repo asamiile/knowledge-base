@@ -58,7 +58,7 @@ export function MaterialSearchPanel({
               onKeyDown={onQueryKeyDown}
               placeholder="インデックス内で探したい内容を入力…"
               disabled={busy !== null}
-              className="h-11 min-w-0 w-full text-[15px] sm:flex-1 sm:h-12"
+              className="h-11 min-w-0 w-full text-sm sm:flex-1 sm:h-12"
               aria-label="検索クエリ"
               enterKeyHint="search"
             />

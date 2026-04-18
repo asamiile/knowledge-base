@@ -116,7 +116,7 @@ export function SiteSidebar({
       </SidebarContent>
       <SidebarFooter>
         <div className="space-y-2">
-          <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-[11px] group-data-[collapsible=icon]:hidden">
+          <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm group-data-[collapsible=icon]:hidden">
             <Badge variant="secondary" className="font-mono text-[10px]">
               chunks {statsLoading ? "…" : (stats?.document_chunks ?? "—")}
             </Badge>

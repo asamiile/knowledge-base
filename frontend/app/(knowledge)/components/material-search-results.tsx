@@ -32,7 +32,7 @@ export function MaterialSearchResults({
   return (
     <div className="flex flex-col gap-4">
       {durationMs != null && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground text-sm">
           {results.length} 件 / {durationMs} ms
         </p>
       )}
@@ -42,20 +42,20 @@ export function MaterialSearchResults({
           keyExtractor={(h) => `${h.document_id}-${h.distance}`}
           renderItem={(h) => (
             <article>
-              <p className="text-muted-foreground font-mono text-[11px] tracking-tight">
+              <p className="text-muted-foreground font-mono text-sm tracking-tight">
                 id {h.document_id} · distance {h.distance.toFixed(4)}
               </p>
               {h.source_path ? (
                 <p className="mt-2">
                   <Link
                     href={`/file?path=${encodeURIComponent(h.source_path)}`}
-                    className="text-primary inline-flex max-w-full items-center gap-1 break-all font-mono text-xs underline-offset-2 hover:underline"
+                    className="text-primary inline-flex max-w-full items-center gap-1 break-all font-mono text-sm underline-offset-2 hover:underline"
                   >
                     {h.source_path}
                   </Link>
                 </p>
               ) : null}
-              <div className="text-foreground mt-3 font-sans text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+              <div className="text-foreground mt-3 leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {chunkBodyText(h)}
               </div>
             </article>

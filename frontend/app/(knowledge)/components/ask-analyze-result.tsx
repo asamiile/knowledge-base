@@ -16,7 +16,7 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
   return (
     <SeparatedResults>
       <section aria-label="分析結果の本文">
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="leading-relaxed whitespace-pre-wrap">
           {result.answer}
         </p>
       </section>
@@ -29,7 +29,7 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
           >
             ポイント
           </h3>
-          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+          <ul className="text-muted-foreground list-inside list-disc space-y-1">
             {result.key_points.map((k, i) => (
               <li key={i}>{k}</li>
             ))}
@@ -58,11 +58,11 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
                     {c.source_path}
                   </Link>
                 ) : (
-                  <span className="font-mono text-muted-foreground text-xs">
+                  <span className="font-mono text-muted-foreground text-sm">
                     doc #{c.document_id}
                   </span>
                 )}
-                <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="mt-1 leading-relaxed whitespace-pre-wrap">
                   {c.excerpt}
                 </p>
               </article>

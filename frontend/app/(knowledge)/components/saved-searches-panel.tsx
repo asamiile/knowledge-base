@@ -134,7 +134,7 @@ export function SavedSearchesPanel({
                 </span>
               )}
             </h2>
-            <p className="text-muted-foreground mt-0.5 text-xs">
+            <p className="text-muted-foreground mt-0.5 text-sm">
               arXiv の検索条件を保存して定期取り込みできます。
             </p>
           </div>

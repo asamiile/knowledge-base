@@ -103,7 +103,7 @@ function LogDetail({ logId }: { logId: string }) {
             ))}
           </ul>
         ) : detail.imported_content?.trim() ? (
-          <pre className="text-foreground/90 font-sans text-sm leading-relaxed whitespace-pre-wrap">
+          <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
             {detail.imported_content}
           </pre>
         ) : (
