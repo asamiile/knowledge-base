@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
 import {
   SeparatedResults,
@@ -16,9 +17,26 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
   return (
     <SeparatedResults>
       <section aria-label="分析結果の本文">
-        <p className="leading-relaxed whitespace-pre-wrap">
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => (
+              <p className="mb-3 leading-relaxed last:mb-0">{children}</p>
+            ),
+            ul: ({ children }) => (
+              <ul className="mb-3 list-inside list-disc space-y-1 last:mb-0">{children}</ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="mb-3 list-inside list-decimal space-y-1 last:mb-0">{children}</ol>
+            ),
+            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            h1: ({ children }) => <h1 className="mb-2 text-lg font-semibold">{children}</h1>,
+            h2: ({ children }) => <h2 className="mb-2 font-semibold">{children}</h2>,
+            h3: ({ children }) => <h3 className="mb-1 font-medium">{children}</h3>,
+          }}
+        >
           {result.answer}
-        </p>
+        </ReactMarkdown>
       </section>
 
       {result.key_points.length > 0 && (
@@ -53,7 +71,7 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
                 {c.source_path ? (
                   <Link
                     href={`/file?path=${encodeURIComponent(c.source_path)}`}
-                    className="font-mono text-xs text-primary underline-offset-2 hover:underline"
+                    className="font-mono text-sm text-primary underline-offset-2 hover:underline"
                   >
                     {c.source_path}
                   </Link>
@@ -62,7 +80,7 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
                     doc #{c.document_id}
                   </span>
                 )}
-                <p className="mt-1 leading-relaxed whitespace-pre-wrap">
+                <p className="mt-1 leading-relaxed text-muted-foreground text-sm whitespace-pre-wrap">
                   {c.excerpt}
                 </p>
               </article>
