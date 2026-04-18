@@ -64,25 +64,25 @@ function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
   const hintsMap = matchHintsByPath(detail.imported_payload ?? null);
 
   return (
-    <section className="flex flex-col gap-2" aria-label="取り込んだ内容">
-      <p className="text-muted-foreground text-xs font-medium">取り込んだ内容</p>
+    <section className="flex flex-col gap-3" aria-label="取り込んだ内容">
+      <p className="text-muted-foreground text-sm font-medium">取り込んだ内容</p>
       {written && written.length > 0 ? (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-5">
           {written.map((path) => {
             const hint = hintsMap.get(path);
             const label = hint ? matchedInLabel(hint.matched_in) : null;
             return (
-              <li key={path} className="flex flex-col gap-1">
+              <li key={path} className="flex flex-col gap-2">
                 <Link
                   href={`/file?path=${encodeURIComponent(path)}`}
-                  className="font-mono text-xs text-primary underline-offset-2 hover:underline"
+                  className="font-mono text-base leading-snug text-primary break-all underline-offset-2 hover:underline"
                 >
                   {path}
                 </Link>
                 {hint?.snippet ? (
-                  <p className="text-muted-foreground text-xs leading-relaxed">
+                  <p className="text-foreground/90 text-base leading-relaxed">
                     {label ? (
-                      <span className="text-muted-foreground/80">{label} · </span>
+                      <span className="text-muted-foreground">{label} · </span>
                     ) : null}
                     {hint.snippet}
                   </p>
@@ -92,11 +92,11 @@ function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
           })}
         </ul>
       ) : detail.imported_content?.trim() ? (
-        <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
+        <pre className="text-foreground/90 text-base leading-relaxed whitespace-pre-wrap">
           {detail.imported_content}
         </pre>
       ) : (
-        <p className="text-muted-foreground">取り込んだ内容はありません。</p>
+        <p className="text-muted-foreground text-sm">取り込んだ内容はありません。</p>
       )}
     </section>
   );
@@ -136,13 +136,13 @@ function LogDetail({ logId }: { logId: string }) {
   }, [data]);
 
   if (loading) {
-    return <p className="text-muted-foreground">読み込み中…</p>;
+    return <p className="text-muted-foreground text-sm">読み込み中…</p>;
   }
 
   if (error) {
     return (
       <Alert variant="error">
-        <AlertDescription className="font-mono text-xs break-all">
+        <AlertDescription className="font-mono text-sm break-all">
           {error}
         </AlertDescription>
       </Alert>
@@ -155,19 +155,21 @@ function LogDetail({ logId }: { logId: string }) {
     savedSearch?.name || detail.title_snapshot || "Untitled";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* 保存条件名 */}
-      <h1 className="font-heading text-base font-medium">{conditionName}</h1>
+      <h1 className="font-heading text-lg font-medium tracking-tight">
+        {conditionName}
+      </h1>
 
       {/* 2カラム: 左=実行履歴、右=実行結果 */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-6">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
         {/* 左: 実行履歴 */}
         {siblings.length > 0 && (
           <section
-            className="md:w-56 md:shrink-0 flex flex-col gap-2"
+            className="md:w-64 md:shrink-0 flex flex-col gap-2.5"
             aria-label="実行履歴"
           >
-            <p className="text-muted-foreground text-xs font-medium">実行履歴</p>
+            <p className="text-muted-foreground text-sm font-medium">実行履歴</p>
             <ul className="flex flex-col divide-y divide-border md:overflow-y-auto md:max-h-[calc(100vh-12rem)] scrollbar-hide">
               {siblings.map((log) => {
                 const isSelected = log.id === logId;
@@ -175,15 +177,18 @@ function LogDetail({ logId }: { logId: string }) {
                   <li key={log.id}>
                     <Link
                       href={`/saved/logs?log=${encodeURIComponent(log.id)}`}
-                      className={`flex flex-col gap-1 py-2.5 -mx-1 px-1 rounded transition-colors ${
+                      className={`flex flex-col gap-1.5 py-3 -mx-1 px-1 rounded transition-colors ${
                         isSelected
                           ? "bg-muted/60 font-medium"
                           : "hover:bg-muted/30"
                       }`}
                       aria-current={isSelected ? "page" : undefined}
                     >
-                      <StatusBadge status={log.status} className="self-start" />
-                      <span className="text-muted-foreground text-xs tabular-nums">
+                      <StatusBadge
+                        status={log.status}
+                        className="self-start text-sm"
+                      />
+                      <span className="text-muted-foreground text-sm tabular-nums">
                         {new Date(log.created_at).toLocaleString("ja-JP")}
                       </span>
                     </Link>
@@ -196,20 +201,20 @@ function LogDetail({ logId }: { logId: string }) {
 
         {/* 右: 実行結果 */}
         <section
-          className="min-w-0 flex-1 flex flex-col gap-3"
+          className="min-w-0 flex-1 flex flex-col gap-4"
           aria-label="選択中の実行結果"
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-muted-foreground text-xs font-medium">実行結果</p>
-            <StatusBadge status={detail.status} />
-            <span className="text-muted-foreground text-xs">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className="text-muted-foreground text-sm font-medium">実行結果</p>
+            <StatusBadge status={detail.status} className="text-sm" />
+            <span className="text-muted-foreground text-sm tabular-nums">
               {new Date(detail.created_at).toLocaleString("ja-JP")}
             </span>
           </div>
 
           {detail.error_message && (
             <Alert variant="error">
-              <AlertDescription className="whitespace-pre-wrap text-xs">
+              <AlertDescription className="whitespace-pre-wrap text-sm">
                 {detail.error_message}
               </AlertDescription>
             </Alert>
@@ -247,13 +252,13 @@ function LogsSearchRedirect({ savedSearchId }: { savedSearchId: string }) {
   }, [loading, error, logs, router]);
 
   if (loading) {
-    return <p className="text-muted-foreground">読み込み中…</p>;
+    return <p className="text-muted-foreground text-sm">読み込み中…</p>;
   }
 
   if (error) {
     return (
       <Alert variant="error">
-        <AlertDescription className="font-mono text-xs break-all">
+        <AlertDescription className="font-mono text-sm break-all">
           {error}
         </AlertDescription>
       </Alert>
@@ -262,7 +267,7 @@ function LogsSearchRedirect({ savedSearchId }: { savedSearchId: string }) {
 
   if (logs.length === 0) {
     return (
-      <p className="text-muted-foreground">実行履歴がありません。</p>
+      <p className="text-muted-foreground text-sm">実行履歴がありません。</p>
     );
   }
 
@@ -286,7 +291,7 @@ export function SavedSearchRunLogsContent() {
         ) : filterSearchId ? (
           <LogsSearchRedirect savedSearchId={filterSearchId} />
         ) : (
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             左のサイドメニュー「定期実行」から項目を選ぶと、ここに取り込み内容が表示されます。
           </p>
         )}
