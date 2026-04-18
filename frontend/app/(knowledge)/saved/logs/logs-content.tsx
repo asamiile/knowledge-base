@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "../../components/status-badge";
@@ -227,72 +227,20 @@ function LogDetail({ logId }: { logId: string }) {
   );
 }
 
-// ─── ?search= 保存検索 ID → 最新の ?log= へ集約（一覧中継は廃止）────────────────
-
-function LogsSearchRedirect({ savedSearchId }: { savedSearchId: string }) {
-  const router = useRouter();
-  const { loading, data, error } = useAsyncData(
-    () => listSavedSearchRunLogs(),
-    savedSearchId,
-  );
-
-  const logs = useMemo(() => {
-    if (!data) return [];
-    return data
-      .filter((l) => l.saved_search_id === savedSearchId)
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
-  }, [data, savedSearchId]);
-
-  useEffect(() => {
-    if (loading || error || logs.length === 0) return;
-    router.replace(`/saved/logs?log=${encodeURIComponent(logs[0].id)}`);
-  }, [loading, error, logs, router]);
-
-  if (loading) {
-    return <p className="text-muted-foreground text-sm">読み込み中…</p>;
-  }
-
-  if (error) {
-    return (
-      <Alert variant="error">
-        <AlertDescription className="font-mono text-sm break-all">
-          {error}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (logs.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">実行履歴がありません。</p>
-    );
-  }
-
-  return (
-    <p className="text-muted-foreground text-sm">最新の実行結果を表示します…</p>
-  );
-}
-
 // ─── メインコンポーネント ─────────────────────────────────────────────────────
 
 export function SavedSearchRunLogsContent() {
   const searchParams = useSearchParams();
   const selectedLogId = searchParams.get("log");
-  const filterSearchId = searchParams.get("search");
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
       <div className="mx-auto max-w-3xl space-y-4 pb-10">
         {selectedLogId ? (
           <LogDetail logId={selectedLogId} />
-        ) : filterSearchId ? (
-          <LogsSearchRedirect savedSearchId={filterSearchId} />
         ) : (
           <p className="text-muted-foreground text-sm leading-relaxed">
-            左のサイドメニュー「定期実行」から項目を選ぶと、ここに取り込み内容が表示されます。
+            左のサイドメニュー「定期実行」から実行履歴を選ぶと、ここに取り込み内容が表示されます。
           </p>
         )}
       </div>
