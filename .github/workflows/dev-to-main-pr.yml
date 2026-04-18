@@ -1,0 +1,73 @@
+# dev へ push されたら main 向け PR を 1 件維持し、タイトル・本文を自動生成する。
+# 既にオープンな dev→main PR がある場合は本文のみ更新する。
+
+name: Dev → main PR
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: dev-to-main-pr
+  cancel-in-progress: true
+
+jobs:
+  open-or-refresh-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Fetch main
+        run: git fetch origin main
+
+      - name: Build PR body and create or update PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BODY_FILE="$(mktemp)"
+          {
+            echo "## 自動生成 PR"
+            echo ""
+            echo "ブランチ \`dev\` を \`main\` に取り込みます。"
+            echo ""
+            echo "### \`main\` に未マージのコミット（\`origin/main..dev\`）"
+            echo ""
+            if ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+              echo "_（\`main\` と \`dev\` の履歴が分岐している可能性があります。コンフリクトは PR 上で解消してください。）_"
+              echo ""
+            fi
+            N=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
+            if [ "${N}" -eq 0 ]; then
+              echo "_\`dev\` 先端に、\`main\` にない独自コミットはありません（fast-forward 可能な状態、または \`main\` が先行）。必要に応じてマージで履歴を揃えてください。_"
+            else
+              git log origin/main..HEAD --format='- `%h` %s — %an' --no-decorate
+            fi
+            echo ""
+            echo "### 運用"
+            echo "- **Release PR**（release-please）は \`main\` へマージしたときのみタグ・GitHub Release が作られます。"
+            echo "- 先にこの PR で \`dev → main\` を整え、その後 Release PR を処理する流れが安全です。"
+            echo ""
+            echo "---"
+            echo "_Workflow: \`${{ github.workflow }}\` · [run ${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_"
+          } > "${BODY_FILE}"
+
+          PR_NUM=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number // empty')
+          TITLE="chore: dev を main に同期"
+
+          if [ -n "${PR_NUM}" ]; then
+            gh pr edit "${PR_NUM}" --body-file "${BODY_FILE}"
+            echo "Updated PR #${PR_NUM} body."
+          else
+            gh pr create --base main --head dev --title "${TITLE}" --body-file "${BODY_FILE}"
+            echo "Created dev → main PR."
+          fi
