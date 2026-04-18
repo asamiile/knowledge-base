@@ -8,24 +8,8 @@
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-### ローカル起動
 
-```bash
-docker compose up
-```
-
-- **初回**や `Dockerfile` を変えたあと
-
-```bash
-docker compose up --build
-```
-
-- **バックグラウンド**
-
-```bash
-docker compose up -d --build
-# ログ: docker compose logs -f
-```
+### URL一覧
 
 | サービス | URL | ポート |
 | -------- | --- | ----- |
@@ -34,6 +18,21 @@ docker compose up -d --build
 | API ドキュメント（Swagger UI） | http://localhost:8001/docs | 8001 |
 | PostgreSQL（pgvector） | localhost:5432 | 5432 |
 | Drizzle Studio（`--profile drizzle`） | [local.drizzle.studio](https://local.drizzle.studio) | 4983 |
+
+### ローカル起動
+
+```bash
+docker compose up
+
+#バックグラウンドで起動
+# ログ: docker compose logs -f
+docker compose up -d
+
+# 初回やDockerfileを変えたあと
+docker compose up --build
+```
+
+
 
 ### Gemini APIの設定
 
@@ -64,21 +63,11 @@ docker compose exec backend pytest -q
 
 ### Drizzle Studio
 
-ORM は **SQLAlchemy のまま**にし、[Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview) は開発時の **DB 閲覧**と、`drizzle-kit pull` による **イントロスペクション**（`drizzle/schema.ts` の更新）だけに使う。マイグレーションの正は引き続き SQLAlchemy 側。
-
-#### Studio 起動
-
 ```bash
+# Studio コンテナ起動
 docker compose --profile drizzle up -d drizzle-studio
-```
 
-- ブラウザで **https://local.drizzle.studio** を開く
-
-#### スキーマのイントロスペクション（`drizzle/schema.ts` 更新）
-
-- SQLAlchemy 側でテーブル定義を変えたあと
-
-```bash
+# SQLAlchemy 側でテーブル定義を変えたときに実行
 docker compose --profile drizzle run --rm drizzle-studio \
   sh -c "corepack enable && corepack prepare pnpm@9.15.9 --activate && cd /workspace && pnpm install --frozen-lockfile && pnpm --filter spira-base-backend-drizzle run db:pull"
 ```
@@ -108,14 +97,14 @@ npx skills add vercel-labs/agent-skills -y --agent claude-code cursor
                                  ↓
                          Release PR が自動作成
                                  ↓
-                         Release PR をマージ
+                    Release PR を main にマージ
                                  ↓
                      タグ + GitHub Release が自動作成
 ```
 
 1. `dev → main` にマージされると、GitHub Actions が **Release PR** を自動作成する
 2. Release PR には CHANGELOG とバージョン更新が含まれる
-3. Release PR をマージすると **タグ（例: v1.1.0）と GitHub Release** が自動作成される
+3. **Release PR のマージ先は `main` のみ**とする。マージすると **タグ（例: v1.1.0）と GitHub Release** が自動作成される
 
 ---
 

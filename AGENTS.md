@@ -4,12 +4,13 @@
 
 ### ドキュメント編集ポリシー
 
-- **README.md** — ユーザーから明示的に依頼されたときだけ編集する。
+- **README.md** — ユーザーから明示的に依頼されたときだけ編集する。開発手順は **コマンド中心**とし、方針・設計判断は **本ファイル**に書く（例: Drizzle Studio は「Docker Compose」内の小見出し）。
 - **DESIGN.md / `.claude/skills/`** — 変更しない（インポートされたもの）。
 
 ### コミットメッセージ
 
-**Conventional Commits** の prefix を必ずつける。リリースバージョンはコミットメッセージから自動決定される。
+- **コミットの実行** — エージェントは `git commit`（および `git push`）を **実行しない**。変更のステージング・コミット・プッシュは **ユーザーが手動**で行う。
+- **Conventional Commits** の prefix を必ずつける。リリースバージョンはコミットメッセージから自動決定される。
 
 | prefix | 用途 | バージョン変化 |
 |--------|------|---------------|
@@ -27,6 +28,10 @@ feat: ストリーミング回答を追加
 fix: 引用リンクの表示修正
 chore: 依存パッケージを更新
 ```
+
+### リリース（release-please）
+
+- **Release PR は必ず `main` にマージする。**`dev` にマージしてもタグ・GitHub Release は作られない（`.github/workflows/release.yml` は `main` への `push` のみをトリガーにしている）。手順の詳細は README.md「リリース運用」を参照。
 
 ---
 
@@ -168,6 +173,11 @@ spira-base/
 
 **テスト:** `docker compose exec backend pytest -q`  
 **Seed:** `docker compose exec backend python -m app.db.seed_dev`
+
+### Drizzle Studio と SQLAlchemy（開発時）
+
+- **ORM は SQLAlchemy のまま**とする。[Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview) は開発時の **DB 閲覧**と、`drizzle-kit pull`（pnpm ワークスペース `spira-base-backend-drizzle`）による **`drizzle/schema.ts` のイントロスペクション**だけに使う。**スキーマ変更・マイグレーションの正は SQLAlchemy 側**（`app/models/tables.py`、`app/db/*_migrate.py`、`init_db` 経路など）。
+- Compose の **`drizzle-studio` サービス**は `profiles: [drizzle]` のため、**既定の `docker compose up` には含まれない**。Studio 起動および `db:pull` の **具体的なコマンドは README.md（開発環境構築）**に置く。
 
 ---
 
