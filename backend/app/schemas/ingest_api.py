@@ -124,9 +124,25 @@ class ArxivImportRequest(BaseModel):
         return self
 
 
+class ArxivMatchHint(BaseModel):
+    """キーワード周辺の短い抜粋（実行ログ・手動取り込みレスポンス用）。"""
+
+    path: str
+    arxiv_id: str
+    matched_in: list[str] = Field(
+        default_factory=list,
+        description="title / abstract（要約）。空はキーワード無しまたはフォールバック先頭抜粋",
+    )
+    snippet: str = ""
+
+
 class ArxivImportResponse(BaseModel):
     written: list[str] = Field(description="DATA_DIR からの相対パス（.md）")
     entry_count: int
+    match_hints: list[ArxivMatchHint] = Field(
+        default_factory=list,
+        description="各ファイルについてタイトル・要約内のマッチ周辺テキスト",
+    )
 
 
 class ArxivPreviewEntry(BaseModel):

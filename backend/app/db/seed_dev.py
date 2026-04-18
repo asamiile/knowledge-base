@@ -282,7 +282,27 @@ def _seed_run_logs(db: Session) -> None:
             "written": [
                 "imports/arxiv/2501.00001v1.md",
                 "imports/arxiv/2501.00002v1.md",
-            ]
+            ],
+            "match_hints": [
+                {
+                    "path": "imports/arxiv/2501.00001v1.md",
+                    "arxiv_id": "2501.00001v1",
+                    "matched_in": ["title", "abstract"],
+                    "snippet": (
+                        "…neural rendering と computer vision の交差領域を扱う。"
+                        "実験では複数ベンチマークで…"
+                    ),
+                },
+                {
+                    "path": "imports/arxiv/2501.00002v1.md",
+                    "arxiv_id": "2501.00002v1",
+                    "matched_in": ["abstract"],
+                    "snippet": (
+                        "…diffusion model を用いた video generation。"
+                        "提案手法は…"
+                    ),
+                },
+            ],
         },
     )
 

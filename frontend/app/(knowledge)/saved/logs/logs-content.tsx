@@ -14,6 +14,44 @@ import {
 } from "@/lib/api/saved-search-run-logs";
 import { listSavedSearches } from "@/lib/api/saved-searches";
 
+type MatchHint = {
+  path: string;
+  arxiv_id: string;
+  matched_in: string[];
+  snippet: string;
+};
+
+function matchHintsByPath(
+  payload: Record<string, unknown> | null | undefined,
+): Map<string, MatchHint> {
+  const m = new Map<string, MatchHint>();
+  const raw = payload?.match_hints;
+  if (!Array.isArray(raw)) return m;
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    const path = typeof o.path === "string" ? o.path : "";
+    if (!path) continue;
+    const matched_in = Array.isArray(o.matched_in)
+      ? o.matched_in.filter((x): x is string => typeof x === "string")
+      : [];
+    m.set(path, {
+      path,
+      arxiv_id: typeof o.arxiv_id === "string" ? o.arxiv_id : "",
+      matched_in,
+      snippet: typeof o.snippet === "string" ? o.snippet : "",
+    });
+  }
+  return m;
+}
+
+function matchedInLabel(fields: string[]): string | null {
+  if (fields.length === 0) return null;
+  return fields
+    .map((f) => (f === "title" ? "タイトル" : f === "abstract" ? "要約" : f))
+    .join("・");
+}
+
 // ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
 
 function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
@@ -23,21 +61,35 @@ function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
       )
     : null;
 
+  const hintsMap = matchHintsByPath(detail.imported_payload ?? null);
+
   return (
     <section className="flex flex-col gap-2" aria-label="取り込んだ内容">
       <p className="text-muted-foreground text-xs font-medium">取り込んだ内容</p>
       {written && written.length > 0 ? (
-        <ul className="flex flex-col gap-1">
-          {written.map((path) => (
-            <li key={path}>
-              <Link
-                href={`/file?path=${encodeURIComponent(path)}`}
-                className="font-mono text-xs text-primary underline-offset-2 hover:underline"
-              >
-                {path}
-              </Link>
-            </li>
-          ))}
+        <ul className="flex flex-col gap-2">
+          {written.map((path) => {
+            const hint = hintsMap.get(path);
+            const label = hint ? matchedInLabel(hint.matched_in) : null;
+            return (
+              <li key={path} className="flex flex-col gap-1">
+                <Link
+                  href={`/file?path=${encodeURIComponent(path)}`}
+                  className="font-mono text-xs text-primary underline-offset-2 hover:underline"
+                >
+                  {path}
+                </Link>
+                {hint?.snippet ? (
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    {label ? (
+                      <span className="text-muted-foreground/80">{label} · </span>
+                    ) : null}
+                    {hint.snippet}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : detail.imported_content?.trim() ? (
         <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
