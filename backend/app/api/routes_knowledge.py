@@ -27,22 +27,17 @@ from app.schemas.saved_search import (
     SavedSearchCreate,
     SavedSearchPatch,
     SavedSearchRead,
+    normalize_arxiv_id_list,
 )
 from app.schemas.saved_search_run_log import (
     SavedSearchRunLogCreate,
     SavedSearchRunLogListItem,
     SavedSearchRunLogRead,
 )
-from app.services.embeddings import build_embedding_model
+from app.api.deps import get_embed_model
 from app.services.material_search import run_material_search
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
-
-
-def _normalize_stored_arxiv_ids(raw: object) -> list[str]:
-    if raw is None or not isinstance(raw, list):
-        return []
-    return [str(x).strip() for x in raw if str(x).strip()]
 
 
 def _validate_saved_row_or_400(*, search_target: str, query: str, arxiv_ids: list[str]) -> None:
@@ -99,12 +94,9 @@ _MAX_HIT_TEXT = 12000
 def knowledge_material_search(
     req: MaterialSearchRequest,
     db: Session = Depends(get_db),
+    embed_model=Depends(get_embed_model),
 ) -> MaterialSearchResponse:
     """インデックス済みチャンクへのベクトル検索（LLM なし）。距離は cosine distance（小さいほど近い）。"""
-    try:
-        embed_model = build_embedding_model()
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e)) from e
     try:
         rows = run_material_search(
             db,
@@ -126,16 +118,12 @@ def knowledge_material_search(
     return MaterialSearchResponse(hits=hits)
 
 
-def _saved_row_to_read(row: SavedSearch) -> SavedSearchRead:
-    return SavedSearchRead.model_validate(row)
-
-
 @router.get("/saved-searches", response_model=list[SavedSearchRead])
 def list_saved_searches(db: Session = Depends(get_db)) -> list[SavedSearchRead]:
     rows = db.scalars(
         select(SavedSearch).order_by(SavedSearch.created_at.asc()),
     ).all()
-    return [_saved_row_to_read(r) for r in rows]
+    return [SavedSearchRead.model_validate(r) for r in rows]
 
 
 @router.post("/saved-searches", response_model=SavedSearchRead)
@@ -145,7 +133,7 @@ def create_saved_search(
 ) -> SavedSearchRead:
     enabled = req.schedule_enabled and req.interval_minutes > 0
     row = SavedSearch(
-        name=req.name.strip(),
+        name=req.name,
         query=req.query,
         arxiv_ids=list(req.arxiv_ids),
         search_target=req.search_target,
@@ -156,7 +144,7 @@ def create_saved_search(
     db.add(row)
     db.commit()
     db.refresh(row)
-    return _saved_row_to_read(row)
+    return SavedSearchRead.model_validate(row)
 
 
 @router.patch("/saved-searches/{search_id}", response_model=SavedSearchRead)
@@ -174,7 +162,7 @@ def patch_saved_search(
     if "query" in data:
         row.query = data["query"] or ""
     if "arxiv_ids" in data and data["arxiv_ids"] is not None:
-        row.arxiv_ids = _normalize_stored_arxiv_ids(data["arxiv_ids"])
+        row.arxiv_ids = normalize_arxiv_id_list(data["arxiv_ids"])
     if "search_target" in data and data["search_target"] is not None:
         row.search_target = data["search_target"]
     if "top_k" in data:
@@ -187,7 +175,7 @@ def patch_saved_search(
         row.last_run_at = data["last_run_at"]
     if row.search_target == "knowledge":
         row.arxiv_ids = []
-    row.arxiv_ids = _normalize_stored_arxiv_ids(row.arxiv_ids)
+    row.arxiv_ids = normalize_arxiv_id_list(row.arxiv_ids)
     _validate_saved_row_or_400(
         search_target=row.search_target,
         query=row.query,
@@ -197,7 +185,7 @@ def patch_saved_search(
         row.schedule_enabled = False
     db.commit()
     db.refresh(row)
-    return _saved_row_to_read(row)
+    return SavedSearchRead.model_validate(row)
 
 
 @router.delete("/saved-searches/{search_id}")
@@ -250,10 +238,9 @@ def create_saved_search_run_log(
     req: SavedSearchRunLogCreate,
     db: Session = Depends(get_db),
 ) -> SavedSearchRunLogRead:
-    name = req.title_snapshot.strip() or "Untitled"
     row = SavedSearchRunLog(
         saved_search_id=req.saved_search_id,
-        title_snapshot=name,
+        title_snapshot=req.title_snapshot.strip() or "Untitled",
         status=req.status,
         error_message=req.error_message,
         imported_content=req.imported_content,

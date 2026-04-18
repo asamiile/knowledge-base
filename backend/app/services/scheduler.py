@@ -9,19 +9,32 @@ from __future__ import annotations
 
 import logging
 import traceback
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Generator
 from uuid import UUID
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.constants import MAX_RUN_LOG_CONTENT_LENGTH, MAX_RUN_LOG_ERROR_LENGTH
 from app.db.session import SessionLocal
 from app.models.tables import SavedSearch, SavedSearchRunLog
 
 logger = logging.getLogger(__name__)
 
 _scheduler: BackgroundScheduler | None = None
+
+
+@contextmanager
+def _get_db() -> Generator[Session, None, None]:
+    """スケジューラ専用のDBセッションコンテキストマネージャ。"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # ---------------------------------------------------------------------------
@@ -62,17 +75,26 @@ def _run_knowledge_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
     return content, payload
 
 
-def _run_arxiv_job(row: SavedSearch) -> tuple[str, dict]:
-    """arXiv 検索: 論文を取り込み imports/arxiv/*.md に保存する。"""
+def _run_arxiv_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
+    """arXiv 検索: 論文を取り込み imports/arxiv/*.md に保存し、ベクトル索引を更新する。"""
     from app.core.settings import get_data_dir
+    from app.services.embeddings import build_embedding_model
+    from app.services.ingest import ingest_data_directory
     from app.services.source_import.arxiv import import_arxiv_to_data_dir
 
+    data_dir = get_data_dir()
     written = import_arxiv_to_data_dir(
-        get_data_dir(),
+        data_dir,
         arxiv_ids=list(row.arxiv_ids or []),
         search_query=(row.query or None),
         max_results=row.top_k,
     )
+
+    if written:
+        embed_model = build_embedding_model()
+        chunks, raw = ingest_data_directory(db, embed_model, data_dir)
+        logger.info("ベクトル索引を更新しました（chunks=%d, raw=%d）", chunks, raw)
+
     content = "\n".join(written)
     payload: dict = {"written": written}
     return content, payload
@@ -84,8 +106,7 @@ def _run_arxiv_job(row: SavedSearch) -> tuple[str, dict]:
 
 def execute_one(saved_search_id: UUID) -> None:
     """単一 SavedSearch を実行し SavedSearchRunLog に記録する。"""
-    db: Session = SessionLocal()
-    try:
+    with _get_db() as db:
         row = db.get(SavedSearch, saved_search_id)
         if row is None or not row.schedule_enabled:
             return
@@ -98,13 +119,13 @@ def execute_one(saved_search_id: UUID) -> None:
             if row.search_target == "knowledge":
                 content, payload = _run_knowledge_job(db, row)
             else:
-                content, payload = _run_arxiv_job(row)
+                content, payload = _run_arxiv_job(db, row)
 
             log = SavedSearchRunLog(
                 saved_search_id=row.id,
                 title_snapshot=row.name,
                 status="success",
-                imported_content=content[:512_000] if content else None,
+                imported_content=content[:MAX_RUN_LOG_CONTENT_LENGTH] if content else None,
                 imported_payload=payload,
             )
             logger.info("SavedSearch '%s' 実行成功", row.name)
@@ -115,13 +136,11 @@ def execute_one(saved_search_id: UUID) -> None:
                 saved_search_id=row.id,
                 title_snapshot=row.name,
                 status="failure",
-                error_message=err[:16_000],
+                error_message=err[:MAX_RUN_LOG_ERROR_LENGTH],
             )
 
         db.add(log)
         db.commit()
-    finally:
-        db.close()
 
 
 # ---------------------------------------------------------------------------
@@ -130,15 +149,16 @@ def execute_one(saved_search_id: UUID) -> None:
 
 def _tick() -> None:
     """実行タイミングが来た SavedSearch をすべて実行する（毎分呼ばれる）。"""
-    db: Session = SessionLocal()
-    try:
-        now = datetime.now(timezone.utc)
-        rows = db.scalars(
-            select(SavedSearch).where(SavedSearch.schedule_enabled.is_(True))
-        ).all()
-        due = [r for r in rows if is_due(r, now)]
-    finally:
-        db.close()
+    with _get_db() as db:
+        try:
+            now = datetime.now(timezone.utc)
+            rows = db.scalars(
+                select(SavedSearch).where(SavedSearch.schedule_enabled.is_(True))
+            ).all()
+            due = [r for r in rows if is_due(r, now)]
+        except Exception:
+            logger.exception("_tick: SavedSearch 一覧の取得に失敗しました")
+            return
 
     for row in due:
         logger.info("SavedSearch '%s' (%s) をスケジュール実行します", row.name, row.id)

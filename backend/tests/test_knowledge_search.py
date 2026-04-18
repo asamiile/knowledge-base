@@ -12,7 +12,7 @@ def test_material_search_mocked(client: TestClient, clean_documents: None) -> No
     ]
     with (
         patch(
-            "app.api.routes_knowledge.build_embedding_model",
+            "app.api.deps.build_embedding_model",
             return_value=MagicMock(),
         ),
         patch(
@@ -35,5 +35,6 @@ def test_material_search_mocked(client: TestClient, clean_documents: None) -> No
 
 
 def test_material_search_validation(client: TestClient) -> None:
-    r = client.post("/api/knowledge/search", json={"query": ""})
+    with patch("app.api.deps.build_embedding_model", return_value=MagicMock()):
+        r = client.post("/api/knowledge/search", json={"query": ""})
     assert r.status_code == 422

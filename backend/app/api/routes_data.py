@@ -20,7 +20,7 @@ from app.schemas.ingest_api import (
 from app.services.arxiv_markdown_meta import aggregate_arxiv_primary_category_counts
 from app.services.data_dir_listing import list_data_dir_files
 from app.services.external import enrichment_for_data_relative_path
-from app.services.embeddings import build_embedding_model
+from app.api.deps import get_embed_model
 from app.services.extract.pdf_upload import write_pdf_extracted_markdown
 from app.services.ingest import ingest_data_directory
 
@@ -28,10 +28,23 @@ router = APIRouter(prefix="/api/data", tags=["data"])
 
 
 def _safe_relative_data_path(path: str) -> str:
+    """path の基本的なサニタイズ（ルート相対・トラバーサル禁止）。"""
     raw = (path or "").strip().replace("\\", "/").lstrip("/")
     if not raw or ".." in raw.split("/"):
         raise HTTPException(status_code=400, detail="不正な path です。")
     return raw
+
+
+def _resolve_safe_data_path(rel: str, data_dir: Path) -> Path:
+    """rel を data_dir 内に解決し、ドットファイル・ディレクトリトラバーサルを弾く。"""
+    target = (data_dir / rel).resolve()
+    try:
+        rel_resolved = target.relative_to(data_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="不正な path です。") from None
+    if any(part.startswith(".") for part in rel_resolved.parts):
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
+    return target
 
 
 @router.get("/files/enrichment", response_model=FileEnrichmentResponse)
@@ -72,18 +85,12 @@ def lookup_data_file(path: str) -> DataFileInfo:
     """`DATA_DIR` から相対パスで 1 ファイルのメタを返す（一覧の件数上限に依存しない）。"""
     rel = _safe_relative_data_path(path)
     data_dir = get_data_dir().resolve()
-    target = (data_dir / rel).resolve()
-    try:
-        rel_resolved = target.relative_to(data_dir)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="不正な path です。") from None
-    if any(part.startswith(".") for part in rel_resolved.parts):
-        raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
+    target = _resolve_safe_data_path(rel, data_dir)
     if not target.is_file():
         raise HTTPException(status_code=404, detail="ファイルが見つかりません。")
     st = target.stat()
     mtime = datetime.fromtimestamp(st.st_mtime, tz=UTC)
-    posix = str(rel_resolved).replace("\\", "/")
+    posix = str(target.relative_to(data_dir)).replace("\\", "/")
     return DataFileInfo(path=posix, size_bytes=st.st_size, modified_at=mtime)
 
 
@@ -116,12 +123,11 @@ def _safe_upload_name(name: str) -> str:
 
 
 @router.post("/reindex", response_model=DataReindexResponse)
-def reindex_data_dir(db: Session = Depends(get_db)) -> DataReindexResponse:
+def reindex_data_dir(
+    db: Session = Depends(get_db),
+    embed_model=Depends(get_embed_model),
+) -> DataReindexResponse:
     """`DATA_DIR` ツリーを再取り込み（`documents` / `raw_data` を置換）。LLM は呼ばない。"""
-    try:
-        embed_model = build_embedding_model()
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e)) from e
     data_dir = get_data_dir().resolve()
     doc_chunks, raw_rows = ingest_data_directory(db, embed_model, data_dir)
     return DataReindexResponse(

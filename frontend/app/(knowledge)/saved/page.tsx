@@ -10,20 +10,8 @@ export default function SavedMaterialSearchesPage() {
     info,
     busy,
     savedMaterialSearches,
-    saveMaterialName,
-    setSaveMaterialName,
-    saveMaterialArxivIds,
-    setSaveMaterialArxivIds,
-    saveMaterialArxivKeyword,
-    setSaveMaterialArxivKeyword,
-    saveMaterialTopK,
-    setSaveMaterialTopK,
-    saveMaterialIntervalMinutes,
-    setSaveMaterialIntervalMinutes,
-    saveMaterialScheduleEnabled,
-    setSaveMaterialScheduleEnabled,
-    saveMaterialSearchTarget,
-    setSaveMaterialSearchTarget,
+    newForm,
+    setNewForm,
     addSavedMaterialSearch,
     runSavedMaterialSearch,
     patchSavedMaterialSearch,
@@ -36,20 +24,8 @@ export default function SavedMaterialSearchesPage() {
       info={info}
       busy={busy}
       savedMaterialSearches={savedMaterialSearches}
-      saveMaterialName={saveMaterialName}
-      setSaveMaterialName={setSaveMaterialName}
-      saveMaterialArxivIds={saveMaterialArxivIds}
-      setSaveMaterialArxivIds={setSaveMaterialArxivIds}
-      saveMaterialArxivKeyword={saveMaterialArxivKeyword}
-      setSaveMaterialArxivKeyword={setSaveMaterialArxivKeyword}
-      saveMaterialTopK={saveMaterialTopK}
-      setSaveMaterialTopK={setSaveMaterialTopK}
-      saveMaterialIntervalMinutes={saveMaterialIntervalMinutes}
-      setSaveMaterialIntervalMinutes={setSaveMaterialIntervalMinutes}
-      saveMaterialScheduleEnabled={saveMaterialScheduleEnabled}
-      setSaveMaterialScheduleEnabled={setSaveMaterialScheduleEnabled}
-      saveMaterialSearchTarget={saveMaterialSearchTarget}
-      setSaveMaterialSearchTarget={setSaveMaterialSearchTarget}
+      newForm={newForm}
+      setNewForm={setNewForm}
       addSavedMaterialSearch={addSavedMaterialSearch}
       runSavedMaterialSearch={runSavedMaterialSearch}
       patchSavedMaterialSearch={patchSavedMaterialSearch}

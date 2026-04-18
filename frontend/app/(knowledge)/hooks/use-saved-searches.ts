@@ -23,6 +23,18 @@ import {
 
 import type { StudioShell } from "./use-studio-shell";
 
+const DEFAULT_NEW_FORM = {
+  name: "Untitled",
+  arxivIds: "",
+  keyword: "",
+  topK: 5,
+  intervalMinutes: 0,
+  scheduleEnabled: false,
+  searchTarget: "arxiv" as PeriodicSavedSearchTarget,
+};
+
+export type NewSavedSearchForm = typeof DEFAULT_NEW_FORM;
+
 export function useSavedSearches(
   shell: StudioShell,
   runMaterialSearchImmediate: (
@@ -35,17 +47,13 @@ export function useSavedSearches(
   const [savedMaterialSearches, setSavedMaterialSearches] = useState<
     SavedMaterialSearch[]
   >([]);
-  const [saveMaterialName, setSaveMaterialName] = useState("Untitled");
-  const [saveMaterialArxivIds, setSaveMaterialArxivIds] = useState("");
-  const [saveMaterialArxivKeyword, setSaveMaterialArxivKeyword] =
-    useState("");
-  const [saveMaterialTopK, setSaveMaterialTopK] = useState(5);
-  const [saveMaterialIntervalMinutes, setSaveMaterialIntervalMinutes] =
-    useState(0);
-  const [saveMaterialScheduleEnabled, setSaveMaterialScheduleEnabled] =
-    useState(false);
-  const [saveMaterialSearchTarget, setSaveMaterialSearchTarget] =
-    useState<PeriodicSavedSearchTarget>("arxiv");
+
+  const [newForm, setNewFormState] = useState<NewSavedSearchForm>(DEFAULT_NEW_FORM);
+  const setNewForm = useCallback(
+    (patch: Partial<NewSavedSearchForm>) =>
+      setNewFormState((f) => ({ ...f, ...patch })),
+    [],
+  );
 
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -173,28 +181,28 @@ export function useSavedSearches(
   }, []);
 
   const addSavedMaterialSearch = useCallback(async (onSuccess?: () => void) => {
-    const name = saveMaterialName.trim();
+    const name = newForm.name.trim();
     if (!name) {
       setError("表示名を入力してください。");
       return;
     }
-    const ids = splitArxivIdsInput(saveMaterialArxivIds);
-    const kw = saveMaterialArxivKeyword.trim();
+    const ids = splitArxivIdsInput(newForm.arxivIds);
+    const kw = newForm.keyword.trim();
     if (ids.length === 0 && !kw) {
       setError("論文IDまたはキーワードのいずれかを入力してください。");
       return;
     }
     setError(null);
-    const interval = saveMaterialIntervalMinutes;
-    const scheduleOn = saveMaterialScheduleEnabled && interval > 0;
+    const interval = newForm.intervalMinutes;
+    const scheduleOn = newForm.scheduleEnabled && interval > 0;
     setBusy("savedSearchWrite");
     try {
       const row = await createSavedSearch({
         name,
         query: kw,
         arxiv_ids: ids,
-        search_target: saveMaterialSearchTarget,
-        top_k: saveMaterialTopK,
+        search_target: newForm.searchTarget,
+        top_k: newForm.topK,
         interval_minutes: interval,
         schedule_enabled: scheduleOn,
       });
@@ -202,13 +210,7 @@ export function useSavedSearches(
         ...prev,
         savedSearchRowToClient(row),
       ]);
-      setSaveMaterialName("Untitled");
-      setSaveMaterialArxivIds("");
-      setSaveMaterialArxivKeyword("");
-      setSaveMaterialTopK(5);
-      setSaveMaterialIntervalMinutes(0);
-      setSaveMaterialScheduleEnabled(false);
-      setSaveMaterialSearchTarget("arxiv");
+      setNewFormState(DEFAULT_NEW_FORM);
       setInfo(`「${name}」を保存しました。`);
       onSuccess?.();
     } catch (e) {
@@ -217,13 +219,7 @@ export function useSavedSearches(
       setBusy(null);
     }
   }, [
-    saveMaterialName,
-    saveMaterialArxivIds,
-    saveMaterialArxivKeyword,
-    saveMaterialTopK,
-    saveMaterialIntervalMinutes,
-    saveMaterialScheduleEnabled,
-    saveMaterialSearchTarget,
+    newForm,
     setBusy,
     setError,
     setInfo,
@@ -340,20 +336,8 @@ export function useSavedSearches(
 
   return {
     savedMaterialSearches,
-    saveMaterialName,
-    setSaveMaterialName,
-    saveMaterialArxivIds,
-    setSaveMaterialArxivIds,
-    saveMaterialArxivKeyword,
-    setSaveMaterialArxivKeyword,
-    saveMaterialTopK,
-    setSaveMaterialTopK,
-    saveMaterialIntervalMinutes,
-    setSaveMaterialIntervalMinutes,
-    saveMaterialScheduleEnabled,
-    setSaveMaterialScheduleEnabled,
-    saveMaterialSearchTarget,
-    setSaveMaterialSearchTarget,
+    newForm,
+    setNewForm,
     addSavedMaterialSearch,
     runSavedMaterialSearch,
     patchSavedMaterialSearch,

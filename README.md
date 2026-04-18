@@ -91,6 +91,34 @@ docker compose --profile drizzle run --rm drizzle-studio \
 npx skills add vercel-labs/agent-skills -y --agent claude-code cursor
 ```
 
+## リリース運用
+
+リリースは [release-please](https://github.com/googleapis/release-please) で自動化されています。コミットメッセージの prefix でバージョンが自動的に決まります。
+
+| prefix | 例 | バージョン変化 |
+|--------|----|---------------|
+| `fix:` | `fix: 引用リンクの表示修正` | v1.0.0 → v1.0.1 |
+| `feat:` | `feat: ストリーミング回答を追加` | v1.0.0 → v1.1.0 |
+| `feat!:` | `feat!: API レスポンス形式を変更` | v1.0.0 → v2.0.0 |
+
+### リリースの流れ
+
+```
+作業ブランチ → PR → dev → PR → main
+                                 ↓
+                         Release PR が自動作成
+                                 ↓
+                         Release PR をマージ
+                                 ↓
+                     タグ + GitHub Release が自動作成
+```
+
+1. `dev → main` にマージされると、GitHub Actions が **Release PR** を自動作成する
+2. Release PR には CHANGELOG とバージョン更新が含まれる
+3. Release PR をマージすると **タグ（例: v1.1.0）と GitHub Release** が自動作成される
+
+---
+
 ## 本番デプロイ
 
 - 手順・チェックリスト: [docs/PRODUCTION.md](docs/PRODUCTION.md)

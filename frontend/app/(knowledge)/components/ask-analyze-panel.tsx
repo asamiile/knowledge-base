@@ -74,7 +74,7 @@ function QuestionAnswerPair({
             {questionText}
           </p>
           {questionMeta ? (
-            <div className="text-muted-foreground flex flex-wrap items-center gap-1 text-sm tabular-nums">
+            <div className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs tabular-nums">
               {questionMeta}
             </div>
           ) : null}
@@ -114,9 +114,7 @@ export function AskAnalyzePanel({
     if (!result) return null;
     const top = questionHistory[0];
     if (!top) return result;
-    return JSON.stringify(result) === JSON.stringify(top.response)
-      ? null
-      : result;
+    return top.response.answer === result.answer ? null : result;
   }, [result, questionHistory]);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -142,14 +140,14 @@ export function AskAnalyzePanel({
                 <FolderInput className="text-muted-foreground size-5" aria-hidden />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium">まだ資料がありません</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="font-medium">まだ資料がありません</p>
+                <p className="text-muted-foreground">
                   質問に答えるには、先に資料をナレッジベースへ追加してください。
                 </p>
               </div>
               <Link
                 href="/add"
-                className="text-primary text-sm underline-offset-4 hover:underline"
+                className="text-primary underline-offset-4 hover:underline"
               >
                 資料を追加する →
               </Link>
@@ -164,7 +162,7 @@ export function AskAnalyzePanel({
               questionMeta={
                 <div className="flex items-center gap-0.5">
                   <time
-                    className="text-muted-foreground text-sm tabular-nums"
+                    className="text-muted-foreground text-xs tabular-nums"
                     dateTime={h.created_at}
                   >
                     {new Date(h.created_at).toLocaleString()}
@@ -250,7 +248,7 @@ export function AskAnalyzePanel({
                       <div className="flex flex-col gap-1.5">
                         <Label
                           htmlFor="ask-topk"
-                          className="text-muted-foreground text-sm"
+                          className="text-muted-foreground"
                         >
                           top_k（ベクトル検索件数）
                         </Label>

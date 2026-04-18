@@ -190,7 +190,7 @@ class TestExecuteOneArxiv:
         ):
             execute_one(row.id)
 
-        mock_job.assert_called_once_with(row)
+        mock_job.assert_called_once_with(mock_db, row)
         added = mock_db.add.call_args[0][0]
         assert added.status == "success"
         assert "2301.00001" in (added.imported_content or "")

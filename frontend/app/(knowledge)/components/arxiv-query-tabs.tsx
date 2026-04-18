@@ -54,7 +54,7 @@ export function ArxivQueryTabs({
     maxResults != null && onMaxResultsChange != null;
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-muted-foreground text-sm">{intro}</div>
+      <div className="text-muted-foreground">{intro}</div>
       <Tabs defaultValue="id" className="gap-4">
         <TabsList className="inline-flex w-fit shrink-0 flex-nowrap justify-start self-start">
           <TabsTrigger value="id" className="flex-none px-3">
@@ -69,7 +69,7 @@ export function ArxivQueryTabs({
             <div className="flex flex-wrap items-center gap-2">
               <Label
                 htmlFor={idsInputId}
-                className="text-foreground text-sm font-medium"
+                className="text-foreground font-medium"
               >
                 論文ID
               </Label>
@@ -96,7 +96,7 @@ export function ArxivQueryTabs({
             <div className="flex flex-wrap items-center gap-2">
               <Label
                 htmlFor={keywordInputId}
-                className="text-foreground text-sm font-medium"
+                className="text-foreground font-medium"
               >
                 キーワード
               </Label>

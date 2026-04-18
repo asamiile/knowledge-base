@@ -121,7 +121,7 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">ファイル数</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-2">
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">
                     アップロード（uploads/）
@@ -153,19 +153,19 @@ export function DashboardPanel({ onRefreshStats }: DashboardPanelProps) {
               </CardHeader>
               <CardContent>
                 {filesLoading ? (
-                  <p className="text-muted-foreground py-8 text-center text-sm">
+                  <p className="text-muted-foreground py-8 text-center">
                     読み込み中…
                   </p>
                 ) : arxivStats === null ? (
-                  <p className="text-destructive py-8 text-center text-sm">
+                  <p className="text-destructive py-8 text-center">
                     カテゴリ集計を取得できませんでした。
                   </p>
                 ) : arxivStats.total_arxiv_files === 0 ? (
-                  <p className="text-muted-foreground py-8 text-center text-sm">
+                  <p className="text-muted-foreground py-8 text-center">
                     arXiv 取り込み（imports/arxiv/）のファイルはまだありません。
                   </p>
                 ) : arxivCategoryPieData.length === 0 ? (
-                  <p className="text-muted-foreground py-8 text-center text-sm">
+                  <p className="text-muted-foreground py-8 text-center">
                     表示できるカテゴリがありません。
                   </p>
                 ) : (
