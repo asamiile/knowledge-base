@@ -12,11 +12,50 @@ import {
   type SavedSearchRunLogListItem,
   type SavedSearchRunLogRead,
 } from "@/lib/api/saved-search-run-logs";
+import { listSavedSearches, type SavedSearchRow } from "@/lib/api/saved-searches";
+
+// ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
+
+function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
+  const written = Array.isArray(detail.imported_payload?.written)
+    ? (detail.imported_payload!.written as unknown[]).filter(
+        (f): f is string => typeof f === "string",
+      )
+    : null;
+
+  return (
+    <section className="flex flex-col gap-2" aria-label="取り込んだ内容">
+      <p className="text-muted-foreground text-sm font-medium">取り込んだ内容</p>
+      {written && written.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {written.map((path) => (
+            <li key={path}>
+              <Link
+                href={`/file?path=${encodeURIComponent(path)}`}
+                className="font-mono text-xs text-primary underline-offset-2 hover:underline"
+              >
+                {path}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : detail.imported_content?.trim() ? (
+        <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap text-sm">
+          {detail.imported_content}
+        </pre>
+      ) : (
+        <p className="text-muted-foreground text-sm">取り込んだ内容はありません。</p>
+      )}
+    </section>
+  );
+}
 
 // ─── 個別ログ詳細 ────────────────────────────────────────────────────────────
 
 function LogDetail({ logId }: { logId: string }) {
   const [detail, setDetail] = useState<SavedSearchRunLogRead | null>(null);
+  const [siblings, setSiblings] = useState<SavedSearchRunLogListItem[]>([]);
+  const [savedSearch, setSavedSearch] = useState<SavedSearchRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,8 +65,27 @@ function LogDetail({ logId }: { logId: string }) {
       setError(null);
       setLoading(true);
       try {
-        const d = await getSavedSearchRunLog(logId);
-        if (!cancelled) setDetail(d);
+        const [d, allLogs, allSearches] = await Promise.all([
+          getSavedSearchRunLog(logId),
+          listSavedSearchRunLogs(),
+          listSavedSearches(),
+        ]);
+        if (cancelled) return;
+        setDetail(d);
+        if (d.saved_search_id) {
+          setSiblings(
+            allLogs
+              .filter((l) => l.saved_search_id === d.saved_search_id)
+              .sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime(),
+              ),
+          );
+          setSavedSearch(
+            allSearches.find((s) => s.id === d.saved_search_id) ?? null,
+          );
+        }
       } catch (e) {
         if (!cancelled) {
           setDetail(null);
@@ -56,60 +114,85 @@ function LogDetail({ logId }: { logId: string }) {
 
   if (!detail) return null;
 
-  const written = Array.isArray(detail.imported_payload?.written)
-    ? (detail.imported_payload!.written as unknown[]).filter(
-        (f): f is string => typeof f === "string",
-      )
-    : null;
+  const conditionName =
+    savedSearch?.name || detail.title_snapshot || "Untitled";
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="font-heading text-base font-medium">
-          {detail.title_snapshot || "Untitled"}
-        </h1>
-        <Badge
-          variant={detail.status === "success" ? "secondary" : "destructive"}
-          className="font-normal"
-        >
-          {detail.status === "success" ? "成功" : "失敗"}
-        </Badge>
-        <span className="text-muted-foreground text-xs">
-          {new Date(detail.created_at).toLocaleString("ja-JP")}
-        </span>
-      </div>
+    <div className="flex flex-col gap-4">
+      {/* 保存条件名 */}
+      <h1 className="font-heading text-base font-medium">{conditionName}</h1>
 
-      {detail.error_message && (
-        <Alert variant="error">
-          <AlertDescription className="whitespace-pre-wrap text-xs">
-            {detail.error_message}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <section className="flex flex-col gap-2" aria-label="取り込んだ内容">
-        <p className="text-muted-foreground text-xs font-medium">取り込んだ内容</p>
-        {written && written.length > 0 ? (
-          <ul className="flex flex-col gap-1">
-            {written.map((path) => (
-              <li key={path}>
-                <Link
-                  href={`/file?path=${encodeURIComponent(path)}`}
-                  className="font-mono text-xs text-primary underline-offset-2 hover:underline"
-                >
-                  {path}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : detail.imported_content?.trim() ? (
-          <pre className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
-            {detail.imported_content}
-          </pre>
-        ) : (
-          <p className="text-muted-foreground text-sm">取り込んだ内容はありません。</p>
+      {/* 2カラム: 左=実行履歴、右=実行結果 */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-6">
+        {/* 左: 実行履歴 */}
+        {siblings.length > 0 && (
+          <section
+            className="md:w-56 md:shrink-0 flex flex-col gap-2"
+            aria-label="実行履歴"
+          >
+            <p className="text-muted-foreground text-sm font-medium">実行履歴</p>
+            <ul className="flex flex-col divide-y divide-border md:overflow-y-auto md:max-h-[calc(100vh-12rem)] scrollbar-hide">
+              {siblings.map((log) => {
+                const isSelected = log.id === logId;
+                return (
+                  <li key={log.id}>
+                    <Link
+                      href={`/saved/logs?log=${encodeURIComponent(log.id)}`}
+                      className={`flex flex-col gap-1 py-2.5 -mx-1 px-1 rounded transition-colors ${
+                        isSelected
+                          ? "bg-muted/60 font-medium"
+                          : "hover:bg-muted/30"
+                      }`}
+                      aria-current={isSelected ? "page" : undefined}
+                    >
+                      <Badge
+                        variant={
+                          log.status === "success" ? "secondary" : "destructive"
+                        }
+                        className="self-start font-normal"
+                      >
+                        {log.status === "success" ? "成功" : "失敗"}
+                      </Badge>
+                      <span className="text-muted-foreground text-sm tabular-nums">
+                        {new Date(log.created_at).toLocaleString("ja-JP")}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
-      </section>
+
+        {/* 右: 実行結果 */}
+        <section
+          className="min-w-0 flex-1 flex flex-col gap-3"
+          aria-label="選択中の実行結果"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-muted-foreground text-sm font-medium">実行結果</p>
+            <Badge
+              variant={detail.status === "success" ? "secondary" : "destructive"}
+              className="font-normal"
+            >
+              {detail.status === "success" ? "成功" : "失敗"}
+            </Badge>
+            <span className="text-muted-foreground text-sm">
+              {new Date(detail.created_at).toLocaleString("ja-JP")}
+            </span>
+          </div>
+
+          {detail.error_message && (
+            <Alert variant="error">
+              <AlertDescription className="whitespace-pre-wrap text-xs">
+                {detail.error_message}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <ImportedContent detail={detail} />
+        </section>
+      </div>
     </div>
   );
 }
@@ -118,15 +201,27 @@ function LogDetail({ logId }: { logId: string }) {
 
 function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
   const [logs, setLogs] = useState<SavedSearchRunLogListItem[]>([]);
+  const [savedSearch, setSavedSearch] = useState<SavedSearchRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    listSavedSearchRunLogs()
-      .then((all) => {
+    Promise.all([listSavedSearchRunLogs(), listSavedSearches()])
+      .then(([allLogs, allSearches]) => {
         if (!cancelled) {
-          setLogs(all.filter((l) => l.saved_search_id === savedSearchId));
+          setLogs(
+            allLogs
+              .filter((l) => l.saved_search_id === savedSearchId)
+              .sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime(),
+              ),
+          );
+          setSavedSearch(
+            allSearches.find((s) => s.id === savedSearchId) ?? null,
+          );
         }
       })
       .catch((e) => {
@@ -173,7 +268,7 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
               {log.status === "success" ? "成功" : "失敗"}
             </Badge>
             <span className="min-w-0 flex-1 truncate text-sm">
-              {log.title_snapshot || "Untitled"}
+              {savedSearch?.name || log.title_snapshot || "Untitled"}
             </span>
             <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
               {new Date(log.created_at).toLocaleString("ja-JP")}
@@ -193,7 +288,7 @@ export function SavedSearchRunLogsContent() {
   const filterSearchId = searchParams.get("search");
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
       <div className="mx-auto max-w-3xl space-y-4 pb-10">
         {selectedLogId ? (
           <LogDetail logId={selectedLogId} />
