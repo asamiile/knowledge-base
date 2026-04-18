@@ -210,6 +210,13 @@ spira-base/
 **Response:** `{ "access_token": string, "token_type": "bearer" }`  
 **ステータス:** `401`（認証失敗）、`503`（`AUTH_ENABLED` 無効）
 
+#### 認可（`AUTH_ENABLED=true` のとき）
+
+- 質問履歴・保存検索・実行ログの **一覧・取得・更新・削除** は、JWT のユーザーに紐づく行に限定される（他ユーザーの ID を指定しても `404`）。
+- 新規作成（質問履歴の自動保存、保存検索の `POST` など）では、サーバーが `user_id` を付与する（クライアントがリクエストに `user_id` を含める必要はない）。
+- `AUTH_ENABLED=false` のときは従来どおり、これらのリソースはテナント全体で共有される。
+- DB 上 `user_id` が NULL の旧行は、認証オン時の API からは一覧にも出ず、単体取得・更新も `404` となる。
+
 ---
 
 ### `POST /api/analyze`
@@ -221,7 +228,7 @@ spira-base/
 | `question` | string | ユーザ質問（1〜8000 文字） |
 | `reindex_sources` | boolean | `true` のとき DATA_DIR を再取り込み |
 | `top_k` | int | ベクトル検索件数（1〜20、省略時 `RAG_TOP_K`） |
-| `save_question_history` | boolean | 既定 `true`。成功時に `question_history` へ保存 |
+| `save_question_history` | boolean | 既定 `true`。成功時に `question_history` へ保存（`AUTH_ENABLED=true` のときは JWT ユーザーを `user_id` に紐づける） |
 
 **Response（JSON）**
 
@@ -247,7 +254,8 @@ spira-base/
 | `done` | `{ "type": "done", "key_points": string[], "citations": Citation[] }` | 完了。`citations` に `source_path` を含む |
 | `error` | `{ "type": "error", "message": string }` | エラー |
 
-**実装:** Phase 1 で回答テキストをストリーミング、Phase 2 で `key_points` + `citations` を構造化出力で取得し `done` イベントを送信。
+**実装:** Phase 1 で回答テキストをストリーミング、Phase 2 で `key_points` + `citations` を構造化出力で取得し `done` イベントを送信。  
+履歴保存の `user_id` 付与は `POST /api/analyze` と同様（`save_question_history` が `true` のとき）。
 
 ---
 
@@ -298,7 +306,7 @@ arXiv Atom API からメタ取得 → `DATA_DIR/imports/arxiv/*.md` に保存。
 
 保存済み質問・分析結果（新しい順）。  
 **Query:** `limit`（1〜100、既定 50）  
-**Response:** `[{ "id", "question", "response": AnalyzeResponse, "created_at" }]`
+**Response:** `[{ "id", "user_id"（UUID \| null）, "question", "response": AnalyzeResponse, "created_at" }]`（`AUTH_ENABLED=true` のときは当該ユーザーの行のみ）
 
 ### `POST /api/knowledge/search`
 
@@ -308,7 +316,7 @@ arXiv Atom API からメタ取得 → `DATA_DIR/imports/arxiv/*.md` に保存。
 
 ### `GET /api/knowledge/saved-searches`
 
-**Response:** `[{ "id", "name", "query", "search_target", "top_k", "interval_minutes", "schedule_enabled", "last_run_at", "created_at", "updated_at" }]`
+**Response:** `[{ "id", "user_id"（UUID \| null）, "name", "query", "arxiv_ids", "search_target", "top_k", "interval_minutes", "schedule_enabled", "last_run_at", "created_at", "updated_at" }]`（`AUTH_ENABLED=true` のときは当該ユーザーの行のみ）
 
 ### `POST /api/knowledge/saved-searches`
 
@@ -316,24 +324,25 @@ arXiv Atom API からメタ取得 → `DATA_DIR/imports/arxiv/*.md` に保存。
 
 ### `PATCH /api/knowledge/saved-searches/{id}`
 
-部分更新。`name`, `query`, `search_target`, `top_k`, `interval_minutes`, `schedule_enabled`, `last_run_at` を指定可能。
+部分更新。`name`, `query`, `search_target`, `top_k`, `interval_minutes`, `schedule_enabled`, `last_run_at` を指定可能。`AUTH_ENABLED=true` のとき、他ユーザーの保存検索は `404`。
 
 ### `DELETE /api/knowledge/saved-searches/{id}`
 
-**ステータス:** `204`（成功）、`404`（該当なし）
+**ステータス:** `204`（成功）、`404`（該当なし、または他ユーザーの行）
 
 ### `GET /api/knowledge/saved-search-run-logs`
 
-**Response:** `[{ "id", "saved_search_id", "title_snapshot", "status", "created_at" }]`
+**Response:** `[{ "id", "saved_search_id", "title_snapshot", "status", "created_at" }]`（`AUTH_ENABLED=true` のとき、紐づく保存検索が自分のものに限る。保存検索が 0 件なら空配列）
 
 ### `GET /api/knowledge/saved-search-run-logs/{id}`
 
-**Response:** `{ "id", "saved_search_id", "title_snapshot", "status", "imported_content", "imported_payload", "error_message", "created_at" }`
+**Response:** `{ "id", "saved_search_id", "title_snapshot", "status", "imported_content", "imported_payload", "error_message", "created_at" }`（`AUTH_ENABLED=true` のとき、親の保存検索が自分のものでなければ `404`。`saved_search_id` が NULL の行も `404`）
 
 ### `POST /api/knowledge/saved-search-run-logs`
 
 ジョブからの結果書き込み用。  
-**Request:** `{ "saved_search_id", "title_snapshot", "status", "imported_content", "imported_payload", "error_message" }`
+**Request:** `{ "saved_search_id", "title_snapshot", "status", "imported_content", "imported_payload", "error_message" }`  
+`AUTH_ENABLED=true` かつ `saved_search_id` を指定する場合、当該保存検索が JWT ユーザーのものでなければ `404`。
 
 ---
 
