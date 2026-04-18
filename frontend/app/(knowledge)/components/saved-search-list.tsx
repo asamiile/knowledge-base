@@ -54,10 +54,7 @@ function useLatestRunLogIdBySavedSearchId(savedSearchIds: string[]) {
   const key = savedSearchIds.slice().sort().join(",");
 
   useEffect(() => {
-    if (key === "") {
-      setMap({});
-      return;
-    }
+    if (key === "") return;
     let cancelled = false;
     void listSavedSearchRunLogs().then((logs) => {
       if (cancelled) return;
@@ -79,7 +76,7 @@ function useLatestRunLogIdBySavedSearchId(savedSearchIds: string[]) {
     };
   }, [key]);
 
-  return map;
+  return key === "" ? {} : map;
 }
 
 export function SavedSearchList({
