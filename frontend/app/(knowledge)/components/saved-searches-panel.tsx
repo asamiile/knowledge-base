@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import type { Dispatch, SetStateAction } from "react";
 
 import type { PeriodicSavedSearchTarget } from "@/lib/api/saved-searches";
 import type { SavedMaterialSearch } from "@/lib/api/saved-material-searches";
@@ -21,27 +20,23 @@ import { SavedSearchForm } from "./saved-search-form";
 import { SavedSearchList } from "./saved-search-list";
 import { StudioAlerts } from "./studio-alerts";
 
+type NewFormState = {
+  name: string;
+  arxivIds: string;
+  keyword: string;
+  topK: number;
+  intervalMinutes: number;
+  scheduleEnabled: boolean;
+  searchTarget: PeriodicSavedSearchTarget;
+};
+
 export type SavedSearchesPanelProps = {
   error: string | null;
   info: string | null;
   busy: string | null;
   savedMaterialSearches: SavedMaterialSearch[];
-  saveMaterialName: string;
-  setSaveMaterialName: Dispatch<SetStateAction<string>>;
-  saveMaterialArxivIds: string;
-  setSaveMaterialArxivIds: Dispatch<SetStateAction<string>>;
-  saveMaterialArxivKeyword: string;
-  setSaveMaterialArxivKeyword: Dispatch<SetStateAction<string>>;
-  saveMaterialTopK: number;
-  setSaveMaterialTopK: Dispatch<SetStateAction<number>>;
-  saveMaterialIntervalMinutes: number;
-  setSaveMaterialIntervalMinutes: Dispatch<SetStateAction<number>>;
-  saveMaterialScheduleEnabled: boolean;
-  setSaveMaterialScheduleEnabled: Dispatch<SetStateAction<boolean>>;
-  saveMaterialSearchTarget: PeriodicSavedSearchTarget;
-  setSaveMaterialSearchTarget: Dispatch<
-    SetStateAction<PeriodicSavedSearchTarget>
-  >;
+  newForm: NewFormState;
+  setNewForm: (patch: Partial<NewFormState>) => void;
   addSavedMaterialSearch: (onSuccess?: () => void) => void | Promise<void>;
   runSavedMaterialSearch: (item: SavedMaterialSearch) => void | Promise<void>;
   patchSavedMaterialSearch: (
@@ -51,26 +46,24 @@ export type SavedSearchesPanelProps = {
   deleteSavedMaterialSearch: (id: string) => void | Promise<void>;
 };
 
+const DEFAULT_EDIT_FORM: NewFormState = {
+  name: "",
+  arxivIds: "",
+  keyword: "",
+  topK: 5,
+  intervalMinutes: 0,
+  scheduleEnabled: false,
+  searchTarget: "arxiv",
+};
+
 /** `/saved` — 保存した条件一覧 */
 export function SavedSearchesPanel({
   error,
   info,
   busy,
   savedMaterialSearches,
-  saveMaterialName,
-  setSaveMaterialName,
-  saveMaterialArxivIds,
-  setSaveMaterialArxivIds,
-  saveMaterialArxivKeyword,
-  setSaveMaterialArxivKeyword,
-  saveMaterialTopK,
-  setSaveMaterialTopK,
-  saveMaterialIntervalMinutes,
-  setSaveMaterialIntervalMinutes,
-  saveMaterialScheduleEnabled,
-  setSaveMaterialScheduleEnabled,
-  saveMaterialSearchTarget,
-  setSaveMaterialSearchTarget,
+  newForm,
+  setNewForm,
   addSavedMaterialSearch,
   runSavedMaterialSearch,
   patchSavedMaterialSearch,
@@ -82,38 +75,35 @@ export function SavedSearchesPanel({
   // 編集 Sheet
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SavedMaterialSearch | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editArxivIds, setEditArxivIds] = useState("");
-  const [editArxivKeyword, setEditArxivKeyword] = useState("");
-  const [editTopK, setEditTopK] = useState(5);
-  const [editIntervalMinutes, setEditIntervalMinutes] = useState(0);
-  const [editScheduleEnabled, setEditScheduleEnabled] = useState(false);
-  const [editSearchTarget, setEditSearchTarget] = useState<PeriodicSavedSearchTarget>("arxiv");
+  const [editForm, setEditForm] = useState<NewFormState>(DEFAULT_EDIT_FORM);
+
+  const patchEditForm = (patch: Partial<NewFormState>) =>
+    setEditForm((f) => ({ ...f, ...patch }));
 
   const handleOpenEdit = (item: SavedMaterialSearch) => {
     setEditingItem(item);
-    setEditName(item.name);
-    setEditArxivIds(item.arxivIds.join(" "));
-    setEditArxivKeyword(item.query);
-    setEditTopK(item.topK);
-    setEditIntervalMinutes(item.intervalMinutes);
-    setEditScheduleEnabled(item.scheduleEnabled);
-    setEditSearchTarget((item.searchTarget ?? "arxiv") as PeriodicSavedSearchTarget);
+    setEditForm({
+      name: item.name,
+      arxivIds: item.arxivIds.join(" "),
+      keyword: item.query,
+      topK: item.topK,
+      intervalMinutes: item.intervalMinutes,
+      scheduleEnabled: item.scheduleEnabled,
+      searchTarget: (item.searchTarget ?? "arxiv") as PeriodicSavedSearchTarget,
+    });
     setEditSheetOpen(true);
   };
 
   const handleEditSave = () => {
     if (!editingItem) return;
-    const ids = splitArxivIdsInput(editArxivIds);
-    const kw = editArxivKeyword.trim();
     void patchSavedMaterialSearch(editingItem.id, {
-      name: editName.trim(),
-      query: kw,
-      arxivIds: ids,
-      searchTarget: editSearchTarget,
-      topK: editTopK,
-      intervalMinutes: editIntervalMinutes,
-      scheduleEnabled: editScheduleEnabled && editIntervalMinutes > 0,
+      name: editForm.name.trim(),
+      query: editForm.keyword.trim(),
+      arxivIds: splitArxivIdsInput(editForm.arxivIds),
+      searchTarget: editForm.searchTarget,
+      topK: editForm.topK,
+      intervalMinutes: editForm.intervalMinutes,
+      scheduleEnabled: editForm.scheduleEnabled && editForm.intervalMinutes > 0,
     });
     setEditSheetOpen(false);
   };
@@ -151,20 +141,20 @@ export function SavedSearchesPanel({
                 <SavedSearchForm
                   busyAny={busyAny}
                   busySavedSearchWrite={busy === "savedSearchWrite"}
-                  saveMaterialName={editName}
-                  setSaveMaterialName={setEditName}
-                  saveMaterialSearchTarget={editSearchTarget}
-                  setSaveMaterialSearchTarget={setEditSearchTarget}
-                  saveMaterialArxivIds={editArxivIds}
-                  setSaveMaterialArxivIds={setEditArxivIds}
-                  saveMaterialArxivKeyword={editArxivKeyword}
-                  setSaveMaterialArxivKeyword={setEditArxivKeyword}
-                  saveMaterialTopK={editTopK}
-                  setSaveMaterialTopK={setEditTopK}
-                  saveMaterialIntervalMinutes={editIntervalMinutes}
-                  setSaveMaterialIntervalMinutes={setEditIntervalMinutes}
-                  saveMaterialScheduleEnabled={editScheduleEnabled}
-                  setSaveMaterialScheduleEnabled={setEditScheduleEnabled}
+                  saveMaterialName={editForm.name}
+                  setSaveMaterialName={(v) => patchEditForm({ name: v })}
+                  saveMaterialSearchTarget={editForm.searchTarget}
+                  setSaveMaterialSearchTarget={(v) => patchEditForm({ searchTarget: v })}
+                  saveMaterialArxivIds={editForm.arxivIds}
+                  setSaveMaterialArxivIds={(v) => patchEditForm({ arxivIds: v })}
+                  saveMaterialArxivKeyword={editForm.keyword}
+                  setSaveMaterialArxivKeyword={(v) => patchEditForm({ keyword: v })}
+                  saveMaterialTopK={editForm.topK}
+                  setSaveMaterialTopK={(v) => patchEditForm({ topK: v })}
+                  saveMaterialIntervalMinutes={editForm.intervalMinutes}
+                  setSaveMaterialIntervalMinutes={(v) => patchEditForm({ intervalMinutes: v })}
+                  saveMaterialScheduleEnabled={editForm.scheduleEnabled}
+                  setSaveMaterialScheduleEnabled={(v) => patchEditForm({ scheduleEnabled: v })}
                   onSave={handleEditSave}
                   saveLabel="変更を保存"
                 />
@@ -197,20 +187,20 @@ export function SavedSearchesPanel({
                 <SavedSearchForm
                   busyAny={busyAny}
                   busySavedSearchWrite={busy === "savedSearchWrite"}
-                  saveMaterialName={saveMaterialName}
-                  setSaveMaterialName={setSaveMaterialName}
-                  saveMaterialSearchTarget={saveMaterialSearchTarget}
-                  setSaveMaterialSearchTarget={setSaveMaterialSearchTarget}
-                  saveMaterialArxivIds={saveMaterialArxivIds}
-                  setSaveMaterialArxivIds={setSaveMaterialArxivIds}
-                  saveMaterialArxivKeyword={saveMaterialArxivKeyword}
-                  setSaveMaterialArxivKeyword={setSaveMaterialArxivKeyword}
-                  saveMaterialTopK={saveMaterialTopK}
-                  setSaveMaterialTopK={setSaveMaterialTopK}
-                  saveMaterialIntervalMinutes={saveMaterialIntervalMinutes}
-                  setSaveMaterialIntervalMinutes={setSaveMaterialIntervalMinutes}
-                  saveMaterialScheduleEnabled={saveMaterialScheduleEnabled}
-                  setSaveMaterialScheduleEnabled={setSaveMaterialScheduleEnabled}
+                  saveMaterialName={newForm.name}
+                  setSaveMaterialName={(v) => setNewForm({ name: v })}
+                  saveMaterialSearchTarget={newForm.searchTarget}
+                  setSaveMaterialSearchTarget={(v) => setNewForm({ searchTarget: v })}
+                  saveMaterialArxivIds={newForm.arxivIds}
+                  setSaveMaterialArxivIds={(v) => setNewForm({ arxivIds: v })}
+                  saveMaterialArxivKeyword={newForm.keyword}
+                  setSaveMaterialArxivKeyword={(v) => setNewForm({ keyword: v })}
+                  saveMaterialTopK={newForm.topK}
+                  setSaveMaterialTopK={(v) => setNewForm({ topK: v })}
+                  saveMaterialIntervalMinutes={newForm.intervalMinutes}
+                  setSaveMaterialIntervalMinutes={(v) => setNewForm({ intervalMinutes: v })}
+                  saveMaterialScheduleEnabled={newForm.scheduleEnabled}
+                  setSaveMaterialScheduleEnabled={(v) => setNewForm({ scheduleEnabled: v })}
                   onSave={() =>
                     void addSavedMaterialSearch(() => setSheetOpen(false))
                   }

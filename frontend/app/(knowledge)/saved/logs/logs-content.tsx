@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "../../components/status-badge";
+import { useAsyncData } from "../../hooks/use-async-data";
 import {
   getSavedSearchRunLog,
   listSavedSearchRunLogs,
-  type SavedSearchRunLogListItem,
   type SavedSearchRunLogRead,
 } from "@/lib/api/saved-search-run-logs";
-import { listSavedSearches, type SavedSearchRow } from "@/lib/api/saved-searches";
+import { listSavedSearches } from "@/lib/api/saved-searches";
 
 // ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
 
@@ -53,50 +53,35 @@ function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
 // ─── 個別ログ詳細 ────────────────────────────────────────────────────────────
 
 function LogDetail({ logId }: { logId: string }) {
-  const [detail, setDetail] = useState<SavedSearchRunLogRead | null>(null);
-  const [siblings, setSiblings] = useState<SavedSearchRunLogListItem[]>([]);
-  const [savedSearch, setSavedSearch] = useState<SavedSearchRow | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { loading, data, error } = useAsyncData(
+    () =>
+      Promise.all([
+        getSavedSearchRunLog(logId),
+        listSavedSearchRunLogs(),
+        listSavedSearches(),
+      ]),
+    logId,
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setError(null);
-      setLoading(true);
-      try {
-        const [d, allLogs, allSearches] = await Promise.all([
-          getSavedSearchRunLog(logId),
-          listSavedSearchRunLogs(),
-          listSavedSearches(),
-        ]);
-        if (cancelled) return;
-        setDetail(d);
-        if (d.saved_search_id) {
-          setSiblings(
-            allLogs
-              .filter((l) => l.saved_search_id === d.saved_search_id)
-              .sort(
-                (a, b) =>
-                  new Date(b.created_at).getTime() -
-                  new Date(a.created_at).getTime(),
-              ),
-          );
-          setSavedSearch(
-            allSearches.find((s) => s.id === d.saved_search_id) ?? null,
-          );
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setDetail(null);
-          setError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [logId]);
+  const detail = data?.[0] ?? null;
+  const siblings = useMemo(() => {
+    if (!data) return [];
+    const [d, allLogs] = data;
+    if (!d.saved_search_id) return [];
+    return allLogs
+      .filter((l) => l.saved_search_id === d.saved_search_id)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+  }, [data]);
+  const savedSearch = useMemo(() => {
+    if (!data) return null;
+    const [d, , allSearches] = data;
+    return d.saved_search_id
+      ? (allSearches.find((s) => s.id === d.saved_search_id) ?? null)
+      : null;
+  }, [data]);
 
   if (loading) {
     return <p className="text-muted-foreground">読み込み中…</p>;
@@ -145,14 +130,7 @@ function LogDetail({ logId }: { logId: string }) {
                       }`}
                       aria-current={isSelected ? "page" : undefined}
                     >
-                      <Badge
-                        variant={
-                          log.status === "success" ? "secondary" : "destructive"
-                        }
-                        className="self-start font-normal"
-                      >
-                        {log.status === "success" ? "成功" : "失敗"}
-                      </Badge>
+                      <StatusBadge status={log.status} className="self-start" />
                       <span className="text-muted-foreground text-xs tabular-nums">
                         {new Date(log.created_at).toLocaleString("ja-JP")}
                       </span>
@@ -171,12 +149,7 @@ function LogDetail({ logId }: { logId: string }) {
         >
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-muted-foreground text-xs font-medium">実行結果</p>
-            <Badge
-              variant={detail.status === "success" ? "secondary" : "destructive"}
-              className="font-normal"
-            >
-              {detail.status === "success" ? "成功" : "失敗"}
-            </Badge>
+            <StatusBadge status={detail.status} />
             <span className="text-muted-foreground text-xs">
               {new Date(detail.created_at).toLocaleString("ja-JP")}
             </span>
@@ -200,38 +173,27 @@ function LogDetail({ logId }: { logId: string }) {
 // ─── 検索条件別ログ一覧 ───────────────────────────────────────────────────────
 
 function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
-  const [logs, setLogs] = useState<SavedSearchRunLogListItem[]>([]);
-  const [savedSearch, setSavedSearch] = useState<SavedSearchRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, data, error } = useAsyncData(
+    () => Promise.all([listSavedSearchRunLogs(), listSavedSearches()]),
+    savedSearchId,
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([listSavedSearchRunLogs(), listSavedSearches()])
-      .then(([allLogs, allSearches]) => {
-        if (!cancelled) {
-          setLogs(
-            allLogs
-              .filter((l) => l.saved_search_id === savedSearchId)
-              .sort(
-                (a, b) =>
-                  new Date(b.created_at).getTime() -
-                  new Date(a.created_at).getTime(),
-              ),
-          );
-          setSavedSearch(
-            allSearches.find((s) => s.id === savedSearchId) ?? null,
-          );
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [savedSearchId]);
+  const logs = useMemo(() => {
+    if (!data) return [];
+    const [allLogs] = data;
+    return allLogs
+      .filter((l) => l.saved_search_id === savedSearchId)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+  }, [data, savedSearchId]);
+
+  const savedSearch = useMemo(() => {
+    if (!data) return null;
+    const [, allSearches] = data;
+    return allSearches.find((s) => s.id === savedSearchId) ?? null;
+  }, [data, savedSearchId]);
 
   if (loading) {
     return <p className="text-muted-foreground">読み込み中…</p>;
@@ -261,12 +223,7 @@ function LogsBySearch({ savedSearchId }: { savedSearchId: string }) {
             href={`/saved/logs?log=${encodeURIComponent(log.id)}`}
             className="flex items-center gap-3 py-3 hover:bg-muted/30 -mx-1 px-1 rounded transition-colors"
           >
-            <Badge
-              variant={log.status === "success" ? "secondary" : "destructive"}
-              className="shrink-0 font-normal"
-            >
-              {log.status === "success" ? "成功" : "失敗"}
-            </Badge>
+            <StatusBadge status={log.status} className="shrink-0" />
             <span className="min-w-0 flex-1 truncate">
               {savedSearch?.name || log.title_snapshot || "Untitled"}
             </span>
