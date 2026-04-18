@@ -103,6 +103,7 @@ export function useAskAnalyze(shell: StudioShell) {
     setBusy("analyze");
     setResult(null);
     setSubmittedQuestion(question.trim());
+    setQuestion("");
 
     try {
       let accAnswer = "";

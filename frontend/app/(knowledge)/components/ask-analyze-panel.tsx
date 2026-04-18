@@ -209,7 +209,7 @@ export function AskAnalyzePanel({
                 onKeyDown={onAskQuestionTextareaKeyDown}
                 rows={4}
                 disabled={busy !== null}
-                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="max-h-[min(40vh,320px)] min-h-[6.5rem] w-full resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-base"
               />
               <div className="flex items-center justify-between gap-2">
                 <Button
