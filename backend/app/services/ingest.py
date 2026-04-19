@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from llama_index.core import Document as LIDocument
@@ -15,6 +16,9 @@ from app.services.extract import (
     collect_vector_source_paths,
     extract_text_for_vector_ingest,
 )
+from app.services.translate import translate_text
+
+logger = logging.getLogger(__name__)
 
 
 def _collect_json_files(data_dir: Path) -> list[Path]:
@@ -72,7 +76,12 @@ def ingest_data_directory(
             continue
         embeddings = embed_model.get_text_embedding_batch(texts)
         for t, vec in zip(texts, embeddings, strict=True):
-            row = Document(text=t, embedding=vec, source_path=rel)
+            try:
+                translated = translate_text(t)
+            except Exception as e:
+                logger.warning("翻訳スキップ (source=%s): %s", rel, e)
+                translated = None
+            row = Document(text=t, embedding=vec, source_path=rel, translated_text=translated or None)
             db.add(row)
             doc_chunks += 1
 

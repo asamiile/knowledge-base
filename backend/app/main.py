@@ -24,6 +24,7 @@ from app.api.routes_auth import router as auth_router
 from app.api.routes_data import router as data_router
 from app.api.routes_imports import router as imports_router
 from app.api.routes_knowledge import router as knowledge_router
+from app.api.routes_translate import router as translate_router
 from app.db import get_db, init_db
 
 
@@ -81,6 +82,7 @@ app.include_router(analyze_router, dependencies=[Depends(require_auth)])
 app.include_router(data_router, dependencies=[Depends(require_auth)])
 app.include_router(imports_router, dependencies=[Depends(require_auth)])
 app.include_router(knowledge_router, dependencies=[Depends(require_auth)])
+app.include_router(translate_router, dependencies=[Depends(require_auth)])
 
 
 @app.get("/")

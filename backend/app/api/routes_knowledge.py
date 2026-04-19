@@ -127,10 +127,11 @@ def knowledge_material_search(
         MaterialSearchHit(
             document_id=rid,
             text=text if len(text) <= _MAX_HIT_TEXT else text[:_MAX_HIT_TEXT] + "…",
+            translated_text=translated if translated is None or len(translated) <= _MAX_HIT_TEXT else translated[:_MAX_HIT_TEXT] + "…",
             distance=dist,
             source_path=spath,
         )
-        for rid, text, dist, spath in rows
+        for rid, text, translated, dist, spath in rows
     ]
     return MaterialSearchResponse(hits=hits)
 

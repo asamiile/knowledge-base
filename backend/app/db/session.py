@@ -7,6 +7,7 @@ from app.core.config import get_database_url
 from app.db.base import Base
 from app.db.documents_migrate import migrate_documents_schema
 from app.db.saved_search_migrate import migrate_saved_search_schema
+from app.db.translate_migrate import migrate_translate_schema
 from app.db.user_scoping_migrate import migrate_user_scoping_schema
 
 engine = create_engine(get_database_url(), pool_pre_ping=True)
@@ -23,6 +24,7 @@ def init_db() -> None:
         migrate_saved_search_schema(conn)
         migrate_documents_schema(conn)
         migrate_user_scoping_schema(conn)
+        migrate_translate_schema(conn)
     Base.metadata.create_all(bind=engine)
 
 

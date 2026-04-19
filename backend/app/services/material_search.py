@@ -14,8 +14,11 @@ def run_material_search(
     embed_model: GoogleGenAIEmbedding,
     query: str,
     top_k: int,
-) -> list[tuple[int, str, float, str | None]]:
-    """cosine 距離が小さい順に top_k 件。embedding が無い場合は ValueError。"""
+) -> list[tuple[int, str, str | None, float, str | None]]:
+    """cosine 距離が小さい順に top_k 件。embedding が無い場合は ValueError。
+
+    Returns: (document_id, text, translated_text, distance, source_path)
+    """
     n_docs = db.scalar(
         select(func.count())
         .select_from(Document)
@@ -32,6 +35,7 @@ def run_material_search(
         select(
             Document.id,
             Document.text,
+            Document.translated_text,
             Document.source_path,
             distance.label("dist"),
         )
@@ -41,6 +45,6 @@ def run_material_search(
     )
     rows = db.execute(stmt).all()
     return [
-        (int(rid), str(txt), float(dist), sp if sp is None else str(sp))
-        for rid, txt, sp, dist in rows
+        (int(rid), str(txt), tt if tt is None else str(tt), float(dist), sp if sp is None else str(sp))
+        for rid, txt, tt, sp, dist in rows
     ]
