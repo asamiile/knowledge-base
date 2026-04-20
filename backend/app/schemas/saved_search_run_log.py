@@ -30,6 +30,7 @@ class SavedSearchRunLogRead(BaseModel):
     error_message: str | None
     imported_content: str | None
     imported_payload: dict[str, Any] | None = None
+    translated_hints: dict[str, Any] | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

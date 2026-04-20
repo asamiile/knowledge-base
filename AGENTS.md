@@ -179,6 +179,16 @@ spira-base/
 - **ORM は SQLAlchemy のまま**とする。[Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview) は開発時の **DB 閲覧**と、`drizzle-kit pull`（pnpm ワークスペース `spira-base-backend-drizzle`）による **`drizzle/schema.ts` のイントロスペクション**だけに使う。**スキーマ変更・マイグレーションの正は SQLAlchemy 側**（`app/models/tables.py`、`app/db/*_migrate.py`、`init_db` 経路など）。
 - Compose の **`drizzle-studio` サービス**は `profiles: [drizzle]` のため、**既定の `docker compose up` には含まれない**。Studio 起動および `db:pull` の **具体的なコマンドは README.md（開発環境構築）**に置く。
 
+### DB スキーマ変更時のルール
+
+`app/models/tables.py` または `app/db/*_migrate.py` を変更したときは、必ず以下を実行して ER 図を更新する。
+
+```bash
+./scripts/generate-db-diagram.sh
+```
+
+生成された図（`docs/` 配下）をコミットに含める。初回のみ `brew install graphviz` が必要（README.md 参照）。
+
 ---
 
 ## 実装状況

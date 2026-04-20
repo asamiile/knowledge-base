@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "../../components/status-badge";
 import { useAsyncData } from "../../hooks/use-async-data";
 import {
   getSavedSearchRunLog,
   listSavedSearchRunLogs,
+  patchRunLogHintTranslation,
   type SavedSearchRunLogRead,
 } from "@/lib/api/saved-search-run-logs";
 import { listSavedSearches } from "@/lib/api/saved-searches";
+import { translateText } from "@/lib/api/translate";
 
 type MatchHint = {
   path: string;
@@ -52,51 +55,220 @@ function matchedInLabel(fields: string[]): string | null {
     .join("・");
 }
 
-// ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
+// ─── キーワードハイライト ─────────────────────────────────────────────────────
 
-function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
-  const written = Array.isArray(detail.imported_payload?.written)
-    ? (detail.imported_payload!.written as unknown[]).filter(
-        (f): f is string => typeof f === "string",
-      )
-    : null;
+/**
+ * query のフレーズ → 単語トークン の順で最初にマッチした語をハイライトする。
+ * split(/(capture)/gi) は奇数インデックスがキャプチャ群になる。
+ */
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
 
-  const hintsMap = matchHintsByPath(detail.imported_payload ?? null);
+  const candidates = [
+    query.trim(),
+    ...query.trim().split(/\s+/).filter((t) => t.length >= 2),
+  ];
+
+  for (const term of candidates) {
+    let parts: string[];
+    try {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      parts = text.split(new RegExp(`(${escaped})`, "gi"));
+    } catch {
+      continue;
+    }
+    if (parts.length <= 1) continue;
+
+    return (
+      <>
+        {parts.map((part, i) =>
+          i % 2 === 1 ? (
+            <mark
+              key={i}
+              className="rounded-sm bg-yellow-200/80 px-0.5 font-semibold dark:bg-yellow-600/50"
+            >
+              {part}
+            </mark>
+          ) : (
+            <span key={i}>{part}</span>
+          ),
+        )}
+      </>
+    );
+  }
+
+  return <>{text}</>;
+}
+
+// ─── 資料カード ───────────────────────────────────────────────────────────────
+
+function FileReviewCard({
+  path,
+  hint,
+  searchQuery,
+  logId,
+  cachedTranslation,
+}: {
+  path: string;
+  hint?: MatchHint;
+  searchQuery: string;
+  logId: string;
+  cachedTranslation?: string;
+}) {
+  const [translatedSnippet, setTranslatedSnippet] = useState<string | null>(
+    cachedTranslation ?? null,
+  );
+  const [translating, setTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
+  const snippet = hint?.snippet ?? "";
+  const arxivId = hint?.arxiv_id;
+  const matchLabel = hint ? matchedInLabel(hint.matched_in) : null;
+
+  async function handleTranslate() {
+    if (translatedSnippet) {
+      setShowTranslation((v) => !v);
+      return;
+    }
+    if (!snippet) return;
+    setTranslating(true);
+    setTranslateError(null);
+    try {
+      const res = await translateText(snippet);
+      setTranslatedSnippet(res.translated_text);
+      setShowTranslation(true);
+      // DBに保存（失敗してもUIには影響させない）
+      patchRunLogHintTranslation(logId, path, res.translated_text).catch(
+        () => undefined,
+      );
+    } catch (e) {
+      setTranslateError(e instanceof Error ? e.message : "翻訳に失敗しました");
+    } finally {
+      setTranslating(false);
+    }
+  }
 
   return (
-    <section className="flex flex-col gap-3" aria-label="取り込んだ内容">
-      <p className="text-muted-foreground text-sm font-medium">取り込んだ内容</p>
+    <article className="flex flex-col gap-2">
+      {/* パス + マッチしたフィールド */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href={`/file?path=${encodeURIComponent(path)}`}
+          className="break-all font-mono text-xs text-primary underline-offset-2 hover:underline"
+        >
+          {path}
+        </Link>
+        {matchLabel && (
+          <Badge variant="secondary" className="shrink-0 text-xs">
+            {matchLabel}でマッチ
+          </Badge>
+        )}
+      </div>
+
+      {/* スニペット */}
+      {snippet ? (
+        <div className="space-y-2">
+          {/* 英語原文（ハイライト付き） */}
+          <p className="text-sm leading-relaxed text-foreground/90">
+            <HighlightedText text={snippet} query={searchQuery} />
+          </p>
+
+          {/* 日本語訳（表示時） */}
+          {showTranslation && translatedSnippet && (
+            <p className="rounded-md bg-muted/50 px-3 py-2 text-sm leading-relaxed text-foreground/80">
+              {translatedSnippet}
+            </p>
+          )}
+
+          {/* 翻訳トグル */}
+          <button
+            type="button"
+            onClick={() => void handleTranslate()}
+            disabled={translating}
+            className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            {translating
+              ? "翻訳中…"
+              : translatedSnippet && showTranslation
+                ? "原文のみ表示"
+                : "日本語訳を表示"}
+          </button>
+          {translateError && (
+            <p className="text-xs text-destructive">{translateError}</p>
+          )}
+        </div>
+      ) : null}
+
+      {/* arXiv リンク */}
+      {arxivId && (
+        <a
+          href={`https://arxiv.org/abs/${arxivId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-fit text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          arXivで開く ↗
+        </a>
+      )}
+    </article>
+  );
+}
+
+// ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
+
+function ImportedContent({
+  detail,
+  searchQuery,
+}: {
+  detail: SavedSearchRunLogRead;
+  searchQuery: string;
+}) {
+  const written = useMemo(
+    () =>
+      Array.isArray(detail.imported_payload?.written)
+        ? (detail.imported_payload!.written as unknown[]).filter(
+            (f): f is string => typeof f === "string",
+          )
+        : null,
+    [detail.imported_payload],
+  );
+
+  const hintsMap = useMemo(
+    () => matchHintsByPath(detail.imported_payload ?? null),
+    [detail.imported_payload],
+  );
+
+  const translatedHints = detail.translated_hints ?? {};
+
+  return (
+    <section className="flex flex-col gap-4" aria-label="取り込んだ内容">
+      <p className="text-sm font-medium text-muted-foreground">
+        取り込んだ内容
+        {written && written.length > 0 && (
+          <span className="ml-1.5 font-normal">{written.length} 件</span>
+        )}
+      </p>
       {written && written.length > 0 ? (
-        <ul className="flex flex-col gap-5">
-          {written.map((path) => {
-            const hint = hintsMap.get(path);
-            const label = hint ? matchedInLabel(hint.matched_in) : null;
-            return (
-              <li key={path} className="flex flex-col gap-2">
-                <Link
-                  href={`/file?path=${encodeURIComponent(path)}`}
-                  className="font-mono text-base leading-snug text-primary break-all underline-offset-2 hover:underline"
-                >
-                  {path}
-                </Link>
-                {hint?.snippet ? (
-                  <p className="text-foreground/90 text-base leading-relaxed">
-                    {label ? (
-                      <span className="text-muted-foreground">{label} · </span>
-                    ) : null}
-                    {hint.snippet}
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
+        <ul className="flex flex-col divide-y divide-border">
+          {written.map((path) => (
+            <li key={path} className="py-4 first:pt-0 last:pb-0">
+              <FileReviewCard
+                path={path}
+                hint={hintsMap.get(path)}
+                searchQuery={searchQuery}
+                logId={String(detail.id)}
+                cachedTranslation={translatedHints[path]}
+              />
+            </li>
+          ))}
         </ul>
       ) : detail.imported_content?.trim() ? (
-        <pre className="text-foreground/90 text-base leading-relaxed whitespace-pre-wrap">
+        <pre className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
           {detail.imported_content}
         </pre>
       ) : (
-        <p className="text-muted-foreground text-sm">取り込んだ内容はありません。</p>
+        <p className="text-sm text-muted-foreground">取り込んだ内容はありません。</p>
       )}
     </section>
   );
@@ -220,7 +392,10 @@ function LogDetail({ logId }: { logId: string }) {
             </Alert>
           )}
 
-          <ImportedContent detail={detail} />
+          <ImportedContent
+            detail={detail}
+            searchQuery={savedSearch?.query ?? ""}
+          />
         </section>
       </div>
     </div>

@@ -96,6 +96,7 @@ ID_LOG_SUCCESS = _uuid("run-log-success")
 ID_LOG_FAILURE = _uuid("run-log-failure")
 ID_LOG_UNTITLED = _uuid("run-log-untitled")
 ID_LOG_ARXIV_WRITTEN = _uuid("run-log-arxiv-written")
+ID_LOG_HIGHLIGHT = _uuid("run-log-highlight")
 
 _DOC_PREFIX = "[DEV-SEED]"
 _DOC_SAMPLES: list[tuple[str, str]] = [
@@ -305,7 +306,7 @@ def _seed_run_logs(db: Session) -> None:
         imported_content=None,
         imported_payload={"note": "title_snapshot が空のとき UI は Untitled 表示の確認用"},
     )
-    # /saved/logs のファイルリンク表示確認用（imported_payload.written あり）
+    # /saved/logs のファイルリンク表示確認用（imported_payload.written あり・英語スニペット）
     _upsert_run_log(
         db,
         ID_LOG_ARXIV_WRITTEN,
@@ -324,18 +325,69 @@ def _seed_run_logs(db: Session) -> None:
                     "path": "imports/arxiv/2501.00001v1.md",
                     "arxiv_id": "2501.00001v1",
                     "matched_in": ["title", "abstract"],
+                    # query="neural rendering" がタイトルにマッチ → フレーズハイライト確認
                     "snippet": (
-                        "…neural rendering と computer vision の交差領域を扱う。"
-                        "実験では複数ベンチマークで…"
+                        "…This work presents a neural rendering approach "
+                        "that synthesizes photorealistic novel views from sparse inputs…"
                     ),
                 },
                 {
                     "path": "imports/arxiv/2501.00002v1.md",
                     "arxiv_id": "2501.00002v1",
                     "matched_in": ["abstract"],
+                    # query="neural rendering" が要約にマッチ → 単語ハイライト確認
                     "snippet": (
-                        "…diffusion model を用いた video generation。"
-                        "提案手法は…"
+                        "…We demonstrate state-of-the-art neural rendering quality "
+                        "on standard benchmarks with 2× faster inference…"
+                    ),
+                },
+            ],
+        },
+    )
+    # ハイライト表示の専用確認ログ（query="diffusion model video generation"・複数パターン）
+    _upsert_run_log(
+        db,
+        ID_LOG_HIGHLIGHT,
+        saved_search_id=ID_SAVED_ARXIV_MULTI,
+        title_snapshot="[開発seed] ハイライト確認",
+        status="success",
+        error_message=None,
+        imported_content=None,
+        imported_payload={
+            "written": [
+                "imports/arxiv/2312.00001v1.md",
+                "imports/arxiv/2312.00002v1.md",
+                "imports/arxiv/2401.12345v1.md",
+            ],
+            "match_hints": [
+                {
+                    "path": "imports/arxiv/2312.00001v1.md",
+                    "arxiv_id": "2312.00001v1",
+                    "matched_in": ["title", "abstract"],
+                    # "diffusion model" フレーズ全体がマッチ → フレーズハイライト
+                    "snippet": (
+                        "…We propose a novel diffusion model architecture "
+                        "for high-fidelity video generation from text descriptions…"
+                    ),
+                },
+                {
+                    "path": "imports/arxiv/2312.00002v1.md",
+                    "arxiv_id": "2312.00002v1",
+                    "matched_in": ["abstract"],
+                    # "video generation" がフレーズマッチ・"diffusion" が単語マッチ
+                    "snippet": (
+                        "…Our video generation framework leverages a latent diffusion "
+                        "model trained on large-scale paired text-video datasets…"
+                    ),
+                },
+                {
+                    "path": "imports/arxiv/2401.12345v1.md",
+                    "arxiv_id": "2401.12345v1",
+                    "matched_in": ["abstract"],
+                    # フレーズマッチなし → "diffusion" 単語ハイライトにフォールバック
+                    "snippet": (
+                        "…Temporal consistency in diffusion-based synthesis "
+                        "remains a key challenge for long-form content creation…"
                     ),
                 },
             ],

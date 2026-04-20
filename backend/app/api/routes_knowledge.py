@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel, Field
 
 from app.api.deps_auth import get_effective_user_id
 from app.db import get_db
@@ -264,6 +265,39 @@ def get_saved_search_run_log(
         parent = db.get(SavedSearch, row.saved_search_id)
         if parent is None or parent.user_id != user_id:
             raise HTTPException(status_code=404, detail="run log not found")
+    return SavedSearchRunLogRead.model_validate(row)
+
+
+class SavedSearchRunLogHintTranslationPatch(BaseModel):
+    path: str = Field(min_length=1, max_length=1024)
+    translated_text: str = Field(min_length=1, max_length=10_000)
+
+
+@router.patch(
+    "/saved-search-run-logs/{log_id}/hint-translation",
+    response_model=SavedSearchRunLogRead,
+)
+def patch_run_log_hint_translation(
+    log_id: UUID,
+    req: SavedSearchRunLogHintTranslationPatch,
+    db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
+) -> SavedSearchRunLogRead:
+    """スニペット翻訳結果を translated_hints に保存する（path → 翻訳テキスト）。"""
+    row = db.get(SavedSearchRunLog, log_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="run log not found")
+    if user_id is not None:
+        if row.saved_search_id is None:
+            raise HTTPException(status_code=404, detail="run log not found")
+        parent = db.get(SavedSearch, row.saved_search_id)
+        if parent is None or parent.user_id != user_id:
+            raise HTTPException(status_code=404, detail="run log not found")
+    hints = dict(row.translated_hints or {})
+    hints[req.path] = req.translated_text
+    row.translated_hints = hints
+    db.commit()
+    db.refresh(row)
     return SavedSearchRunLogRead.model_validate(row)
 
 
