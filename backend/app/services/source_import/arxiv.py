@@ -342,6 +342,7 @@ def build_arxiv_match_hints(
             {
                 "path": path,
                 "arxiv_id": stem,
+                "title": entry.title.strip(),
                 "matched_in": matched_in,
                 "snippet": snippet,
             },

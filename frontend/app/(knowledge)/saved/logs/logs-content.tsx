@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -11,15 +11,14 @@ import { useAsyncData } from "../../hooks/use-async-data";
 import {
   getSavedSearchRunLog,
   listSavedSearchRunLogs,
-  patchRunLogHintTranslation,
   type SavedSearchRunLogRead,
 } from "@/lib/api/saved-search-run-logs";
 import { listSavedSearches } from "@/lib/api/saved-searches";
-import { translateText } from "@/lib/api/translate";
 
 type MatchHint = {
   path: string;
   arxiv_id: string;
+  title: string;
   matched_in: string[];
   snippet: string;
 };
@@ -41,6 +40,7 @@ function matchHintsByPath(
     m.set(path, {
       path,
       arxiv_id: typeof o.arxiv_id === "string" ? o.arxiv_id : "",
+      title: typeof o.title === "string" ? o.title : "",
       matched_in,
       snippet: typeof o.snippet === "string" ? o.snippet : "",
     });
@@ -106,58 +106,29 @@ function FileReviewCard({
   path,
   hint,
   searchQuery,
-  logId,
-  cachedTranslation,
 }: {
   path: string;
   hint?: MatchHint;
   searchQuery: string;
-  logId: string;
-  cachedTranslation?: string;
 }) {
-  const [translatedSnippet, setTranslatedSnippet] = useState<string | null>(
-    cachedTranslation ?? null,
-  );
-  const [translating, setTranslating] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(false);
-  const [translateError, setTranslateError] = useState<string | null>(null);
-
   const snippet = hint?.snippet ?? "";
   const arxivId = hint?.arxiv_id;
+  const title = hint?.title;
   const matchLabel = hint ? matchedInLabel(hint.matched_in) : null;
-
-  async function handleTranslate() {
-    if (translatedSnippet) {
-      setShowTranslation((v) => !v);
-      return;
-    }
-    if (!snippet) return;
-    setTranslating(true);
-    setTranslateError(null);
-    try {
-      const res = await translateText(snippet);
-      setTranslatedSnippet(res.translated_text);
-      setShowTranslation(true);
-      // DBに保存（失敗してもUIには影響させない）
-      patchRunLogHintTranslation(logId, path, res.translated_text).catch(
-        () => undefined,
-      );
-    } catch (e) {
-      setTranslateError(e instanceof Error ? e.message : "翻訳に失敗しました");
-    } finally {
-      setTranslating(false);
-    }
-  }
 
   return (
     <article className="flex flex-col gap-2">
-      {/* パス + マッチしたフィールド */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* タイトル（論文）またはパス（独自ファイル） */}
+      <div className="flex flex-wrap items-start gap-2">
         <Link
           href={`/file?path=${encodeURIComponent(path)}`}
-          className="break-all font-mono text-xs text-primary underline-offset-2 hover:underline"
+          className="underline-offset-2 hover:underline"
         >
-          {path}
+          {title ? (
+            <span className="text-sm font-medium text-primary">{title}</span>
+          ) : (
+            <span className="break-all font-mono text-xs text-primary">{path}</span>
+          )}
         </Link>
         {matchLabel && (
           <Badge variant="secondary" className="shrink-0 text-xs">
@@ -165,39 +136,16 @@ function FileReviewCard({
           </Badge>
         )}
       </div>
+      {/* タイトル表示時はパスもサブテキストで表示 */}
+      {title && (
+        <p className="break-all font-mono text-xs text-muted-foreground">{path}</p>
+      )}
 
       {/* スニペット */}
       {snippet ? (
-        <div className="space-y-2">
-          {/* 英語原文（ハイライト付き） */}
-          <p className="text-sm leading-relaxed text-foreground/90">
-            <HighlightedText text={snippet} query={searchQuery} />
-          </p>
-
-          {/* 日本語訳（表示時） */}
-          {showTranslation && translatedSnippet && (
-            <p className="rounded-md bg-muted/50 px-3 py-2 text-sm leading-relaxed text-foreground/80">
-              {translatedSnippet}
-            </p>
-          )}
-
-          {/* 翻訳トグル */}
-          <button
-            type="button"
-            onClick={() => void handleTranslate()}
-            disabled={translating}
-            className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
-          >
-            {translating
-              ? "翻訳中…"
-              : translatedSnippet && showTranslation
-                ? "原文のみ表示"
-                : "日本語訳を表示"}
-          </button>
-          {translateError && (
-            <p className="text-xs text-destructive">{translateError}</p>
-          )}
-        </div>
+        <p className="text-sm leading-relaxed text-foreground/90">
+          <HighlightedText text={snippet} query={searchQuery} />
+        </p>
       ) : null}
 
       {/* arXiv リンク */}
@@ -239,8 +187,6 @@ function ImportedContent({
     [detail.imported_payload],
   );
 
-  const translatedHints = detail.translated_hints ?? {};
-
   return (
     <section className="flex flex-col gap-4" aria-label="取り込んだ内容">
       <p className="text-sm font-medium text-muted-foreground">
@@ -257,8 +203,6 @@ function ImportedContent({
                 path={path}
                 hint={hintsMap.get(path)}
                 searchQuery={searchQuery}
-                logId={String(detail.id)}
-                cachedTranslation={translatedHints[path]}
               />
             </li>
           ))}

@@ -324,8 +324,8 @@ def _seed_run_logs(db: Session) -> None:
                 {
                     "path": "imports/arxiv/2501.00001v1.md",
                     "arxiv_id": "2501.00001v1",
+                    "title": "Neural Rendering for Novel View Synthesis",
                     "matched_in": ["title", "abstract"],
-                    # query="neural rendering" がタイトルにマッチ → フレーズハイライト確認
                     "snippet": (
                         "…This work presents a neural rendering approach "
                         "that synthesizes photorealistic novel views from sparse inputs…"
@@ -334,8 +334,8 @@ def _seed_run_logs(db: Session) -> None:
                 {
                     "path": "imports/arxiv/2501.00002v1.md",
                     "arxiv_id": "2501.00002v1",
+                    "title": "Fast Neural Rendering via Gaussian Splatting",
                     "matched_in": ["abstract"],
-                    # query="neural rendering" が要約にマッチ → 単語ハイライト確認
                     "snippet": (
                         "…We demonstrate state-of-the-art neural rendering quality "
                         "on standard benchmarks with 2× faster inference…"
@@ -363,8 +363,8 @@ def _seed_run_logs(db: Session) -> None:
                 {
                     "path": "imports/arxiv/2312.00001v1.md",
                     "arxiv_id": "2312.00001v1",
+                    "title": "Scalable Diffusion Models for Text-to-Video Generation",
                     "matched_in": ["title", "abstract"],
-                    # "diffusion model" フレーズ全体がマッチ → フレーズハイライト
                     "snippet": (
                         "…We propose a novel diffusion model architecture "
                         "for high-fidelity video generation from text descriptions…"
@@ -373,8 +373,8 @@ def _seed_run_logs(db: Session) -> None:
                 {
                     "path": "imports/arxiv/2312.00002v1.md",
                     "arxiv_id": "2312.00002v1",
+                    "title": "Latent Diffusion for Temporal Video Synthesis",
                     "matched_in": ["abstract"],
-                    # "video generation" がフレーズマッチ・"diffusion" が単語マッチ
                     "snippet": (
                         "…Our video generation framework leverages a latent diffusion "
                         "model trained on large-scale paired text-video datasets…"
@@ -383,8 +383,8 @@ def _seed_run_logs(db: Session) -> None:
                 {
                     "path": "imports/arxiv/2401.12345v1.md",
                     "arxiv_id": "2401.12345v1",
+                    "title": "Temporal Consistency in Diffusion-Based Video Synthesis",
                     "matched_in": ["abstract"],
-                    # フレーズマッチなし → "diffusion" 単語ハイライトにフォールバック
                     "snippet": (
                         "…Temporal consistency in diffusion-based synthesis "
                         "remains a key challenge for long-form content creation…"
