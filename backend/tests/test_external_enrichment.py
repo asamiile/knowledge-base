@@ -65,6 +65,7 @@ def test_enrichment_arxiv_only_when_openalex_missing(
     assert e.arxiv_primary_category == "eess.IV"
 
 
+@patch("app.services.external.enrichment._cache", {})
 @patch("app.services.external.enrichment.fetch_work_for_arxiv_base")
 @patch("app.services.external.enrichment.fetch_arxiv_paper_meta")
 def test_enrichment_atom_unavailable_no_arxiv_source(

@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 
 def test_material_search_mocked(client: TestClient, clean_documents: None) -> None:
     fake_rows = [
-        (1, "hello chunk", 0.12, "imports/arxiv/a.md"),
-        (2, "world", 0.34, None),
+        (1, "hello chunk", None, 0.12, "imports/arxiv/a.md"),
+        (2, "world", None, 0.34, None),
     ]
     with (
         patch(
