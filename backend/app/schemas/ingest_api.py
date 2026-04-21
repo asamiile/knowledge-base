@@ -102,7 +102,7 @@ class ArxivImportRequest(BaseModel):
     max_results: int = Field(
         default=5,
         ge=1,
-        le=20,
+        le=50,
         description="search_query 使用時の最大件数",
     )
     include_full_text: bool = Field(

@@ -23,7 +23,8 @@ class SavedSearchRead(BaseModel):
     query: str
     arxiv_ids: list[str] = Field(default_factory=list)
     search_target: SearchTarget = "knowledge"
-    top_k: int = Field(ge=1, le=20)
+    top_k: int = Field(ge=1, le=50)
+    include_full_text: bool = False
     interval_minutes: int = Field(ge=0)
     schedule_enabled: bool
     last_run_at: datetime | None
@@ -45,7 +46,8 @@ class SavedSearchCreate(BaseModel):
     query: str = ""
     arxiv_ids: list[str] = Field(default_factory=list)
     search_target: SearchTarget = "knowledge"
-    top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int = Field(default=5, ge=1, le=50)
+    include_full_text: bool = False
     interval_minutes: int = Field(default=0, ge=0)
     schedule_enabled: bool = False
 
@@ -76,7 +78,8 @@ class SavedSearchPatch(BaseModel):
     query: str | None = None
     arxiv_ids: list[str] | None = None
     search_target: SearchTarget | None = None
-    top_k: int | None = Field(default=None, ge=1, le=20)
+    top_k: int | None = Field(default=None, ge=1, le=50)
+    include_full_text: bool | None = None
     interval_minutes: int | None = Field(default=None, ge=0)
     schedule_enabled: bool | None = None
     last_run_at: datetime | None = None

@@ -14,6 +14,7 @@ export type SavedSearchRow = {
   arxiv_ids: string[];
   search_target: SavedSearchTarget;
   top_k: number;
+  include_full_text: boolean;
   interval_minutes: number;
   schedule_enabled: boolean;
   last_run_at: string | null;
@@ -27,6 +28,7 @@ export type SavedSearchCreateBody = {
   arxiv_ids?: string[];
   search_target?: SavedSearchTarget;
   top_k?: number;
+  include_full_text?: boolean;
   interval_minutes?: number;
   schedule_enabled?: boolean;
 };
@@ -37,6 +39,7 @@ export type SavedSearchPatchBody = {
   arxiv_ids?: string[];
   search_target?: SavedSearchTarget;
   top_k?: number;
+  include_full_text?: boolean;
   interval_minutes?: number;
   schedule_enabled?: boolean;
   last_run_at?: string | null;

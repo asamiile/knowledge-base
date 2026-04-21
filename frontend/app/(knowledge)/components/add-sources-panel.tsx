@@ -162,7 +162,6 @@ export function AddSourcesPanel({
               onIncludeFullTextChange={setArxivImportIncludeFullText}
               onToggleSelected={(id) => toggleArxivPreviewSelected(id)}
               onSelectAll={(sel) => setArxivPreviewAllSelected(sel)}
-              onClose={() => clearArxivPreview()}
               onConfirmImport={() => void confirmArxivImportFromPreview()}
             />
           )}

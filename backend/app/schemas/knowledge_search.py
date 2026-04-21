@@ -5,12 +5,16 @@ from pydantic import BaseModel, Field
 
 class MaterialSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=4000)
-    top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int = Field(default=5, ge=1, le=50)
 
 
 class MaterialSearchHit(BaseModel):
     document_id: int
     text: str
+    translated_text: str | None = Field(
+        default=None,
+        description="取り込み時に翻訳した日本語テキスト。未翻訳の場合は null。",
+    )
     distance: float
     source_path: str | None = Field(
         default=None,

@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel, Field
 
 from app.api.deps_auth import get_effective_user_id
 from app.db import get_db
@@ -127,10 +128,11 @@ def knowledge_material_search(
         MaterialSearchHit(
             document_id=rid,
             text=text if len(text) <= _MAX_HIT_TEXT else text[:_MAX_HIT_TEXT] + "…",
+            translated_text=translated if translated is None or len(translated) <= _MAX_HIT_TEXT else translated[:_MAX_HIT_TEXT] + "…",
             distance=dist,
             source_path=spath,
         )
-        for rid, text, dist, spath in rows
+        for rid, text, translated, dist, spath in rows
     ]
     return MaterialSearchResponse(hits=hits)
 
@@ -161,6 +163,7 @@ def create_saved_search(
         arxiv_ids=list(req.arxiv_ids),
         search_target=req.search_target,
         top_k=req.top_k,
+        include_full_text=req.include_full_text,
         interval_minutes=req.interval_minutes,
         schedule_enabled=enabled,
     )
@@ -189,6 +192,8 @@ def patch_saved_search(
         row.search_target = data["search_target"]
     if "top_k" in data:
         row.top_k = data["top_k"]
+    if "include_full_text" in data and data["include_full_text"] is not None:
+        row.include_full_text = data["include_full_text"]
     if "interval_minutes" in data:
         row.interval_minutes = data["interval_minutes"]
     if "schedule_enabled" in data:
@@ -263,6 +268,39 @@ def get_saved_search_run_log(
         parent = db.get(SavedSearch, row.saved_search_id)
         if parent is None or parent.user_id != user_id:
             raise HTTPException(status_code=404, detail="run log not found")
+    return SavedSearchRunLogRead.model_validate(row)
+
+
+class SavedSearchRunLogHintTranslationPatch(BaseModel):
+    path: str = Field(min_length=1, max_length=1024)
+    translated_text: str = Field(min_length=1, max_length=10_000)
+
+
+@router.patch(
+    "/saved-search-run-logs/{log_id}/hint-translation",
+    response_model=SavedSearchRunLogRead,
+)
+def patch_run_log_hint_translation(
+    log_id: UUID,
+    req: SavedSearchRunLogHintTranslationPatch,
+    db: Session = Depends(get_db),
+    user_id: UUID | None = Depends(get_effective_user_id),
+) -> SavedSearchRunLogRead:
+    """スニペット翻訳結果を translated_hints に保存する（path → 翻訳テキスト）。"""
+    row = db.get(SavedSearchRunLog, log_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="run log not found")
+    if user_id is not None:
+        if row.saved_search_id is None:
+            raise HTTPException(status_code=404, detail="run log not found")
+        parent = db.get(SavedSearch, row.saved_search_id)
+        if parent is None or parent.user_id != user_id:
+            raise HTTPException(status_code=404, detail="run log not found")
+    hints = dict(row.translated_hints or {})
+    hints[req.path] = req.translated_text
+    row.translated_hints = hints
+    db.commit()
+    db.refresh(row)
     return SavedSearchRunLogRead.model_validate(row)
 
 

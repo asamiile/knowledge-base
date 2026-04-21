@@ -21,7 +21,7 @@ export type ArxivQueryTabsProps = {
   /** 論文IDタブ内・入力の下（例: 「一覧を取得」） */
   paperIdTabFooter?: ReactNode;
   /**
-   * キーワード検索向けの最大件数（1〜20）。API の max_results に相当。
+   * キーワード検索向けの最大件数（1〜50）。API の max_results に相当。
    * 指定時はキーワードタブ内・入力の直下に表示（論文IDのみの取得には効かない）。
    */
   maxResults?: number;
@@ -117,13 +117,13 @@ export function ArxivQueryTabs({
           {showMaxResults && (
             <div className="grid w-fit gap-1">
               <Label htmlFor={maxResultsInputId} className="text-xs">
-                一度に取得する件数（1〜20）
+                一度に取得する件数（1〜50）
               </Label>
               <Input
                 id={maxResultsInputId}
                 type="number"
                 min={1}
-                max={20}
+                max={50}
                 className="w-24"
                 value={maxResults}
                 onChange={(e) =>

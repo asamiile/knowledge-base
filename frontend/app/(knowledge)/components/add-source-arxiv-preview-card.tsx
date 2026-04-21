@@ -4,6 +4,8 @@ import type { ArxivPreviewEntry } from "@/lib/api/data";
 import { textSnippet } from "@/lib/text-snippet";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 import { SeparatedResultsList } from "./separated-results";
 
@@ -16,7 +18,6 @@ type AddSourceArxivPreviewCardProps = {
   onIncludeFullTextChange: (value: boolean) => void;
   onToggleSelected: (arxivId: string) => void;
   onSelectAll: (selected: boolean) => void;
-  onClose: () => void;
   onConfirmImport: () => void;
 };
 
@@ -29,7 +30,6 @@ export function AddSourceArxivPreviewCard({
   onIncludeFullTextChange,
   onToggleSelected,
   onSelectAll,
-  onClose,
   onConfirmImport,
 }: AddSourceArxivPreviewCardProps) {
   return (
@@ -58,16 +58,6 @@ export function AddSourceArxivPreviewCard({
             onClick={() => onSelectAll(false)}
           >
             すべて解除
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="rounded-lg"
-            disabled={disabled}
-            onClick={onClose}
-          >
-            一覧を閉じる
           </Button>
         </div>
       </div>
@@ -120,23 +110,19 @@ export function AddSourceArxivPreviewCard({
           }}
         />
       </div>
-      <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
-        <Checkbox
+      <div className="flex items-center gap-3">
+        <Switch
           id="arxiv-import-full-text"
           checked={includeFullText}
           disabled={disabled}
-          onCheckedChange={(c) =>
-            onIncludeFullTextChange(c === true)
-          }
-          className="mt-0.5"
+          onCheckedChange={onIncludeFullTextChange}
         />
-        <label
+        <Label
           htmlFor="arxiv-import-full-text"
-          className="text-muted-foreground cursor-pointer text-xs leading-snug"
+          className="cursor-pointer text-sm font-normal text-muted-foreground"
         >
-          PDF から本文も取り込む（質問・検索に有利。論文ごとに取得のため時間がかかります。失敗時は
-          Abstract のみ）
-        </label>
+          PDF から本文も取り込む
+        </Label>
       </div>
       <Button
         disabled={disabled}

@@ -130,9 +130,6 @@ export function useAddSource(
         }
         setArxivPreviewEntries(res.entries);
         setArxivPreviewSelectedIds(res.entries.map((e) => e.arxiv_id));
-        setInfo(
-          `${res.entries.length} 件を表示しました。取り込む論文にチェックを付けて取り込んでください。`,
-        );
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
