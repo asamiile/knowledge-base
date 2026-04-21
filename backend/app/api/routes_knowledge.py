@@ -163,6 +163,7 @@ def create_saved_search(
         arxiv_ids=list(req.arxiv_ids),
         search_target=req.search_target,
         top_k=req.top_k,
+        include_full_text=req.include_full_text,
         interval_minutes=req.interval_minutes,
         schedule_enabled=enabled,
     )
@@ -191,6 +192,8 @@ def patch_saved_search(
         row.search_target = data["search_target"]
     if "top_k" in data:
         row.top_k = data["top_k"]
+    if "include_full_text" in data and data["include_full_text"] is not None:
+        row.include_full_text = data["include_full_text"]
     if "interval_minutes" in data:
         row.interval_minutes = data["interval_minutes"]
     if "schedule_enabled" in data:

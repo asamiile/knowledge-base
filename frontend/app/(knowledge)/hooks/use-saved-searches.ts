@@ -28,6 +28,7 @@ const DEFAULT_NEW_FORM = {
   arxivIds: "",
   keyword: "",
   topK: 5,
+  includeFullText: false,
   intervalMinutes: 0,
   scheduleEnabled: false,
   searchTarget: "arxiv" as PeriodicSavedSearchTarget,
@@ -203,6 +204,7 @@ export function useSavedSearches(
         arxiv_ids: ids,
         search_target: newForm.searchTarget,
         top_k: newForm.topK,
+        include_full_text: newForm.includeFullText,
         interval_minutes: interval,
         schedule_enabled: scheduleOn,
       });
@@ -294,6 +296,7 @@ export function useSavedSearches(
       if (patch.query !== undefined) body.query = patch.query;
       if (patch.arxivIds !== undefined) body.arxiv_ids = patch.arxivIds;
       if (patch.topK !== undefined) body.top_k = patch.topK;
+      if (patch.includeFullText !== undefined) body.include_full_text = patch.includeFullText;
       if (patch.searchTarget !== undefined) {
         body.search_target = patch.searchTarget;
       }

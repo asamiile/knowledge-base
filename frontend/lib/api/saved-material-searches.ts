@@ -20,6 +20,7 @@ export type SavedMaterialSearch = {
   /** knowledge=ローカルベクトル検索 / arxiv=arXiv（API・移行後は常にあり） */
   searchTarget?: SavedSearchTarget;
   topK: number;
+  includeFullText: boolean;
   /** 0 = 定期なし（手動のみ）。それ以外は分単位の間隔 */
   intervalMinutes: number;
   /** 定期実行が有効（ブラウザ起動・タブ表示中のみタイマーで実行） */
@@ -35,6 +36,7 @@ export function savedSearchRowToClient(row: SavedSearchRow): SavedMaterialSearch
     arxivIds: row.arxiv_ids ?? [],
     searchTarget: row.search_target ?? "knowledge",
     topK: row.top_k,
+    includeFullText: row.include_full_text ?? false,
     intervalMinutes: row.interval_minutes,
     scheduleEnabled: row.schedule_enabled,
     lastRunAt: row.last_run_at ?? undefined,

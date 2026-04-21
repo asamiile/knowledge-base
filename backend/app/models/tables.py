@@ -131,6 +131,11 @@ class SavedSearch(Base):
         default="knowledge",
     )
     top_k: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    include_full_text: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     schedule_enabled: Mapped[bool] = mapped_column(
         Boolean,
