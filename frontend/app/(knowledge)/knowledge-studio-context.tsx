@@ -39,7 +39,6 @@ export function KnowledgeStudioProvider({
           stats={value.stats}
           statsLoading={value.statsLoading}
           busy={value.busy}
-          onRefreshStats={() => void value.refreshStats()}
         />
         <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <SiteHeader />

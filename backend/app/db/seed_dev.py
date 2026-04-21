@@ -96,12 +96,22 @@ ID_LOG_SUCCESS = _uuid("run-log-success")
 ID_LOG_FAILURE = _uuid("run-log-failure")
 ID_LOG_UNTITLED = _uuid("run-log-untitled")
 ID_LOG_ARXIV_WRITTEN = _uuid("run-log-arxiv-written")
+ID_LOG_HIGHLIGHT = _uuid("run-log-highlight")
 
 _DOC_PREFIX = "[DEV-SEED]"
-_DOC_SAMPLES: list[str] = [
-    f"{_DOC_PREFIX}\n\nローカル資料のダミーチャンク 1。ナレッジ画面・検索の表示確認用です。",
-    f"{_DOC_PREFIX}\n\nダミーチャンク 2。ベクトルはチャンクごとに直交する単位ベクトルにしています。",
-    f"{_DOC_PREFIX}\n\nダミーチャンク 3。保存検索・実行ログ UI の動作確認に使えます。",
+_DOC_SAMPLES: list[tuple[str, str]] = [
+    (
+        f"{_DOC_PREFIX}\n\nWe propose a novel neural rendering method that achieves state-of-the-art performance on multiple benchmarks. Our approach leverages diffusion models to synthesize high-quality novel views.",
+        f"{_DOC_PREFIX}\n\n我々は、複数のベンチマークで最先端の性能を達成する新しいニューラルレンダリング手法を提案する。本手法は拡散モデルを活用して高品質な新視点合成を実現する。",
+    ),
+    (
+        f"{_DOC_PREFIX}\n\nThis paper presents a large language model fine-tuning framework for domain adaptation. Experiments demonstrate significant improvements over baseline methods in knowledge-intensive tasks.",
+        f"{_DOC_PREFIX}\n\n本論文では、ドメイン適応のための大規模言語モデルのファインチューニングフレームワークを提案する。実験では、知識集約型タスクにおけるベースライン手法に対する大幅な改善を示す。",
+    ),
+    (
+        f"{_DOC_PREFIX}\n\nWe introduce a scalable vector search architecture for retrieval-augmented generation systems. The proposed index structure reduces query latency by 40% while maintaining high recall.",
+        f"{_DOC_PREFIX}\n\n検索拡張生成システムのためのスケーラブルなベクトル検索アーキテクチャを提案する。提案するインデックス構造は、高い再現率を維持しながらクエリレイテンシを40%削減する。",
+    ),
 ]
 
 
@@ -119,13 +129,27 @@ def _seed_documents(db: Session) -> None:
     n_existing = int(n_existing or 0)
     seed_source = "dev-seed/sample.md"
     for i in range(n_existing, len(_DOC_SAMPLES)):
+        original, translated = _DOC_SAMPLES[i]
         db.add(
             Document(
-                text=_DOC_SAMPLES[i],
+                text=original,
+                translated_text=translated,
                 embedding=_unit_embedding(dim, i),
                 source_path=seed_source,
             )
         )
+
+    # 既存seedドキュメントのtranslated_textが未設定なら更新
+    existing_docs = db.execute(
+        select(Document).where(
+            Document.text.like(f"{_DOC_PREFIX}%"),
+            Document.translated_text.is_(None),
+        )
+    ).scalars().all()
+    sample_map = {orig: trans for orig, trans in _DOC_SAMPLES}
+    for doc in existing_docs:
+        if doc.text in sample_map:
+            doc.translated_text = sample_map[doc.text]
 
 
 def _ensure_raw(db: Session, source: str, content: dict) -> None:
@@ -282,7 +306,7 @@ def _seed_run_logs(db: Session) -> None:
         imported_content=None,
         imported_payload={"note": "title_snapshot が空のとき UI は Untitled 表示の確認用"},
     )
-    # /saved/logs のファイルリンク表示確認用（imported_payload.written あり）
+    # /saved/logs のファイルリンク表示確認用（imported_payload.written あり・英語スニペット）
     _upsert_run_log(
         db,
         ID_LOG_ARXIV_WRITTEN,
@@ -300,19 +324,70 @@ def _seed_run_logs(db: Session) -> None:
                 {
                     "path": "imports/arxiv/2501.00001v1.md",
                     "arxiv_id": "2501.00001v1",
+                    "title": "Neural Rendering for Novel View Synthesis",
                     "matched_in": ["title", "abstract"],
                     "snippet": (
-                        "…neural rendering と computer vision の交差領域を扱う。"
-                        "実験では複数ベンチマークで…"
+                        "…This work presents a neural rendering approach "
+                        "that synthesizes photorealistic novel views from sparse inputs…"
                     ),
                 },
                 {
                     "path": "imports/arxiv/2501.00002v1.md",
                     "arxiv_id": "2501.00002v1",
+                    "title": "Fast Neural Rendering via Gaussian Splatting",
                     "matched_in": ["abstract"],
                     "snippet": (
-                        "…diffusion model を用いた video generation。"
-                        "提案手法は…"
+                        "…We demonstrate state-of-the-art neural rendering quality "
+                        "on standard benchmarks with 2× faster inference…"
+                    ),
+                },
+            ],
+        },
+    )
+    # ハイライト表示の専用確認ログ（query="diffusion model video generation"・複数パターン）
+    _upsert_run_log(
+        db,
+        ID_LOG_HIGHLIGHT,
+        saved_search_id=ID_SAVED_ARXIV_MULTI,
+        title_snapshot="[開発seed] ハイライト確認",
+        status="success",
+        error_message=None,
+        imported_content=None,
+        imported_payload={
+            "written": [
+                "imports/arxiv/2312.00001v1.md",
+                "imports/arxiv/2312.00002v1.md",
+                "imports/arxiv/2401.12345v1.md",
+            ],
+            "match_hints": [
+                {
+                    "path": "imports/arxiv/2312.00001v1.md",
+                    "arxiv_id": "2312.00001v1",
+                    "title": "Scalable Diffusion Models for Text-to-Video Generation",
+                    "matched_in": ["title", "abstract"],
+                    "snippet": (
+                        "…We propose a novel diffusion model architecture "
+                        "for high-fidelity video generation from text descriptions…"
+                    ),
+                },
+                {
+                    "path": "imports/arxiv/2312.00002v1.md",
+                    "arxiv_id": "2312.00002v1",
+                    "title": "Latent Diffusion for Temporal Video Synthesis",
+                    "matched_in": ["abstract"],
+                    "snippet": (
+                        "…Our video generation framework leverages a latent diffusion "
+                        "model trained on large-scale paired text-video datasets…"
+                    ),
+                },
+                {
+                    "path": "imports/arxiv/2401.12345v1.md",
+                    "arxiv_id": "2401.12345v1",
+                    "title": "Temporal Consistency in Diffusion-Based Video Synthesis",
+                    "matched_in": ["abstract"],
+                    "snippet": (
+                        "…Temporal consistency in diffusion-based synthesis "
+                        "remains a key challenge for long-form content creation…"
                     ),
                 },
             ],

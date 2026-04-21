@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "../../components/status-badge";
 import { useAsyncData } from "../../hooks/use-async-data";
 import {
@@ -17,6 +18,7 @@ import { listSavedSearches } from "@/lib/api/saved-searches";
 type MatchHint = {
   path: string;
   arxiv_id: string;
+  title: string;
   matched_in: string[];
   snippet: string;
 };
@@ -38,6 +40,7 @@ function matchHintsByPath(
     m.set(path, {
       path,
       arxiv_id: typeof o.arxiv_id === "string" ? o.arxiv_id : "",
+      title: typeof o.title === "string" ? o.title : "",
       matched_in,
       snippet: typeof o.snippet === "string" ? o.snippet : "",
     });
@@ -52,51 +55,164 @@ function matchedInLabel(fields: string[]): string | null {
     .join("・");
 }
 
-// ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
+// ─── キーワードハイライト ─────────────────────────────────────────────────────
 
-function ImportedContent({ detail }: { detail: SavedSearchRunLogRead }) {
-  const written = Array.isArray(detail.imported_payload?.written)
-    ? (detail.imported_payload!.written as unknown[]).filter(
-        (f): f is string => typeof f === "string",
-      )
-    : null;
+/**
+ * query のフレーズ → 単語トークン の順で最初にマッチした語をハイライトする。
+ * split(/(capture)/gi) は奇数インデックスがキャプチャ群になる。
+ */
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
 
-  const hintsMap = matchHintsByPath(detail.imported_payload ?? null);
+  const candidates = [
+    query.trim(),
+    ...query.trim().split(/\s+/).filter((t) => t.length >= 2),
+  ];
+
+  for (const term of candidates) {
+    let parts: string[];
+    try {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      parts = text.split(new RegExp(`(${escaped})`, "gi"));
+    } catch {
+      continue;
+    }
+    if (parts.length <= 1) continue;
+
+    return (
+      <>
+        {parts.map((part, i) =>
+          i % 2 === 1 ? (
+            <mark
+              key={i}
+              className="rounded-sm bg-yellow-200/80 px-0.5 font-semibold dark:bg-yellow-600/50"
+            >
+              {part}
+            </mark>
+          ) : (
+            <span key={i}>{part}</span>
+          ),
+        )}
+      </>
+    );
+  }
+
+  return <>{text}</>;
+}
+
+// ─── 資料カード ───────────────────────────────────────────────────────────────
+
+function FileReviewCard({
+  path,
+  hint,
+  searchQuery,
+}: {
+  path: string;
+  hint?: MatchHint;
+  searchQuery: string;
+}) {
+  const snippet = hint?.snippet ?? "";
+  const arxivId = hint?.arxiv_id;
+  const title = hint?.title;
+  const matchLabel = hint ? matchedInLabel(hint.matched_in) : null;
 
   return (
-    <section className="flex flex-col gap-3" aria-label="取り込んだ内容">
-      <p className="text-muted-foreground text-sm font-medium">取り込んだ内容</p>
+    <article className="flex flex-col gap-2">
+      {/* タイトル（論文）またはパス（独自ファイル） */}
+      <div className="flex flex-wrap items-start gap-2">
+        <Link
+          href={`/file?path=${encodeURIComponent(path)}`}
+          className="underline-offset-2 hover:underline"
+        >
+          {title ? (
+            <span className="text-sm font-medium text-primary">{title}</span>
+          ) : (
+            <span className="break-all font-mono text-xs text-primary">{path}</span>
+          )}
+        </Link>
+        {matchLabel && (
+          <Badge variant="secondary" className="shrink-0 text-xs">
+            {matchLabel}でマッチ
+          </Badge>
+        )}
+      </div>
+      {/* タイトル表示時はパスもサブテキストで表示 */}
+      {title && (
+        <p className="break-all font-mono text-xs text-muted-foreground">{path}</p>
+      )}
+
+      {/* スニペット */}
+      {snippet ? (
+        <p className="text-sm leading-relaxed text-foreground/90">
+          <HighlightedText text={snippet} query={searchQuery} />
+        </p>
+      ) : null}
+
+      {/* arXiv リンク */}
+      {arxivId && (
+        <a
+          href={`https://arxiv.org/abs/${arxivId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-fit text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          arXivで開く ↗
+        </a>
+      )}
+    </article>
+  );
+}
+
+// ─── 取り込んだ内容 ───────────────────────────────────────────────────────────
+
+function ImportedContent({
+  detail,
+  searchQuery,
+}: {
+  detail: SavedSearchRunLogRead;
+  searchQuery: string;
+}) {
+  const written = useMemo(
+    () =>
+      Array.isArray(detail.imported_payload?.written)
+        ? (detail.imported_payload!.written as unknown[]).filter(
+            (f): f is string => typeof f === "string",
+          )
+        : null,
+    [detail.imported_payload],
+  );
+
+  const hintsMap = useMemo(
+    () => matchHintsByPath(detail.imported_payload ?? null),
+    [detail.imported_payload],
+  );
+
+  return (
+    <section className="flex flex-col gap-4" aria-label="取り込んだ内容">
+      <p className="text-sm font-medium text-muted-foreground">
+        取り込んだ内容
+        {written && written.length > 0 && (
+          <span className="ml-1.5 font-normal">{written.length} 件</span>
+        )}
+      </p>
       {written && written.length > 0 ? (
-        <ul className="flex flex-col gap-5">
-          {written.map((path) => {
-            const hint = hintsMap.get(path);
-            const label = hint ? matchedInLabel(hint.matched_in) : null;
-            return (
-              <li key={path} className="flex flex-col gap-2">
-                <Link
-                  href={`/file?path=${encodeURIComponent(path)}`}
-                  className="font-mono text-base leading-snug text-primary break-all underline-offset-2 hover:underline"
-                >
-                  {path}
-                </Link>
-                {hint?.snippet ? (
-                  <p className="text-foreground/90 text-base leading-relaxed">
-                    {label ? (
-                      <span className="text-muted-foreground">{label} · </span>
-                    ) : null}
-                    {hint.snippet}
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
+        <ul className="flex flex-col divide-y divide-border">
+          {written.map((path) => (
+            <li key={path} className="py-4 first:pt-0 last:pb-0">
+              <FileReviewCard
+                path={path}
+                hint={hintsMap.get(path)}
+                searchQuery={searchQuery}
+              />
+            </li>
+          ))}
         </ul>
       ) : detail.imported_content?.trim() ? (
-        <pre className="text-foreground/90 text-base leading-relaxed whitespace-pre-wrap">
+        <pre className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
           {detail.imported_content}
         </pre>
       ) : (
-        <p className="text-muted-foreground text-sm">取り込んだ内容はありません。</p>
+        <p className="text-sm text-muted-foreground">取り込んだ内容はありません。</p>
       )}
     </section>
   );
@@ -220,59 +336,13 @@ function LogDetail({ logId }: { logId: string }) {
             </Alert>
           )}
 
-          <ImportedContent detail={detail} />
+          <ImportedContent
+            detail={detail}
+            searchQuery={savedSearch?.query ?? ""}
+          />
         </section>
       </div>
     </div>
-  );
-}
-
-// ─── ?search= 保存検索 ID → 最新の ?log= へ集約（一覧中継は廃止）────────────────
-
-function LogsSearchRedirect({ savedSearchId }: { savedSearchId: string }) {
-  const router = useRouter();
-  const { loading, data, error } = useAsyncData(
-    () => listSavedSearchRunLogs(),
-    savedSearchId,
-  );
-
-  const logs = useMemo(() => {
-    if (!data) return [];
-    return data
-      .filter((l) => l.saved_search_id === savedSearchId)
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
-  }, [data, savedSearchId]);
-
-  useEffect(() => {
-    if (loading || error || logs.length === 0) return;
-    router.replace(`/saved/logs?log=${encodeURIComponent(logs[0].id)}`);
-  }, [loading, error, logs, router]);
-
-  if (loading) {
-    return <p className="text-muted-foreground text-sm">読み込み中…</p>;
-  }
-
-  if (error) {
-    return (
-      <Alert variant="error">
-        <AlertDescription className="font-mono text-sm break-all">
-          {error}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (logs.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">実行履歴がありません。</p>
-    );
-  }
-
-  return (
-    <p className="text-muted-foreground text-sm">最新の実行結果を表示します…</p>
   );
 }
 
@@ -281,18 +351,15 @@ function LogsSearchRedirect({ savedSearchId }: { savedSearchId: string }) {
 export function SavedSearchRunLogsContent() {
   const searchParams = useSearchParams();
   const selectedLogId = searchParams.get("log");
-  const filterSearchId = searchParams.get("search");
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
       <div className="mx-auto max-w-3xl space-y-4 pb-10">
         {selectedLogId ? (
           <LogDetail logId={selectedLogId} />
-        ) : filterSearchId ? (
-          <LogsSearchRedirect savedSearchId={filterSearchId} />
         ) : (
           <p className="text-muted-foreground text-sm leading-relaxed">
-            左のサイドメニュー「定期実行」から項目を選ぶと、ここに取り込み内容が表示されます。
+            左のサイドメニュー「定期実行」から実行履歴を選ぶと、ここに取り込み内容が表示されます。
           </p>
         )}
       </div>

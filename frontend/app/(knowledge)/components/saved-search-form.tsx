@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,8 @@ export type SavedSearchFormProps = {
   setSaveMaterialArxivKeyword: (v: string) => void;
   saveMaterialTopK: number;
   setSaveMaterialTopK: (v: number) => void;
+  saveMaterialIncludeFullText: boolean;
+  setSaveMaterialIncludeFullText: (v: boolean) => void;
   saveMaterialIntervalMinutes: number;
   setSaveMaterialIntervalMinutes: (v: number) => void;
   saveMaterialScheduleEnabled: boolean;
@@ -52,6 +55,8 @@ export function SavedSearchForm({
   setSaveMaterialArxivKeyword,
   saveMaterialTopK,
   setSaveMaterialTopK,
+  saveMaterialIncludeFullText,
+  setSaveMaterialIncludeFullText,
   saveMaterialIntervalMinutes,
   setSaveMaterialIntervalMinutes,
   saveMaterialScheduleEnabled,
@@ -121,6 +126,22 @@ export function SavedSearchForm({
           maxResultsInputId="saved-arxiv-max-results"
           showRequiredBadges={false}
         />
+      )}
+      {saveMaterialSearchTarget === "arxiv" && (
+        <div className="flex items-center gap-3">
+          <Switch
+            id="saved-include-full-text"
+            checked={saveMaterialIncludeFullText}
+            disabled={busyAny}
+            onCheckedChange={setSaveMaterialIncludeFullText}
+          />
+          <Label
+            htmlFor="saved-include-full-text"
+            className="cursor-pointer text-sm font-normal text-muted-foreground"
+          >
+            PDF から本文も取り込む
+          </Label>
+        </div>
       )}
       <div className="grid gap-3">
         <p className="text-foreground font-medium">定期実行の設定</p>

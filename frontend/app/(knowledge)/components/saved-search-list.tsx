@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { History, Pencil, Play, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { listSavedSearchRunLogs } from "@/lib/api/saved-search-run-logs";
 
 import {
   SAVED_SEARCH_INTERVAL_OPTIONS,
@@ -45,6 +48,37 @@ function formatLastRun(iso: string): string {
   });
 }
 
+/** 保存検索 ID → その条件の最新実行ログ ID（履歴リンク用） */
+function useLatestRunLogIdBySavedSearchId(savedSearchIds: string[]) {
+  const [map, setMap] = useState<Record<string, string>>({});
+  const key = savedSearchIds.slice().sort().join(",");
+
+  useEffect(() => {
+    if (key === "") return;
+    let cancelled = false;
+    void listSavedSearchRunLogs().then((logs) => {
+      if (cancelled) return;
+      const sorted = [...logs].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+      const next: Record<string, string> = {};
+      for (const l of sorted) {
+        const sid = l.saved_search_id;
+        if (sid && next[sid] === undefined) {
+          next[sid] = l.id;
+        }
+      }
+      setMap(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+
+  return key === "" ? {} : map;
+}
+
 export function SavedSearchList({
   items,
   busyAny,
@@ -53,6 +87,10 @@ export function SavedSearchList({
   onRunNow,
   onEdit,
 }: SavedSearchListProps) {
+  const latestLogBySearchId = useLatestRunLogIdBySavedSearchId(
+    items.map((i) => i.id),
+  );
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
@@ -74,6 +112,7 @@ export function SavedSearchList({
           target === "arxiv"
             ? item.query.trim().length > 0 || item.arxivIds.length > 0
             : item.query.trim().length > 0;
+        const latestLogId = latestLogBySearchId[item.id];
 
         return (
           <article className="space-y-2.5">
@@ -129,14 +168,24 @@ export function SavedSearchList({
                   <Pencil className="size-3.5" aria-hidden />
                   <span className="sr-only">編集</span>
                 </Button>
-                <Link
-                  href={`/saved/logs?search=${encodeURIComponent(item.id)}`}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  title="実行履歴を見る"
-                >
-                  <History className="size-3.5" aria-hidden />
-                  履歴
-                </Link>
+                {latestLogId ? (
+                  <Link
+                    href={`/saved/logs?log=${encodeURIComponent(latestLogId)}`}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title="実行履歴を見る（最新の実行）"
+                  >
+                    <History className="size-3.5" aria-hidden />
+                    履歴
+                  </Link>
+                ) : (
+                  <span
+                    className="inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground/50"
+                    title="まだ実行履歴がありません"
+                  >
+                    <History className="size-3.5" aria-hidden />
+                    履歴
+                  </span>
+                )}
                 {canRun && (
                   <Button
                     size="sm"

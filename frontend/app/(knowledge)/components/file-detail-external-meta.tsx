@@ -1,13 +1,72 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { useAsyncData } from "../hooks/use-async-data";
 
 import type { DataFileInfo } from "@/lib/api/data";
 import { getFileEnrichment } from "@/lib/api/data";
+import { translateText } from "@/lib/api/translate";
 import { Separator } from "@/components/ui/separator";
 import { arxivCategoryLabelJa } from "@/lib/arxiv-category-labels";
+
+function SummarySection({ summary }: { summary: string }) {
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
+  async function handleTranslate() {
+    if (translatedText) {
+      setShowTranslation((v) => !v);
+      return;
+    }
+    setTranslating(true);
+    setTranslateError(null);
+    try {
+      const res = await translateText(summary);
+      setTranslatedText(res.translated_text);
+      setShowTranslation(true);
+    } catch (e) {
+      setTranslateError(e instanceof Error ? e.message : "翻訳に失敗しました");
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-muted-foreground text-xs">要約</p>
+      <div className="mt-2">
+        {showTranslation && translatedText ? (
+          <p className="wrap-break-word whitespace-pre-wrap text-foreground leading-relaxed">
+            {translatedText}
+          </p>
+        ) : (
+          <p className="wrap-break-word whitespace-pre-wrap text-foreground leading-relaxed">
+            {summary}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => void handleTranslate()}
+          disabled={translating}
+          className="mt-2 text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+        >
+          {translating
+            ? "翻訳中…"
+            : translatedText && showTranslation
+              ? "原文を表示"
+              : "日本語訳を表示"}
+        </button>
+        {translateError && (
+          <p className="mt-1 text-xs text-destructive">{translateError}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type FileDetailExternalMetaProps = {
   dataPath: string;
@@ -93,15 +152,8 @@ export function FileDetailExternalMeta({
       <Separator />
 
       {summary ? (
-        <div>
-          <p className="text-muted-foreground text-xs">要約</p>
-          <div className="text-foreground mt-2 whitespace-pre-wrap wrap-break-word">
-            {summary}
-          </div>
-        </div>
-      ) : !showMetaLoading &&
-        enrich?.arxiv_id &&
-        !summary ? (
+        <SummarySection summary={summary} />
+      ) : !showMetaLoading && enrich?.arxiv_id && !summary ? (
         <p className="text-muted-foreground">要約はありません。</p>
       ) : null}
 

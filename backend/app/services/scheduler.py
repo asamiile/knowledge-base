@@ -88,6 +88,7 @@ def _run_arxiv_job(db: Session, row: SavedSearch) -> tuple[str, dict]:
         arxiv_ids=list(row.arxiv_ids or []),
         search_query=(row.query or None),
         max_results=row.top_k,
+        include_full_text=row.include_full_text,
     )
 
     if written:

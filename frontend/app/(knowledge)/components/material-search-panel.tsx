@@ -67,7 +67,7 @@ export function MaterialSearchPanel({
                 <Label
                   htmlFor="material-top-k"
                   className="text-muted-foreground text-xs leading-tight"
-                  title="ベクトル類似度の上位から最大何件まで表示するか（1〜20）"
+                  title="ベクトル類似度の上位から最大何件まで表示するか（1〜50）"
                 >
                   件数
                 </Label>
@@ -75,7 +75,7 @@ export function MaterialSearchPanel({
                   id="material-top-k"
                   type="number"
                   min={1}
-                  max={20}
+                  max={50}
                   className="h-11 w-18 sm:h-12"
                   value={materialSearchTopK}
                   onChange={(e) =>

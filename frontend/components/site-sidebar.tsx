@@ -6,13 +6,11 @@ import {
   FolderInput,
   LayoutDashboard,
   MessageSquareText,
-  RefreshCw,
   Search,
 } from "lucide-react";
 
 import { SidebarPeriodicRunLogs } from "@/components/sidebar-periodic-run-logs";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -26,21 +24,18 @@ import {
 } from "@/components/ui/sidebar";
 import type { KnowledgeSection } from "@/lib/knowledge-section";
 import type { KnowledgeStats } from "@/lib/api/knowledge";
-import { cn } from "@/lib/utils";
 
 export function SiteSidebar({
   activeSection,
   onSectionChange,
   stats,
   statsLoading,
-  onRefreshStats,
   busy,
 }: {
   activeSection: KnowledgeSection;
   onSectionChange: (s: KnowledgeSection) => void;
   stats: KnowledgeStats | null;
   statsLoading: boolean;
-  onRefreshStats: () => void;
   busy: string | null;
 }) {
   const navDisabled = (section: KnowledgeSection) =>
@@ -118,34 +113,13 @@ export function SiteSidebar({
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <div className="space-y-2">
-          <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs group-data-[collapsible=icon]:hidden">
-            <Badge variant="secondary" className="font-mono text-xs">
-              chunks {statsLoading ? "…" : (stats?.document_chunks ?? "—")}
-            </Badge>
-            <Badge variant="outline" className="font-mono text-xs">
-              raw {statsLoading ? "…" : (stats?.raw_data_rows ?? "—")}
-            </Badge>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              "w-full",
-              "group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:min-h-8 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:shadow-none",
-              "hover:group-data-[collapsible=icon]:bg-sidebar-accent hover:group-data-[collapsible=icon]:text-sidebar-accent-foreground",
-              "dark:group-data-[collapsible=icon]:bg-transparent dark:hover:group-data-[collapsible=icon]:bg-sidebar-accent",
-            )}
-            disabled={statsLoading}
-            onClick={onRefreshStats}
-          >
-            <RefreshCw
-              className={`size-3.5 ${statsLoading ? "animate-spin" : ""}`}
-            />
-            <span className="group-data-[collapsible=icon]:sr-only">
-              統計を更新
-            </span>
-          </Button>
+        <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs group-data-[collapsible=icon]:hidden">
+          <Badge variant="secondary" className="font-mono text-xs">
+            chunks {statsLoading ? "…" : (stats?.document_chunks ?? "—")}
+          </Badge>
+          <Badge variant="outline" className="font-mono text-xs">
+            raw {statsLoading ? "…" : (stats?.raw_data_rows ?? "—")}
+          </Badge>
         </div>
       </SidebarFooter>
       <SidebarRail />

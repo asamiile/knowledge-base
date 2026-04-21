@@ -1,13 +1,53 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+import { translateDocument } from "@/lib/api/translate";
 import {
   SeparatedResults,
   SeparatedResultsList,
 } from "./separated-results";
 import type { AnalyzeResponse } from "@/lib/api/analyze";
+
+function CitationTranslateButton({ documentId }: { documentId: number }) {
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+
+  async function handleTranslate() {
+    if (translatedText) {
+      setShowTranslation((v) => !v);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await translateDocument(documentId);
+      setTranslatedText(res.translated_text);
+      setShowTranslation(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={() => void handleTranslate()}
+        disabled={loading}
+        className="text-primary text-xs underline-offset-2 hover:underline disabled:opacity-50"
+      >
+        {loading ? "翻訳中…" : translatedText && showTranslation ? "原文を表示" : "日本語訳を表示"}
+      </button>
+      {translatedText && showTranslation && (
+        <p className="bg-muted/50 mt-2 rounded-md p-2 leading-relaxed text-muted-foreground whitespace-pre-wrap text-sm">
+          {translatedText}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export type AskAnalyzeResultProps = {
   result: AnalyzeResponse;
@@ -83,6 +123,7 @@ export function AskAnalyzeResult({ result }: AskAnalyzeResultProps) {
                 <p className="mt-1 leading-relaxed text-muted-foreground whitespace-pre-wrap">
                   {c.excerpt}
                 </p>
+                <CitationTranslateButton documentId={c.document_id} />
               </article>
             )}
           />

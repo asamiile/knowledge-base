@@ -12,6 +12,8 @@ export async function getKnowledgeStats(): Promise<KnowledgeStats> {
 export type MaterialSearchHit = {
   document_id: number;
   text: string;
+  /** 取り込み時に翻訳した日本語テキスト。未翻訳の場合は null */
+  translated_text?: string | null;
   distance: number;
   /** DATA_DIR 相対パス。あるとき `/file?path=`へリンク可能 */
   source_path?: string | null;

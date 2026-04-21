@@ -45,6 +45,7 @@ class Document(Base):
         Vector(768),
         nullable=True,
     )
+    translated_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -130,6 +131,11 @@ class SavedSearch(Base):
         default="knowledge",
     )
     top_k: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    include_full_text: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     schedule_enabled: Mapped[bool] = mapped_column(
         Boolean,
@@ -177,6 +183,10 @@ class SavedSearchRunLog(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     imported_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     imported_payload: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+    translated_hints: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )

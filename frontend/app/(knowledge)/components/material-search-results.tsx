@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import type { MaterialSearchHit } from "@/lib/api/knowledge";
 
@@ -8,18 +9,36 @@ import { SeparatedResultsList } from "./separated-results";
 
 function chunkBodyText(h: MaterialSearchHit): string {
   const p = h.source_path?.trim();
-  if (!p) return h.text;
+  const raw = h.text;
+  if (!p) return raw;
   const prefix = `[source:${p}]`;
-  if (h.text.startsWith(prefix)) {
-    return h.text.slice(prefix.length).replace(/^\s*\n?/, "");
-  }
-  return h.text;
+  return raw.startsWith(prefix) ? raw.slice(prefix.length).replace(/^\s*\n?/, "") : raw;
+}
+
+function SearchHitBody({ h }: { h: MaterialSearchHit }) {
+  const [showOriginal, setShowOriginal] = useState(false);
+  const hasTranslation = !!h.translated_text;
+  const displayText = hasTranslation && !showOriginal ? h.translated_text! : chunkBodyText(h);
+
+  return (
+    <>
+      <div className="text-foreground mt-3 leading-relaxed whitespace-pre-wrap wrap-break-word">
+        {displayText}
+      </div>
+      {hasTranslation && (
+        <button
+          onClick={() => setShowOriginal((v) => !v)}
+          className="text-muted-foreground mt-2 text-xs underline-offset-2 hover:underline"
+        >
+          {showOriginal ? "日本語訳を表示" : "原文を表示"}
+        </button>
+      )}
+    </>
+  );
 }
 
 type MaterialSearchResultsProps = {
-  /** null のときは何も表示しない */
   results: MaterialSearchHit[] | null;
-  /** 検索に要したミリ秒。results とセットでメタ行に使う */
   durationMs: number | null;
 };
 
@@ -55,9 +74,7 @@ export function MaterialSearchResults({
                   </Link>
                 </p>
               ) : null}
-              <div className="text-foreground mt-3 leading-relaxed whitespace-pre-wrap wrap-break-word">
-                {chunkBodyText(h)}
-              </div>
+              <SearchHitBody h={h} />
             </article>
           )}
         />

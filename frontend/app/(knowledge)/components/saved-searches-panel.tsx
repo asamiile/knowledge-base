@@ -25,6 +25,7 @@ type NewFormState = {
   arxivIds: string;
   keyword: string;
   topK: number;
+  includeFullText: boolean;
   intervalMinutes: number;
   scheduleEnabled: boolean;
   searchTarget: PeriodicSavedSearchTarget;
@@ -51,6 +52,7 @@ const DEFAULT_EDIT_FORM: NewFormState = {
   arxivIds: "",
   keyword: "",
   topK: 5,
+  includeFullText: false,
   intervalMinutes: 0,
   scheduleEnabled: false,
   searchTarget: "arxiv",
@@ -87,6 +89,7 @@ export function SavedSearchesPanel({
       arxivIds: item.arxivIds.join(" "),
       keyword: item.query,
       topK: item.topK,
+      includeFullText: item.includeFullText,
       intervalMinutes: item.intervalMinutes,
       scheduleEnabled: item.scheduleEnabled,
       searchTarget: (item.searchTarget ?? "arxiv") as PeriodicSavedSearchTarget,
@@ -102,6 +105,7 @@ export function SavedSearchesPanel({
       arxivIds: splitArxivIdsInput(editForm.arxivIds),
       searchTarget: editForm.searchTarget,
       topK: editForm.topK,
+      includeFullText: editForm.includeFullText,
       intervalMinutes: editForm.intervalMinutes,
       scheduleEnabled: editForm.scheduleEnabled && editForm.intervalMinutes > 0,
     });
@@ -151,6 +155,8 @@ export function SavedSearchesPanel({
                   setSaveMaterialArxivKeyword={(v) => patchEditForm({ keyword: v })}
                   saveMaterialTopK={editForm.topK}
                   setSaveMaterialTopK={(v) => patchEditForm({ topK: v })}
+                  saveMaterialIncludeFullText={editForm.includeFullText}
+                  setSaveMaterialIncludeFullText={(v) => patchEditForm({ includeFullText: v })}
                   saveMaterialIntervalMinutes={editForm.intervalMinutes}
                   setSaveMaterialIntervalMinutes={(v) => patchEditForm({ intervalMinutes: v })}
                   saveMaterialScheduleEnabled={editForm.scheduleEnabled}
@@ -197,6 +203,8 @@ export function SavedSearchesPanel({
                   setSaveMaterialArxivKeyword={(v) => setNewForm({ keyword: v })}
                   saveMaterialTopK={newForm.topK}
                   setSaveMaterialTopK={(v) => setNewForm({ topK: v })}
+                  saveMaterialIncludeFullText={newForm.includeFullText}
+                  setSaveMaterialIncludeFullText={(v) => setNewForm({ includeFullText: v })}
                   saveMaterialIntervalMinutes={newForm.intervalMinutes}
                   setSaveMaterialIntervalMinutes={(v) => setNewForm({ intervalMinutes: v })}
                   saveMaterialScheduleEnabled={newForm.scheduleEnabled}
