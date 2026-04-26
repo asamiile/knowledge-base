@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/asamiile/spira-base/compare/v1.1.0...v1.1.1) (2026-04-26)
+
+
+### Bug Fixes
+
+* correct include_full_text migration target for saved_search_cond… ([376bc6d](https://github.com/asamiile/spira-base/commit/376bc6dfb1d027ccc91685f0577b7b0a33da1aaa))
+* correct include_full_text migration target for saved_search_conditions ([0f3d5b1](https://github.com/asamiile/spira-base/commit/0f3d5b1e03dcf137714791a436de19ae13041f9d))
+
 ## [1.1.0](https://github.com/asamiile/spira-base/compare/v1.0.0...v1.1.0) (2026-04-18)
 
 
