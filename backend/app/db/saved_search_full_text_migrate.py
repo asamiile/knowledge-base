@@ -9,14 +9,14 @@ def migrate_saved_search_full_text_schema(conn: Connection) -> None:
     exists = conn.execute(
         text(
             "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_name = 'saved_searches')",
+            "WHERE table_schema = 'public' AND table_name = 'saved_search_conditions')",
         ),
     ).scalar()
     if not exists:
         return
     conn.execute(
         text(
-            "ALTER TABLE saved_searches "
+            "ALTER TABLE saved_search_conditions "
             "ADD COLUMN IF NOT EXISTS include_full_text BOOLEAN NOT NULL DEFAULT FALSE"
         ),
     )
